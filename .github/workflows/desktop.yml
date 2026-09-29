@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 jobs:
   package:
+    name: ${{ matrix.target }}-${{ matrix.arch }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,7 +54,13 @@ jobs:
       - run: npm run unit -- --testTimeout=30000
       - name: Build installers and update metadata
         if: github.event_name != 'pull_request'
-        run: npm run desktop:package:${{ matrix.target }}
+        shell: bash
+        run: |
+          # Missing GitHub Secrets become empty strings; builder treats an empty CSC_LINK as a file path.
+          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then unset "$name"; fi
+          done
+          npm run desktop:package:${{ matrix.target }}
         env:
           NAKO_UPDATE_URL: ${{ vars.NAKO_UPDATE_URL }}
           CSC_LINK: ${{ secrets[matrix.certificate] }}

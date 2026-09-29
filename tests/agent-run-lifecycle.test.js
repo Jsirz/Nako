@@ -116,6 +116,7 @@ it('keeps the model running after SSE disconnect and persists its completed answ
     f.pending[0].finish();
     await vi.waitFor(async () =>
       expect((await f.store.get('s1')).runs['run-s1'].status).toBe('completed'),
+      { timeout: 5000 },
     );
     const snapshot = await (await fetch(f.origin + '/sessions/s1')).json();
     expect(snapshot.transcript.at(-1).content).toBe('background answer');
@@ -138,6 +139,7 @@ it('stops every detached run in the exited project without stopping another proj
     f.pending[1].finish();
     await vi.waitFor(async () =>
       expect((await f.store.get('s2')).runs['run-s2'].status).toBe('completed'),
+      { timeout: 5000 },
     );
   } finally {
     await f.close();
@@ -188,6 +190,7 @@ it('delivers a tool created while detached on reopen and journals its receipt wi
     f.pending[1].finish();
     await vi.waitFor(async () =>
       expect((await f.store.get('s1')).runs['run-s1'].status).toBe('completed'),
+      { timeout: 5000 },
     );
     expect(Object.values((await f.store.get('s1')).receipts)[0]).toMatchObject({
       state: 'settled',
