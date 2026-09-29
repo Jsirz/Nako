@@ -1,0 +1,63 @@
+{
+  "id": "text-replace",
+  "version": "1.0.0",
+  "apiVersion": "^2.0.0",
+  "title": "字符替换",
+  "entry": "index.mjs",
+  "nodes": [
+    {
+      "type": "text-replace.replace",
+      "version": "1.0.0",
+      "category": "utility",
+      "title": "字符替换",
+      "description": "将输入文本中的指定字符或字符串替换为目标内容。",
+      "inputs": [
+        {
+          "id": "text",
+          "media": [
+            "text"
+          ],
+          "required": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "media": [
+            "text"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "title": "查找内容",
+            "default": ""
+          },
+          "to": {
+            "type": "string",
+            "title": "替换为",
+            "default": ""
+          }
+        }
+      },
+      "render": {
+        "kind": "generic"
+      },
+      "executor": {
+        "method": "replace",
+        "transport": "rpc"
+      },
+      "agent": {
+        "exposed": true,
+        "name": "字符替换",
+        "description": "在 Agent 请求中替换文本内容。",
+        "sideEffect": "none"
+      }
+    }
+  ],
+  "capabilities": []
+}

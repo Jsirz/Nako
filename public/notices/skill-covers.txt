@@ -1,0 +1,168 @@
+Skill 封面图片来源与授权
+获取日期：2026-09-24
+来源：Wikimedia Commons 主题搜索。
+处理：960×540 横向裁切与 WebP 压缩。CC BY-SA 衍生封面沿用所列原许可证；项目 MIT 不替换图像授权。
+每个 Skill 文件夹中的 COVER-SOURCE.md 提供独立可携带的来源记录。
+
+沙漠场景资产
+作者：Yathin S Krishnappa
+授权：CC BY-SA 3.0
+https://creativecommons.org/licenses/by-sa/3.0
+https://commons.wikimedia.org/wiki/File:Namib-Naukluft_Sand_Dunes_(2011).jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/角色资产场景生成-公开版/cover.webp
+<user-skills>/skill-c79a261b/cover.webp
+
+静态图像与绘画提示词
+作者：Swathysuren
+授权：CC BY-SA 4.0
+https://creativecommons.org/licenses/by-sa/4.0
+https://commons.wikimedia.org/wiki/File:Painting_brushes.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/deepwhite-image-prompt-builder/cover.webp
+<user-skills>/deepwhite-image-prompt-builder/cover.webp
+
+编剧写作工作台
+作者：Marina Christensen
+授权：CC BY-SA 3.0
+https://creativecommons.org/licenses/by-sa/3.0
+https://commons.wikimedia.org/wiki/File:Charmian_London%27s_typewriter_desk.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/deepwhite-screenwriting-v1/cover.webp
+<user-skills>/deepwhite-screenwriting-v1/cover.webp
+
+手绘分镜拆解
+作者：Irakli Metreveli
+授权：CC0
+http://creativecommons.org/publicdomain/zero/1.0/deed.en
+https://commons.wikimedia.org/wiki/File:Decoupage1.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/deepwhite-shotlist-builder-zh-user/cover.webp
+<user-skills>/deepwhite-shotlist-builder-zh-user/cover.webp
+
+剧本文戏与舞台
+作者：Dillyboase
+授权：CC BY-SA 3.0
+https://creativecommons.org/licenses/by-sa/3.0
+https://commons.wikimedia.org/wiki/File:Savoy_Theatre_Monmouth_Curtain_and_Pillar.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/hook-opening-master-dev/cover.webp
+<user-skills>/hook-opening-master-dev/cover.webp
+modules/agent/server/agent/builtin/minimax-drama-prompt/cover.webp
+
+文戏拍摄现场
+作者：Englishgroupe
+授权：CC BY-SA 4.0
+https://creativecommons.org/licenses/by-sa/4.0
+https://commons.wikimedia.org/wiki/File:Cinematography.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/minimax-drama-prompt/cover.webp
+<user-skills>/minimax-drama-prompt-2/cover.webp
+
+视频提示词与电影胶片
+作者：Coyau
+授权：CC BY-SA 3.0
+https://creativecommons.org/licenses/by-sa/3.0
+https://commons.wikimedia.org/wiki/File:8_mm_Kodak_safety_film_reel_06.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/minimaxh3-prompt-integrated/cover.webp
+<user-skills>/minimaxh3-prompt-integrated/cover.webp
+<user-skills>/h3-prompt-writing/cover.webp
+
+视觉资产创作工具
+作者：Hans Bernhard (Schnobby)
+授权：CC BY-SA 3.0
+https://creativecommons.org/licenses/by-sa/3.0
+https://commons.wikimedia.org/wiki/File:Brushes_2.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/mj-asset-prompt-builder/cover.webp
+<user-skills>/mj-asset-prompt-builder/cover.webp
+
+霓虹城市与电影视觉
+作者：Basile Morin
+授权：CC BY-SA 4.0
+https://creativecommons.org/licenses/by-sa/4.0
+https://commons.wikimedia.org/wiki/File:Kabukicho_red_gate_and_colorful_neon_street_signs_at_night,_Shinjuku,_Tokyo,_Japan.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/neoimage-prompt-engine/cover.webp
+<user-skills>/neoimage-prompt-engine/cover.webp
+
+剧本写作与打字机
+作者：William Warby from London, England
+授权：CC BY 2.0
+https://creativecommons.org/licenses/by/2.0
+https://commons.wikimedia.org/wiki/File:Bletchley_Park_Desk_and_Typewriter_(21598716801).jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/screenplay-master/cover.webp
+<user-skills>/screenplay-master/cover.webp
+
+高配文戏拍摄
+作者：Mattbr
+授权：CC BY 2.0
+https://creativecommons.org/licenses/by/2.0
+https://commons.wikimedia.org/wiki/File:Clapperboard,_O2_film,_September_2008.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/script-director-shooting-v3-7/cover.webp
+<user-skills>/script-director-shooting-v3-7/cover.webp
+modules/agent/server/agent/builtin/minimax-drama-high/cover.webp
+
+剧本到拍摄提示
+作者：Bernd Schwabe in Hannover
+授权：CC BY-SA 4.0
+https://creativecommons.org/licenses/by-sa/4.0
+https://commons.wikimedia.org/wiki/File:1992-04-24_Filmklappe_Filmschindel_Gedanken_2.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/script-to-drama-prompt-dev/cover.webp
+<user-skills>/script-to-drama-prompt-dev/cover.webp
+
+多模态视频提示词
+作者：DiscoA340
+授权：CC0
+http://creativecommons.org/publicdomain/zero/1.0/deed.en
+https://commons.wikimedia.org/wiki/File:16_mm_Film_Reel_(With_Film).jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/script-to-shotlist-package/cover.webp
+<user-skills>/script-to-shotlist-package/cover.webp
+<user-skills>/1/cover.webp
+
+视频流水线与剪辑工作台
+作者：Marcel Oosterwijk
+授权：CC BY-SA 2.0
+https://creativecommons.org/licenses/by-sa/2.0
+https://commons.wikimedia.org/wiki/File:Film_editing_workstation.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/seedance-25-storyboard-pipeline-v2/cover.webp
+<user-skills>/seedance-25-storyboard-pipeline-v2/cover.webp
+
+故事板与镜头设计
+作者：Heloise Magny, storyboard artist http://www.grifxstudio.com
+授权：Public domain
+https://creativecommons.org/publicdomain/mark/1.0/
+https://commons.wikimedia.org/wiki/File:Storyboard.jpg
+使用位置：
+modules/agent/server/agent/builtin/presets/seedance-video-prompt-router/cover.webp
+<user-skills>/seedance-video-prompt-router/cover.webp
+
+纸艺与定格动画
+作者：Laitche
+授权：Public domain
+https://creativecommons.org/publicdomain/mark/1.0/
+https://commons.wikimedia.org/wiki/File:%E6%8A%98%E9%B6%B4_WUXGA.jpg
+使用位置：
+<user-skills>/papercraft-stop-motion-explainer/cover.webp
+
+音乐视频与演出舞台
+作者：Shixart1985
+授权：CC BY 2.0
+https://creativecommons.org/licenses/by/2.0
+https://commons.wikimedia.org/wiki/File:A_large_crowd_enjoys_a_music_concert_illuminated_by_colorful_lights_and_a_stunning_stage_display.jpg
+使用位置：
+<user-skills>/music-video-subtitle-generator/cover.webp
+
+武术动作与武戏资产
+作者：Mostafameraji
+授权：CC0
+http://creativecommons.org/publicdomain/zero/1.0/deed.en
+https://commons.wikimedia.org/wiki/File:Shaolin_Kung_Fu_In_Iran-_Photo_By_2007-Mostafa_meraji_12.jpg
+使用位置：
+modules/agent/server/agent/builtin/minimax-fight-assets/cover.webp

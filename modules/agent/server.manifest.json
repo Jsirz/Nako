@@ -1,0 +1,31 @@
+{
+  "id": "module.agent",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "module.agent.drama": "^1.0.0",
+    "storage.agent-files": "^1.0.0",
+    "media.filesystem": "^1.0.0", "module.nodes": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "agent.drama",
+      "generation.defaults",
+      "agent.persistence",
+      "agent.skills",
+      "media.agent",
+      "generation.textTransport", "nodes.runtime", "node.registry"
+    ],
+    "provides": [
+      "agent.archive"
+    ]
+  },
+  "capabilities": [
+    "module.agent"
+  ]
+}

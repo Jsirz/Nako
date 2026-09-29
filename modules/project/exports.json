@@ -1,0 +1,15 @@
+[
+  "modules/project/api/server/workspace/runtimePaths.js",
+  "modules/project/api/server/workspace/userScopeResolver.js",
+  "modules/project/api/server/workspace/workspacePaths.js",
+  "modules/project/api/ui/navigation/openSettings.ts",
+  "modules/project/api/ui/navigation/projectDashboard.ts",
+  "modules/project/api/ui/navigation/projectDashboardCards.ts",
+  "modules/project/api/ui/navigation/projectDashboardData.ts",
+  "modules/project/api/ui/navigation/projectDashboardHeader.ts",
+  "modules/project/api/ui/navigation/projectDashboardMenu.ts",
+  "modules/project/api/ui/persistence/canvasAutoSaveLifecycle.ts",
+  "modules/project/api/ui/persistence/canvasSession.ts",
+  "modules/project/api/ui/persistence/canvasWorkflow.ts",
+  "modules/project/api/ui/persistence/preferenceStore.ts"
+]

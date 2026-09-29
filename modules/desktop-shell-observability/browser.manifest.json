@@ -1,0 +1,13 @@
+{
+  "id": "ui.desktop-shell-observability",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "ui.project": "^1.0.0"
+  },
+  "capabilities": [
+    "ui.desktop-shell-observability"
+  ]
+}

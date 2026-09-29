@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8">
+<style>
+  body{font:13px system-ui;color:#d4d4df;background:#17171f;margin:12px}
+  label{display:block;margin:10px 0}textarea,input{box-sizing:border-box;width:100%;border:1px solid #454550;border-radius:6px;padding:8px;color:inherit;background:#232330}
+  textarea{height:84px;resize:vertical}button{border:0;border-radius:6px;background:#6468df;color:white;padding:8px 16px;cursor:pointer}#status{margin-top:8px}
+</style>
+<strong>镜头分析</strong>
+<label>分析要求<textarea id="prompt"></textarea></label>
+<label>视觉文本模型<input id="model" placeholder="留空使用项目默认模型"></label>
+<button id="run">准备分析</button><span id="status"></span>
+<script>
+  let channel, parameters = {};
+  const send = (type, value) => parent.postMessage({protocol:'nako.node-ui/1', channel, type, value}, '*');
+  addEventListener('message', event => {
+    if(event.source !== parent || event.data?.protocol !== 'nako.node-ui/1' || event.data.type !== 'state') return;
+    channel = event.data.channel; parameters = event.data.parameters;
+    if(document.activeElement !== document.querySelector('#prompt')) document.querySelector('#prompt').value = parameters.prompt || '';
+    if(document.activeElement !== document.querySelector('#model')) document.querySelector('#model').value = parameters.textModel || '';
+    document.querySelector('#status').textContent = event.data.run?.status || '';
+  });
+  document.querySelector('#prompt').oninput = event => send('parameters', {...parameters, prompt: event.target.value});
+  document.querySelector('#model').oninput = event => send('parameters', {...parameters, textModel: event.target.value});
+  document.querySelector('#run').onclick = () => send('run');
+  send('ready');
+</script></html>

@@ -1,0 +1,12 @@
+[
+  "modules/local-runtime/api/server/local/controllerExitGuard.cjs",
+  "modules/local-runtime/api/server/local/libTvCliRuntime.js",
+  "modules/local-runtime/api/ui/local/canvasWorkflowGenerator.ts",
+  "modules/local-runtime/api/ui/local/localRuntimeClient.ts",
+  "modules/local-runtime/api/ui/local/localRuntimeSettings.ts",
+  "modules/local-runtime/api/ui/local/workflowCanvasNodes.ts",
+  "modules/local-runtime/api/ui/local/workflowManager.ts",
+  "modules/local-runtime/api/ui/local/workflowManagerClient.ts",
+  "modules/local-runtime/api/ui/local/workflowNodeSession.ts",
+  "modules/local-runtime/api/server/platform/directoryPicker.js"
+]

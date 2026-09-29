@@ -1,0 +1,67 @@
+.nako-project-header {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 48px;
+  padding: 8px 14px 8px 8px;
+  border: 1px solid var(--nk-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--nk-surface-raised) 94%, transparent);
+  box-shadow: 0 4px 20px #00000018;
+  color: var(--nk-text-secondary);
+}
+.nako-project-identity { min-width: 0; }
+.nako-project-identity > :last-child { min-width: 0; }
+.nako-project-title { display: block; max-width: min(220px, 24vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.nako-project-identity input { width: min(220px, 24vw); min-width: 60px; font-size: 13px; }
+.nako-save-status { font-size: 11px; white-space: nowrap; color: var(--nk-text-muted); border-left: 1px solid var(--nk-border); padding-left: 12px; }
+.nako-window-drag-region { display: none; }
+html[data-nk-integrated-titlebar] .nako-window-drag-region {
+  display: block; position: fixed; inset: 0 148px auto 0; height: 36px; z-index: 49; -webkit-app-region: drag;
+}
+html[data-nk-integrated-titlebar] .af-canvas-header.nako-project-header {
+  top: 44px; width: auto !important; height: 48px; padding: 8px 14px 8px 8px !important; -webkit-app-region: no-drag;
+}
+html[data-nk-integrated-titlebar] .nako-project-header [aria-label="项目菜单"] img { width: 30px; height: 30px; }
+[data-nako-workspace] [aria-label="画布工具"] { border-radius: 18px; padding: 6px; gap: 4px; background: var(--nk-surface-raised); box-shadow: 0 8px 32px #00000024; }
+[data-nako-workspace] [aria-label="画布工具"] > div.flex { gap: 8px; padding: 0; }
+[data-nako-workspace] [aria-label="画布工具"] button { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 11px; transition: background .15s, color .15s; }
+[data-nako-workspace] [aria-label="画布工具"] button:hover { transform: none; background: var(--nk-hover); }
+[data-nako-workspace] [aria-label="画布工具"] > button { margin-bottom: 6px; }
+[data-nako-workspace] [data-nako-profile-avatar] { width: 32px; height: 32px; font-size: 12px; }
+.nako-canvas-empty {
+  position: absolute; inset: 0 var(--nako-panel-space, 0px) 0 72px;
+  display: grid; place-items: center; pointer-events: none; z-index: 1; padding: 24px;
+}
+.nako-canvas-empty-content { text-align: center; max-width: 460px; }
+.nako-canvas-empty-mark { display: inline-flex; padding: 14px; border: 1px solid var(--nk-border); border-radius: 17px; color: var(--nk-text-muted); background: var(--nk-surface); margin-bottom: 20px; }
+.nako-canvas-empty h1 { font-size: 21px; font-weight: 500; letter-spacing: .03em; color: var(--nk-text-secondary); margin-bottom: 10px; }
+.nako-canvas-empty p { font-size: 12px; color: var(--nk-text-muted); line-height: 1.8; }
+.nako-canvas-shortcuts { pointer-events: auto; display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 25px; }
+.nako-canvas-shortcuts button { display: flex; align-items: center; gap: 7px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--nk-border); background: var(--nk-surface); color: var(--nk-text-secondary); font-size: 12px; transition: background .15s, border-color .15s; }
+.nako-canvas-shortcuts button:hover { background: var(--nk-hover); border-color: var(--nk-text-muted); }
+.nako-project-header button:focus-visible, .nako-canvas-shortcuts button:focus-visible { outline: 2px solid var(--nk-focus); outline-offset: 4px; }
+.nako-viewport-controls { border: 1px solid var(--nk-border); box-shadow: 0 4px 18px #00000018; }
+@media (max-width: 799px) {
+  .nako-canvas-empty { right: 0; }
+  .nako-project-header { max-width: calc(100% - 32px) !important; }
+  .nako-save-status { display: none; }
+  [data-nako-workspace]:has([data-nako-agent-panel]) .nako-project-header,
+  [data-nako-workspace]:has([data-nako-agent-panel]) [aria-label="画布工具"],
+  [data-nako-workspace]:has([data-nako-agent-panel]) .nako-viewport-controls { visibility: hidden; }
+}
+@media (max-height: 600px) {
+  [data-nako-workspace] [aria-label="画布工具"] { top: 100px; transform: none; max-height: calc(100dvh - 180px); overflow-y: auto; }
+}
+#canvas-background[data-read-only] #canvas-viewport-content,
+#canvas-background[data-read-only] #canvas-viewport-content * { pointer-events: none !important; }
+.nako-read-only-banner{position:fixed;top:16px;left:50%;z-index:90;display:flex;align-items:center;gap:18px;max-width:min(90vw,760px);padding:10px 12px 10px 16px;border:1px solid var(--nk-border-control);border-radius:12px;background:var(--nk-surface);color:var(--nk-text);box-shadow:var(--nk-shadow);transform:translateX(-50%);font-size:13px}
+.nako-read-only-copy{display:flex;align-items:center;gap:9px;min-width:0;color:var(--nk-text-secondary)}
+.nako-read-only-copy span{white-space:nowrap}
+.nako-read-only-copy [role=alert]{color:var(--nk-danger);overflow:hidden;text-overflow:ellipsis}
+.nako-read-only-banner button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 12px;border:0;border-radius:8px;background:var(--nk-primary);color:var(--nk-on-primary);font:inherit;white-space:nowrap;cursor:pointer}
+.nako-read-only-banner button:disabled{opacity:.6;cursor:progress}

@@ -1,0 +1,16 @@
+[
+  "modules/workflow-runtime/api/defineExecutor.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/comfySavedOutputs.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/directoryGrantStore.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/runningHubCover.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/runningHubUploadAdapter.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/runningHubWebApp.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/runningHubWebAppCompatibility.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowAssetIdentity.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowBindingCompiler.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowFormat.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowOutputLocalizer.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowOutputs.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowRunResult.js",
+  "modules/workflow-runtime/api/server/workflowRuntime/workflowStoragePaths.js"
+]

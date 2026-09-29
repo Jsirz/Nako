@@ -1,0 +1,430 @@
+.nako-dashboard {
+  --home-accent: #ff3b30;
+  --home-bg: #0a0a0c;
+  --home-panel: #ffffff09;
+  --home-panel-hover: #ffffff0d;
+  --home-stroke: #ffffff14;
+  --home-stroke-hover: #ffffff24;
+  --home-text: #f2f2f4;
+  --home-muted: #a6a6ad;
+  --home-shadow: 0 18px 50px -20px #000b;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--home-text);
+  background:
+    radial-gradient(900px 500px at 12% -5%, #ff3b301a, transparent 60%),
+    radial-gradient(800px 600px at 95% 8%, #785aff14, transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, #ffb4500d, transparent 60%), var(--home-bg);
+}
+[data-nk-theme='light'] .nako-dashboard {
+  --home-bg: #f7f7fa;
+  --home-panel: #ffffffb3;
+  --home-panel-hover: #fff;
+  --home-stroke: #18182014;
+  --home-stroke-hover: #1818202b;
+  --home-text: #202027;
+  --home-muted: #686872;
+  --home-shadow: 0 18px 50px -24px #29203026;
+}
+.nako-dashboard-header {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--home-stroke);
+  background: color-mix(in srgb, var(--home-bg) 60%, transparent);
+  backdrop-filter: blur(14px);
+}
+.nako-dashboard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  height: 64px;
+  max-width: 1240px;
+  margin: auto;
+  padding: 0 28px;
+}
+.nako-dashboard-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+.nako-dashboard-brand img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.nako-dashboard-brand span {
+  color: var(--home-muted);
+  font-weight: 500;
+}
+.nako-dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nako-dashboard-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 15px;
+  min-height: 38px;
+  border: 1px solid var(--home-stroke);
+  border-radius: 11px;
+  background: var(--home-panel);
+  color: var(--home-text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.nako-dashboard-button:hover {
+  background: var(--home-panel-hover);
+  border-color: var(--home-stroke-hover);
+}
+.nako-dashboard-button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.nako-dashboard-primary,
+.nako-dashboard-primary:hover {
+  background: linear-gradient(135deg, #ff3b30, #ff6a3d);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 10px 26px -10px #ff3b30;
+}
+.nako-dashboard-primary:hover {
+  filter: brightness(1.08);
+}
+.nako-dashboard-main {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 34px 28px 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nk-scrollbar) transparent;
+}
+.nako-home {
+  display: flex;
+  flex-direction: column;
+  gap: 46px;
+}
+.nako-dashboard-breadcrumb[hidden] {
+  display: none;
+}
+.nako-home button {
+  cursor: pointer;
+}
+.nako-dashboard button:focus-visible,
+.nako-project-card:focus-visible {
+  outline: 2px solid var(--home-accent);
+  outline-offset: 4px;
+}
+.nako-home-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 46px 44px;
+  border: 1px solid var(--home-stroke);
+  border-radius: 26px;
+  background: linear-gradient(180deg, var(--home-panel-hover), var(--home-panel));
+  box-shadow: var(--home-shadow);
+}
+.nako-home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(600px 200px at 80% 0%, #ff3b301f, transparent 70%);
+  pointer-events: none;
+}
+.nako-home-intro {
+  position: relative;
+}
+.nako-home-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--home-accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+.nako-home-eyebrow > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 12px var(--home-accent);
+}
+.nako-home-intro h1 {
+  font-size: 46px;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 16px 0 14px;
+}
+.nako-home-intro h1 em {
+  font-style: normal;
+  background: linear-gradient(120deg, var(--home-text), #ffb3a6);
+  background-clip: text;
+  color: transparent;
+}
+[data-nk-theme='light'] .nako-home-intro h1 em {
+  background-image: linear-gradient(120deg, #b72720, #ec603c);
+}
+.nako-home-intro p {
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--home-muted);
+  margin: 0;
+}
+.nako-home-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--home-muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.nako-home-text-button:hover {
+  color: var(--home-text);
+}
+.nako-home-section {
+  min-width: 0;
+  scroll-margin-top: 24px;
+}
+.nako-home-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.nako-home-section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0;
+}
+.nako-home-section-head h2 > svg {
+  color: var(--home-muted);
+}
+.nako-home-section-head p {
+  margin: 7px 0 0;
+  font-size: 13px;
+  color: var(--home-muted);
+}
+.nako-home-count {
+  border: 1px solid var(--home-stroke);
+  background: var(--home-panel-hover);
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--home-muted);
+}
+.nako-home-recent-grid {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: var(--home-stroke-hover) transparent;
+  padding: 2px 2px 12px;
+}
+.nako-home-carousel {
+  position: relative;
+  min-width: 0;
+}
+.nako-recent-card,
+.nako-recent-create {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  background: var(--home-panel);
+  border: 1px solid var(--home-stroke);
+  border-radius: 18px;
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.2s;
+}
+.nako-recent-card,
+.nako-recent-create {
+  flex: 0 0 min(320px, 78vw);
+  scroll-snap-align: start;
+}
+.nako-recent-card:hover,
+.nako-recent-create:hover {
+  background: var(--home-panel-hover);
+  border-color: var(--home-stroke-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--home-shadow);
+}
+.nako-recent-create {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--home-accent) 40%, transparent);
+  background: #ff3b3009;
+}
+.nako-recent-create:hover {
+  border-color: var(--home-accent);
+}
+.nako-recent-cover,
+.nako-recent-create-icon {
+  flex-shrink: 0;
+  width: 62px;
+  height: 46px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.nako-recent-cover {
+  display: block;
+}
+.nako-recent-create-icon {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ff3b30, #ff6a3d);
+  color: #fff;
+}
+.nako-dashboard-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.nako-recent-copy {
+  flex: 1;
+  min-width: 0;
+}
+.nako-recent-copy strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--home-text);
+}
+.nako-recent-copy small {
+  display: block;
+  color: var(--home-muted);
+  margin-top: 5px;
+  font-size: 12px;
+}
+.nako-recent-card > svg,
+.nako-recent-create > svg {
+  flex-shrink: 0;
+  color: var(--home-muted);
+}
+.nako-home-empty {
+  margin: 0;
+  padding: 28px;
+  border: 1px dashed var(--home-stroke);
+  border-radius: 18px;
+  color: var(--home-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.nako-project-card {
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--home-stroke);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--home-panel);
+  color: var(--home-text);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.nako-project-card:hover {
+  border-color: var(--home-stroke-hover);
+  transform: translateY(-5px);
+  box-shadow: var(--home-shadow);
+}
+.nako-project-card .nako-project-card-cover {
+  aspect-ratio: 16/10;
+  border-radius: 0;
+  margin: 0;
+}
+.nako-project-card .nako-project-card-copy {
+  padding: 14px 16px 18px;
+}
+.nako-project-card .nako-project-card-copy h3 {
+  font-size: 14.5px;
+  font-weight: 700;
+}
+.nako-project-card .nako-project-card-copy > div:last-child {
+  font-size: 12px;
+}
+.nako-project-card:focus-within button {
+  opacity: 1;
+}
+.nako-folder-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+}
+@media (max-width: 980px) {
+  .nako-home-hero {
+    padding: 32px;
+  }
+  .nako-home-intro h1 {
+    font-size: 34px;
+  }
+}
+@media (max-width: 560px) {
+  .nako-dashboard-nav {
+    padding: 0 16px;
+    gap: 10px;
+  }
+  .nako-dashboard-actions {
+    gap: 7px;
+  }
+  .nako-dashboard-button {
+    padding: 8px 10px;
+  }
+  .nako-dashboard-brand {
+    gap: 6px;
+  }
+  .nako-dashboard-main {
+    padding: 24px 16px 40px;
+  }
+  .nako-home {
+    gap: 32px;
+  }
+  .nako-home-hero {
+    padding: 28px 24px;
+  }
+  .nako-home-section-head {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nako-dashboard *,
+  .nako-project-card {
+    transition: none;
+    scroll-behavior: auto;
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "media.filesystem",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "media",
+  "dependencies": {
+    "storage.sqlite": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "project.repository"
+    ],
+    "provides": [
+      "media.store",
+      "media.operations",
+      "media.agent",
+      "media.generation"
+    ]
+  },
+  "capabilities": [
+    "media.storage"
+  ],
+  "reloadRequired": true
+}

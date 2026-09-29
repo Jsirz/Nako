@@ -1,0 +1,32 @@
+.nako-agent-workspace { box-shadow: -8px 0 32px #00000014 !important; }
+.nako-agent-workspace > div:has(> [data-nako-agent-header]) { min-height: 62px; border-color: var(--nk-border); padding: 14px 20px; }
+.nako-agent-workspace [data-nako-agent-header] img { width: 26px; height: 26px; border-radius: 7px; }
+.nako-agent-workspace [data-nako-agent-scroll] { padding: 24px 20px; scrollbar-width: thin; scrollbar-color: var(--nk-border) transparent; }
+.nako-agent-workspace [data-nako-agent-scroll][data-empty="true"] > div { justify-content: center; }
+.nako-agent-workspace [data-nako-agent-intro] { margin: 24px 0 28px; }
+.nako-agent-workspace [data-nako-agent-intro] > div:first-child { font-size: 9px; letter-spacing: .16em !important; }
+.nako-agent-workspace [data-nako-agent-intro] h1 { font-size: clamp(21px, 6cqw, 27px); letter-spacing: -.03em; line-height: 1.45; font-weight: 550; }
+.nako-agent-intro-note { font-size: 12px; color: var(--nk-text-muted); line-height: 1.8; margin-top: 10px; }
+.nako-agent-suggestions { display: grid; gap: 10px; margin-bottom: 28px; }
+.nako-agent-suggestions button { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; padding: 15px; border: 1px solid var(--nk-border); border-radius: 12px; background: var(--nk-surface-raised); transition: border-color .15s, background .15s; }
+.nako-agent-suggestions button:hover { background: var(--nk-hover); border-color: var(--nk-text-muted); }
+.nako-agent-suggestions button:disabled { opacity: .5; cursor: wait; }
+.nako-agent-suggestions strong { display: block; font-size: 13px; font-weight: 500; color: var(--nk-text); margin-bottom: 6px; }
+.nako-agent-suggestions small { display: block; font-size: 11px; line-height: 1.6; color: var(--nk-text-muted); }
+.nako-agent-suggestions button > span:last-child { color: var(--nk-text-muted); font-size: 18px; }
+.nako-agent-compose-area { padding: 12px 16px 16px; }
+.nako-agent-compose-box { border: 1px solid var(--nk-border); background: var(--nk-surface-raised); box-shadow: 0 4px 20px #00000014; }
+.nako-agent-compose-box:focus-within { border-color: var(--nk-text-muted); }
+.nako-agent-compose-box textarea { padding: 8px 2px; line-height: 1.7; min-height: 80px; }
+.nako-agent-workspace button:focus-visible { outline: 2px solid var(--nk-focus); outline-offset: 3px; }
+@container (max-width: 360px) {
+  .nako-agent-suggestions button { padding: 12px; }
+  .nako-agent-compose-area { padding: 10px; }
+}
+@media (max-width: 799px) {
+  .nako-agent-workspace { z-index: 60; width: 100% !important; }
+}
+@media (max-height: 700px) {
+  .nako-agent-workspace [data-nako-agent-intro] { margin: 4px 0 16px; }
+  .nako-agent-suggestions { margin-bottom: 16px; }
+}

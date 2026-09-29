@@ -1,0 +1,477 @@
+[
+  {
+    "name": "Seedance 2.0 Standard · Work-Fisher宽审核",
+    "canonicalModel": "Seedance 2.0",
+    "variantLabel": "宽审核",
+    "timeEstimate": "15min",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "2k",
+      "4k",
+      "native1080p",
+      "native4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 1
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 1,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 1,
+          "image": 9,
+          "video": 3,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 2,
+        "max": 15,
+        "unit": "s"
+      },
+      {
+        "key": "generate_audio",
+        "label": "生成声音",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "number",
+        "default": -1,
+        "min": -1,
+        "max": 2147483647
+      },
+      {
+        "key": "return_last_frame",
+        "label": "返回尾帧",
+        "type": "toggle",
+        "default": false
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-standard-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-standard-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-standard-multi"
+      }
+    }
+  },
+  {
+    "name": "可灵 V3 · Work-Fisher",
+    "canonicalModel": "Kling V3.0",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-v3.0-std-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-v3.0-std-i2v"
+      }
+    }
+  },
+  {
+    "name": "可灵 V3 Pro · Work-Fisher",
+    "canonicalModel": "Kling V3.0",
+    "variantLabel": "Pro",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-v3.0-pro-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-v3.0-pro-i2v"
+      }
+    }
+  },
+  {
+    "name": "Kling O3 · Work-Fisher",
+    "canonicalModel": "Kling O3",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "视频参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 9
+        }
+      },
+      {
+        "label": "视频编辑",
+        "value": "video-edit",
+        "allowedInputs": {
+          "text": 10,
+          "video": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-o3-std-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-o3-std-i2v"
+      },
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "kling-o3-std-r2v"
+      },
+      "video-edit": {
+        "path": "/v1/videos",
+        "model": "kling-o3-std-edit"
+      }
+    }
+  },
+  {
+    "name": "Kling O3 Pro · Work-Fisher",
+    "canonicalModel": "Kling O3",
+    "variantLabel": "Pro",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "视频参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 9
+        }
+      },
+      {
+        "label": "视频编辑",
+        "value": "video-edit",
+        "allowedInputs": {
+          "text": 10,
+          "video": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-o3-pro-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-o3-pro-i2v"
+      },
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "kling-o3-pro-r2v"
+      },
+      "video-edit": {
+        "path": "/v1/videos",
+        "model": "kling-o3-pro-edit"
+      }
+    }
+  },
+  {
+    "name": "谷歌OMNI Flash · Work-Fisher",
+    "canonicalModel": "谷歌OMNI Flash",
+    "brand": "谷歌OMNI",
+    "timeEstimate": "15min",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video"
+    ],
+    "resolutions": [
+      "720p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "多图参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 16
+        }
+      },
+      {
+        "label": "视频编辑",
+        "value": "video-edit",
+        "allowedInputs": {
+          "text": 10,
+          "video": 1
+        }
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-g-omni-flash"
+      },
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-g-omni-flash"
+      },
+      "video-edit": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-g-omni-flash"
+      }
+    }
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "id": "provider.openai",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "provider",
+  "dependencies": {
+    "generation-core": "^1.0.0"
+  },
+  "capabilities": [
+    "generation.text",
+    "generation.image"
+  ],
+  "services": {
+    "requires": [
+      "generation.providers"
+    ],
+    "provides": [
+      "provider.GptTextProvider",
+      "provider.GptImageProvider"
+    ]
+  },
+  "credentials": [
+    "provider.openai"
+  ],
+  "providers": [
+    {
+      "name": "GptTextProvider",
+      "kinds": [
+        "text"
+      ],
+      "execution": "immediate",
+      "requiredSecrets": [
+        "OPENAI_API_KEY"
+      ]
+    },
+    {
+      "name": "GptImageProvider",
+      "kinds": [
+        "image"
+      ],
+      "execution": "immediate",
+      "requiredSecrets": [
+        "OPENAI_API_KEY"
+      ]
+    }
+  ]
+}

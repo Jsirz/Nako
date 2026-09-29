@@ -1,0 +1,14 @@
+[
+  "modules/desktop-shell-observability/api/desktop/windowsUpdateHandoff.mjs",
+  "modules/desktop-shell-observability/api/pluginRouter.js",
+  "modules/desktop-shell-observability/api/server/runtime/backendLifecycleDiagnostics.js",
+  "modules/desktop-shell-observability/api/server/runtime/localRuntimeLifecycle.js",
+  "modules/desktop-shell-observability/api/server/runtime/parentChannel.js",
+  "modules/desktop-shell-observability/api/server/runtime/serveCanvas.js",
+  "modules/desktop-shell-observability/api/server/telemetry/providerDiagnostics.js",
+  "modules/desktop-shell-observability/api/serverHost.js",
+  "modules/desktop-shell-observability/api/shared/canvasEntry.ts",
+  "modules/desktop-shell-observability/api/shared/desktopShell.ts",
+  "modules/desktop-shell-observability/api/ui/desktop/desktopBridge.ts",
+  "modules/desktop-shell-observability/api/ui/desktop/localFileUpload.ts"
+]

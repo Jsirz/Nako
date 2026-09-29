@@ -1,0 +1,13 @@
+{
+  "id": "ui.asset-media",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "ui.workflow-runtime": "^1.0.0"
+  },
+  "capabilities": [
+    "ui.asset-media"
+  ]
+}

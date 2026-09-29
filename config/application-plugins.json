@@ -1,0 +1,55 @@
+[
+  {
+    "id": "module.nodes", "entry": "../modules/desktop-shell-observability/nodeServerPlugin.js", "manifest": "../modules/desktop-shell-observability/node.server.manifest.json"
+  },
+  {
+    "id": "module.identity-account",
+    "entry": "../modules/identity-account/serverPlugin.js",
+    "manifest": "../modules/identity-account/server.manifest.json"
+  },
+  {
+    "id": "module.asset-media",
+    "entry": "../modules/asset-media/serverPlugin.js",
+    "manifest": "../modules/asset-media/server.manifest.json"
+  },
+  {
+    "id": "module.project",
+    "entry": "../modules/project/serverPlugin.js",
+    "manifest": "../modules/project/server.manifest.json"
+  },
+  {
+    "id": "module.local-runtime",
+    "entry": "../modules/local-runtime/serverPlugin.js",
+    "manifest": "../modules/local-runtime/server.manifest.json"
+  },
+  {
+    "id": "module.generation",
+    "entry": "../modules/generation-core/serverPlugin.js",
+    "manifest": "../modules/generation-core/server.manifest.json"
+  },
+  {
+    "id": "module.workflow-runtime",
+    "entry": "../modules/workflow-runtime/serverPlugin.js",
+    "manifest": "../modules/workflow-runtime/server.manifest.json"
+  },
+  {
+    "id": "module.agent",
+    "entry": "../modules/agent/serverPlugin.js",
+    "manifest": "../modules/agent/server.manifest.json"
+  },
+  {
+    "id": "module.prompt",
+    "entry": "../modules/agent/promptServerPlugin.js",
+    "manifest": "../modules/agent/server.prompt.manifest.json"
+  },
+  {
+    "id": "module.agent.drama",
+    "entry": "../modules/agent/dramaServerPlugin.js",
+    "manifest": "../modules/agent/server.drama.manifest.json"
+  },
+  {
+    "id": "module.agent.storyboard",
+    "entry": "../modules/agent/storyboardServerPlugin.js",
+    "manifest": "../modules/agent/server.storyboard.manifest.json"
+  }
+]

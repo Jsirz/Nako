@@ -1,0 +1,9 @@
+{
+  "id": "desktop.application-updates",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": { "host.desktop": "^1.0.0" },
+  "services": { "requires": ["desktop.environment"], "provides": ["desktop.application-updates"] }
+}

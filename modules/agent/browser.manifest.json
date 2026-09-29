@@ -1,0 +1,18 @@
+{
+  "id": "ui.agent",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "ui.project": "^1.0.0"
+  },
+  "capabilities": [
+    "ui.agent"
+  ],
+  "services": {
+    "provides": [
+      "ui.agent.surfaces"
+    ]
+  }
+}

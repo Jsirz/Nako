@@ -1,0 +1,157 @@
+[
+  {
+    "name": "豆包 Seed Evolving · Work-Fisher",
+    "canonicalModel": "豆包 Seed Evolving",
+    "timeEstimate": "2min",
+    "maxInputs": 3,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1,
+          "video": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "bytedance/doubao-seed-evolving"
+      }
+    }
+  },
+  {
+    "name": "DeepSeek V4 Flash · Work-Fisher",
+    "canonicalModel": "DeepSeek-V4-Flash",
+    "selectable": false,
+    "timeEstimate": "2min",
+    "maxInputs": 1,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "文本对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "deepseek/deepseek-v4-flash"
+      }
+    }
+  },
+  {
+    "name": "DeepSeek V4 Pro · Work-Fisher",
+    "canonicalModel": "DeepSeek-V4-Pro",
+    "selectable": false,
+    "timeEstimate": "2min",
+    "maxInputs": 1,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "文本对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "deepseek/deepseek-v4-pro"
+      }
+    }
+  },
+  {
+    "name": "GLM 5.3 Flash · Work-Fisher",
+    "canonicalModel": "GLM 5.3 Flash",
+    "brand": "GLM",
+    "timeEstimate": "1min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "glm/glm-5.3-flash"
+      }
+    }
+  },
+  {
+    "name": "Kimi K3 · Work-Fisher",
+    "canonicalModel": "Kimi K3",
+    "selectable": false,
+    "timeEstimate": "2min",
+    "maxInputs": 1,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "文本对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "kimi-k3"
+      }
+    }
+  }
+]

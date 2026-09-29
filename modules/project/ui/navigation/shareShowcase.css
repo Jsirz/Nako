@@ -1,0 +1,183 @@
+.nako-share-showcase {
+  min-width: 0;
+}
+.nako-share-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  align-items: start;
+  gap: 16px;
+  min-width: 0;
+  padding: 2px 2px 4px;
+}
+.nako-share-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--home-stroke);
+  border-radius: 14px;
+  background: var(--home-panel);
+  text-align: left;
+  color: var(--home-text);
+  cursor: pointer;
+  transition:
+    border-color 0.18s,
+    transform 0.18s;
+}
+.nako-share-card:hover {
+  border-color: var(--home-stroke-hover);
+  transform: translateY(-3px);
+}
+.nako-share-preview{display:inline-flex;align-items:center;gap:7px;justify-self:end;align-self:flex-end;margin-top:10px;padding:7px 10px;border:1px solid var(--home-stroke);border-radius:8px;background:var(--home-panel-hover);color:var(--home-text);font:inherit;font-size:12px;cursor:pointer}
+.nako-share-preview:hover{border-color:var(--home-stroke-hover);color:var(--home-accent)}
+.nako-share-preview:disabled{opacity:.55;cursor:progress}
+.nako-share-card-cover {
+  display: block;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  background: var(--home-panel-hover);
+}
+.nako-share-card-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.nako-share-card-copy {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+.nako-share-category {
+  color: var(--home-accent);
+  font-size: 11px;
+}
+.nako-share-card-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 650;
+}
+.nako-share-card-copy > span:last-child {
+  display: -webkit-box;
+  height: 38px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--home-muted);
+  font-size: 12px;
+  line-height: 19px;
+}
+.nako-share-card:focus-visible,
+.nako-share-preview:focus-visible,
+.nako-share-detail button:focus-visible {
+  outline: 2px solid var(--home-accent);
+  outline-offset: 3px;
+}
+.nako-share-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--nk-overlay);
+  backdrop-filter: blur(6px);
+}
+.nako-share-detail {
+  width: min(820px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  border: 1px solid var(--nk-border);
+  border-radius: 16px;
+  background: var(--nk-surface);
+  color: var(--nk-text);
+  box-shadow: var(--nk-shadow);
+}
+.nako-share-detail-cover {
+  position: relative;
+  aspect-ratio: 16/8;
+  min-height: 210px;
+  overflow: hidden;
+}
+.nako-share-detail-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.nako-share-detail-cover button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: #111b;
+  color: white;
+  cursor: pointer;
+}
+.nako-share-detail-body {
+  padding: 24px;
+}
+.nako-share-detail-body h2 {
+  margin: 7px 0;
+  font-size: 22px;
+  font-weight: 650;
+}
+.nako-share-detail-body p {
+  margin: 0;
+  color: var(--nk-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.nako-share-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.nako-share-detail-actions .nako-share-preview {
+  margin-top: 0;
+}
+.nako-share-detail-body .nako-share-error {
+  margin-top: 12px;
+  color: var(--nk-danger);
+}
+.nako-share-import {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  margin-top: 18px;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--nk-primary);
+  color: var(--nk-on-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.nako-share-import:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+@media (max-width: 560px) {
+  .nako-share-detail-cover {
+    min-height: 180px;
+    aspect-ratio: 4/3;
+  }
+  .nako-share-detail-body {
+    padding: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nako-share-card {
+    transition: none;
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "storage.sqlite",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "storage",
+  "services": {
+    "provides": [
+      "project.repository"
+    ]
+  },
+  "capabilities": [
+    "project.persistence"
+  ],
+  "reloadRequired": true
+}

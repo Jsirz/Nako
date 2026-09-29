@@ -1,0 +1,8 @@
+.nako-collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); align-content: start; align-items: start; gap: 20px; min-width: 0; }
+.nako-collection-grid > * { width: 100%; min-width: 0; }
+.nako-project-create-card { display: block; min-width: 0; padding: 0; overflow: hidden; border: 1px solid var(--nk-border); border-radius: 10px; color: var(--nk-text); background: var(--nk-surface-raised); text-align: left; cursor: pointer; transition: border-color .18s, background .18s; }
+.nako-project-create-card:hover { border-color: var(--nk-focus); background: var(--nk-hover); }
+.nako-project-create-cover { display: flex; aspect-ratio: 16/10; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--nk-text-secondary); background: var(--nk-surface-raised); font-size: 13px; }
+.nako-project-create-copy { display: grid; gap: 7px; padding: 14px 16px 18px; }
+.nako-project-create-copy strong { font-size: 14px; font-weight: 650; }
+.nako-project-create-copy small { overflow: hidden; color: var(--nk-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }

@@ -1,0 +1,29 @@
+.nako-update-settings { border-top: 1px solid var(--nk-border); padding: 14px 8px 0; color: var(--nk-text-secondary); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.nako-update-settings button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 32px; border-radius: 4px; padding: 4px; text-align: left; cursor: pointer; }
+.nako-update-settings button:hover:not(:disabled) { background: var(--nk-hover); color: var(--nk-text); }
+.nako-update-settings button:focus-visible { outline: 2px solid var(--nk-text-secondary); outline-offset: 2px; }
+.nako-update-settings button:disabled { cursor: default; opacity: .65; }
+.nako-update-settings svg { flex-shrink: 0; }
+.nako-update-settings strong { font-weight: 500; }
+.nako-update-settings p { margin: 4px 4px 0; }
+.nako-update-settings small { display: block; margin: 4px; }
+.nako-update-settings progress { display: block; width: 100%; height: 4px; margin: 8px 0; }
+.nako-update-overlay { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 24px; background: rgb(0 0 0 / .48); backdrop-filter: blur(4px); }
+.nako-update-modal { position: relative; width: min(520px, 100%); max-height: min(720px, calc(100vh - 48px)); overflow: auto; padding: 32px; border: 1px solid var(--nk-border); border-radius: 22px; background: var(--nk-surface); color: var(--nk-text); box-shadow: 0 24px 90px rgb(0 0 0 / .35); text-align: center; }
+.nako-update-close { position: absolute; top: 12px; right: 14px; border: 0; background: transparent; color: var(--nk-text-muted); font-size: 24px; cursor: pointer; }
+.nako-update-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; background: var(--nk-primary); color: var(--nk-on-primary); font-size: 42px; font-weight: 800; }
+.nako-update-kicker { margin: 0; color: var(--nk-text-muted); font-size: 13px; }
+.nako-update-modal h2 { margin: 8px 0; font-size: 26px; }
+.nako-update-message { margin: 0 auto 18px; color: var(--nk-text-secondary); line-height: 1.6; }
+.nako-update-notes { max-height: 180px; overflow: auto; margin: 16px 0; padding: 14px; border: 1px solid var(--nk-border); border-radius: 10px; color: var(--nk-text-secondary); text-align: left; white-space: pre-wrap; line-height: 1.6; }
+.nako-update-modal progress { display: block; width: 100%; height: 9px; margin: 24px 0 6px; accent-color: var(--nk-primary); }
+.nako-update-percent { margin: 0 0 18px; color: var(--nk-text-muted); }
+.nako-update-actions { display: flex; justify-content: center; gap: 10px; margin-top: 22px; }
+.nako-update-actions button { min-height: 40px; padding: 0 18px; border: 1px solid var(--nk-border-control); border-radius: 10px; background: var(--nk-surface-raised); color: var(--nk-text); cursor: pointer; font: inherit; }
+.nako-update-actions button:hover:not(:disabled) { background: var(--nk-hover); }
+.nako-update-actions .nako-update-primary { border-color: var(--nk-primary); background: var(--nk-primary); color: var(--nk-on-primary); font-weight: 700; }
+.nako-update-actions .nako-update-primary:hover:not(:disabled) { background: var(--nk-primary); opacity: .9; }
+.nako-update-modal button:focus-visible { outline: 2px solid var(--nk-focus); outline-offset: 3px; }
+.nako-update-actions button:disabled { cursor: default; opacity: .6; }
+.nako-update-footnote { margin: 18px 0 0; color: var(--nk-text-muted); font-size: 12px; }
+@media (max-width: 560px) { .nako-update-modal { padding: 28px 20px; } .nako-update-actions { flex-direction: column; } }

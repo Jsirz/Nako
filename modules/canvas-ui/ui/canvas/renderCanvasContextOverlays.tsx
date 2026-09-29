@@ -1,0 +1,67 @@
+import './canvasWorkspace.css';
+import type { useCanvasDocumentEffects } from './useCanvasDocumentEffects';
+export function renderCanvasContextOverlays(
+  context: ReturnType<typeof useCanvasDocumentEffects> & { batchSourceNodeIds: string[] },
+) {
+  const {
+    React,
+    Overlays,
+    contextMenu,
+    setContextMenu,
+    expandedImageUrl,
+    expandedComparePayload,
+    expandedCompositePayload,
+    handleCloseExpand,
+    handleCloseCompare,
+    handleCloseComposite,
+    canvasTitle,
+    cancelConnectionDrag,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    isCreateAssetModalOpen,
+    setIsCreateAssetModalOpen,
+    nodeToSnapshot,
+    assetCategories,
+    handleSaveAssetToLibrary,
+    handleContextUpload,
+    handleCopy,
+    handlePaste,
+    handleContextMenuCreateAsset,
+    handleContextMenuCopyImage,
+    handleContextMenuSelect,
+    openAssetsModal,
+  } = context;
+  return React.createElement(Overlays, {
+    key: 'overlays',
+    contextMenu,
+    onCloseContextMenu: () => {
+      setContextMenu((ke) => ({ ...ke, isOpen: false }));
+      cancelConnectionDrag();
+    },
+    onSelectType: handleContextMenuSelect,
+    onUpload: handleContextUpload,
+    onUndo: undo,
+    onRedo: redo,
+    onPaste: handlePaste,
+    onCopy: handleCopy,
+    onCreateAsset: handleContextMenuCreateAsset,
+    onCopyImage: handleContextMenuCopyImage,
+    onAddAssets: openAssetsModal,
+    canUndo,
+    canRedo,
+    expandedImageUrl,
+    expandedComparePayload,
+    expandedCompositePayload,
+    onCloseExpand: handleCloseExpand,
+    onCloseCompare: handleCloseCompare,
+    onCloseComposite: handleCloseComposite,
+    isCreateAssetModalOpen,
+    setIsCreateAssetModalOpen,
+    nodeToSnapshot,
+    assetCategories,
+    assetDefaultOwnership: canvasTitle,
+    onSaveAssetToLibrary: handleSaveAssetToLibrary,
+  });
+}

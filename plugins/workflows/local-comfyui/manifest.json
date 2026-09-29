@@ -1,0 +1,22 @@
+{
+  "id": "workflow.local-comfyui",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "workflow",
+  "dependencies": {
+    "workflow-runtime": "^1.0.0"
+  },
+  "capabilities": [
+    "workflow.local-comfyui"
+  ],
+  "services": {
+    "requires": [
+      "workflow.executors"
+    ],
+    "provides": [
+      "workflow.factory.local-comfyui"
+    ]
+  },
+  "credentials": [],
+  "reloadRequired": true
+}

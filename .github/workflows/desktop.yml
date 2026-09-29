@@ -1,0 +1,49 @@
+name: Desktop packages
+on:
+  workflow_dispatch:
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+            arch: x64
+          - os: macos-15-intel
+            target: mac
+            arch: x64
+          - os: macos-15
+            target: mac
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.20.0'
+          architecture: ${{ matrix.arch }}
+          cache: npm
+      - run: npm ci
+      - name: Install SQLite Node-API binary for tests
+        run: node ../prebuild-install/bin.js -r napi
+        working-directory: node_modules/sqlite3
+      - run: npm run check:architecture
+      - run: npm run check:local-only
+      - run: npm run typecheck
+      - run: npm run unit -- --testTimeout=30000
+      - run: npm run desktop:package:${{ matrix.target }}
+        env:
+          NAKO_UPDATE_URL: ${{ vars.NAKO_UPDATE_URL }}
+      - run: npm run desktop:smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nako-${{ matrix.target }}-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            release/Nako-*.exe
+            release/Nako-*.dmg
+            release/Nako-*.zip
+            release/SHA256SUMS-*.txt
+            release/latest*.yml
+            release/*.blockmap

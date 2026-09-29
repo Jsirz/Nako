@@ -1,0 +1,428 @@
+[
+  {
+    "name": "Vidu Q3 Pro · Work-Fisher",
+    "canonicalModel": "Vidu Q3 Pro",
+    "brand": "Vidu",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "首尾帧",
+        "value": "i2v-first-last-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-pro-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-pro-i2v"
+      },
+      "i2v-first-last-frame": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-pro-start-end"
+      }
+    }
+  },
+  {
+    "name": "Vidu Q3 Turbo · Work-Fisher",
+    "canonicalModel": "Vidu Q3 Turbo",
+    "brand": "Vidu",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "首尾帧",
+        "value": "i2v-first-last-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-turbo-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-turbo-i2v"
+      },
+      "i2v-first-last-frame": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-turbo-start-end"
+      }
+    }
+  },
+  {
+    "name": "Vidu Q3 Reference · Work-Fisher",
+    "canonicalModel": "Vidu Q3 Reference",
+    "brand": "Vidu",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "540p",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "videoModes": [
+      {
+        "label": "多图参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 7
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 3,
+        "max": 16,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "vidu-q3-r2v"
+      }
+    }
+  },
+  {
+    "name": "Grok · Work-Fisher",
+    "canonicalModel": "Grok",
+    "brand": "Grok",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "480p",
+      "720p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "多图参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 7
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 6,
+        "min": 6,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-gk-v15"
+      },
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-gk-v15"
+      }
+    }
+  },
+  {
+    "name": "Veo Flash Lite · Work-Fisher",
+    "canonicalModel": "Veo 3.1 Lite",
+    "brand": "Veo",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "fixedDuration": 8,
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-v31-lite"
+      }
+    }
+  },
+  {
+    "name": "Veo 3.1 Flash · Work-Fisher",
+    "canonicalModel": "Veo 3.1 Fast",
+    "brand": "Veo",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "fixedDuration": 8,
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "多图参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 3
+        }
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-v31-fast"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-v31-fast"
+      },
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-v31-fast"
+      }
+    }
+  },
+  {
+    "name": "Veo 3.1 Pro · Work-Fisher",
+    "canonicalModel": "Veo 3.1 Pro",
+    "brand": "Veo",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "fixedDuration": 8,
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-v31-quality"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "workfisher-video-v31-quality"
+      }
+    }
+  }
+]

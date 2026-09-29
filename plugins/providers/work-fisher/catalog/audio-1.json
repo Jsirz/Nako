@@ -1,0 +1,469 @@
+[
+  {
+    "name": "豆包 Seed Audio 1.0 · Work-Fisher",
+    "canonicalModel": "豆包 Seed Audio 1.0",
+    "timeEstimate": "10min",
+    "maxInputs": 5,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "audio"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "audioModes": [
+      {
+        "label": "生成音频",
+        "value": "generate-audio",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "format",
+        "label": "输出格式",
+        "type": "select",
+        "default": "mp3",
+        "options": [
+          {
+            "label": "MP3",
+            "value": "mp3"
+          },
+          {
+            "label": "WAV",
+            "value": "wav"
+          },
+          {
+            "label": "PCM",
+            "value": "pcm"
+          },
+          {
+            "label": "OGG Opus",
+            "value": "ogg_opus"
+          }
+        ]
+      },
+      {
+        "key": "sample_rate",
+        "label": "采样率",
+        "type": "select",
+        "default": "24000",
+        "options": [
+          {
+            "label": "8 kHz",
+            "value": "8000"
+          },
+          {
+            "label": "16 kHz",
+            "value": "16000"
+          },
+          {
+            "label": "24 kHz",
+            "value": "24000"
+          },
+          {
+            "label": "32 kHz",
+            "value": "32000"
+          },
+          {
+            "label": "44.1 kHz",
+            "value": "44100"
+          }
+        ]
+      },
+      {
+        "key": "speaker",
+        "label": "音色 ID",
+        "type": "text"
+      },
+      {
+        "key": "speech_rate",
+        "label": "语速",
+        "type": "slider",
+        "default": 0,
+        "min": -50,
+        "max": 100
+      },
+      {
+        "key": "loudness_rate",
+        "label": "音量",
+        "type": "slider",
+        "default": 0,
+        "min": -50,
+        "max": 100
+      },
+      {
+        "key": "pitch_rate",
+        "label": "音高",
+        "type": "slider",
+        "default": 0,
+        "min": -12,
+        "max": 12
+      }
+    ],
+    "kind": "audio",
+    "provider": "WorkFisherAudioProvider",
+    "endpoint": {
+      "generate-audio": {
+        "path": "/v1/audio/generations",
+        "model": "doubao-seed-audio-1.0"
+      }
+    }
+  },
+  {
+    "name": "MiniMax Voice Clone · Work-Fisher",
+    "canonicalModel": "MiniMax Voice Clone",
+    "timeEstimate": "10min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "audio"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "audioModes": [
+      {
+        "label": "声音克隆",
+        "value": "voice-clone",
+        "allowedInputs": {
+          "text": 1,
+          "audio": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "custom_voice_id",
+        "label": "自定义音色 ID",
+        "type": "text"
+      },
+      {
+        "key": "accuracy",
+        "label": "克隆精度",
+        "type": "slider",
+        "default": 0.8,
+        "min": 0,
+        "max": 1,
+        "step": 0.05
+      },
+      {
+        "key": "need_noise_reduction",
+        "label": "参考音降噪",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "need_volume_normalization",
+        "label": "音量标准化",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "tts_model",
+        "label": "合成模型",
+        "type": "select",
+        "default": "speech-2.8-hd",
+        "options": [
+          {
+            "label": "Speech 2.8 HD",
+            "value": "speech-2.8-hd"
+          },
+          {
+            "label": "Speech 2.8 Turbo",
+            "value": "speech-2.8-turbo"
+          },
+          {
+            "label": "Speech 2.6 HD",
+            "value": "speech-2.6-hd"
+          },
+          {
+            "label": "Speech 2.6 Turbo",
+            "value": "speech-2.6-turbo"
+          }
+        ]
+      },
+      {
+        "key": "language_boost",
+        "label": "语言增强",
+        "type": "text"
+      }
+    ],
+    "kind": "audio",
+    "provider": "WorkFisherAudioProvider",
+    "endpoint": {
+      "voice-clone": {
+        "path": "/v1/audio/generations",
+        "model": "minimax-voice-clone"
+      }
+    }
+  },
+  {
+    "name": "Qwen3 TTS Flash · Work-Fisher",
+    "canonicalModel": "Qwen3 TTS Flash",
+    "timeEstimate": "10min",
+    "maxInputs": 1,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "audioModes": [
+      {
+        "label": "文字转语音",
+        "value": "text-to-speech",
+        "allowedInputs": {
+          "text": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "voice",
+        "label": "音色",
+        "type": "select",
+        "default": "Cherry",
+        "options": [
+          {
+            "label": "Cherry",
+            "value": "Cherry"
+          },
+          {
+            "label": "Serena",
+            "value": "Serena"
+          },
+          {
+            "label": "Ethan",
+            "value": "Ethan"
+          },
+          {
+            "label": "Chelsie",
+            "value": "Chelsie"
+          },
+          {
+            "label": "Momo",
+            "value": "Momo"
+          },
+          {
+            "label": "Vivian",
+            "value": "Vivian"
+          },
+          {
+            "label": "Moon",
+            "value": "Moon"
+          },
+          {
+            "label": "Maia",
+            "value": "Maia"
+          },
+          {
+            "label": "Kai",
+            "value": "Kai"
+          },
+          {
+            "label": "Nofish",
+            "value": "Nofish"
+          }
+        ]
+      },
+      {
+        "key": "language_type",
+        "label": "语言",
+        "type": "select",
+        "default": "Auto",
+        "options": [
+          {
+            "label": "自动",
+            "value": "Auto"
+          },
+          {
+            "label": "中文",
+            "value": "Chinese"
+          },
+          {
+            "label": "英语",
+            "value": "English"
+          },
+          {
+            "label": "日语",
+            "value": "Japanese"
+          },
+          {
+            "label": "韩语",
+            "value": "Korean"
+          },
+          {
+            "label": "法语",
+            "value": "French"
+          },
+          {
+            "label": "德语",
+            "value": "German"
+          },
+          {
+            "label": "西班牙语",
+            "value": "Spanish"
+          }
+        ]
+      }
+    ],
+    "kind": "audio",
+    "provider": "WorkFisherAudioProvider",
+    "endpoint": {
+      "text-to-speech": {
+        "path": "/v1/audio/generations",
+        "model": "qwen3-tts-flash"
+      }
+    }
+  },
+  {
+    "name": "Suno Generation · Work-Fisher",
+    "canonicalModel": "Suno Generation",
+    "timeEstimate": "15min",
+    "maxInputs": 1,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "audioModes": [
+      {
+        "label": "音乐生成",
+        "value": "music-generation",
+        "allowedInputs": {
+          "text": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "version",
+        "label": "Suno 版本",
+        "type": "select",
+        "default": "v5",
+        "options": [
+          {
+            "label": "V5.5",
+            "value": "v5.5"
+          },
+          {
+            "label": "V5",
+            "value": "v5"
+          },
+          {
+            "label": "V4.5+",
+            "value": "v4.5+"
+          },
+          {
+            "label": "V4.5",
+            "value": "v4.5"
+          },
+          {
+            "label": "V4",
+            "value": "v4"
+          },
+          {
+            "label": "V3.5",
+            "value": "v3.5"
+          }
+        ]
+      },
+      {
+        "key": "custom",
+        "label": "自定义歌词",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "instrumental",
+        "label": "纯伴奏",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "title",
+        "label": "曲名",
+        "type": "text"
+      },
+      {
+        "key": "style",
+        "label": "风格",
+        "type": "text"
+      },
+      {
+        "key": "vocal_gender",
+        "label": "人声偏好",
+        "type": "select",
+        "default": "",
+        "options": [
+          {
+            "label": "不指定",
+            "value": ""
+          },
+          {
+            "label": "男声",
+            "value": "Male"
+          },
+          {
+            "label": "女声",
+            "value": "Female"
+          }
+        ]
+      }
+    ],
+    "kind": "audio",
+    "provider": "WorkFisherAudioProvider",
+    "endpoint": {
+      "music-generation": {
+        "path": "/v1/music/generations",
+        "model": "suno-generation"
+      }
+    }
+  },
+  {
+    "name": "Suno Stems · Work-Fisher",
+    "canonicalModel": "Suno Stems",
+    "timeEstimate": "15min",
+    "maxInputs": 1,
+    "supportedReferenceTypes": [
+      "text"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "audioModes": [
+      {
+        "label": "音轨分离",
+        "value": "stems",
+        "allowedInputs": {
+          "text": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "task_id",
+        "label": "原始 Suno task_id",
+        "type": "text"
+      },
+      {
+        "key": "audio_index",
+        "label": "轨道序号",
+        "type": "slider",
+        "default": 1,
+        "min": 1,
+        "max": 100
+      }
+    ],
+    "kind": "audio",
+    "provider": "WorkFisherAudioProvider",
+    "endpoint": {
+      "stems": {
+        "path": "/v1/music/generations/stems",
+        "model": "suno-stems"
+      }
+    }
+  }
+]

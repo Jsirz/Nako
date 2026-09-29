@@ -1,0 +1,57 @@
+[
+  {
+    "id": "ui.identity-account",
+    "entry": "../../modules/identity-account/browser.ts",
+    "manifest": "../../modules/identity-account/browser.manifest.json"
+  },
+  {
+    "id": "ui.generation-core",
+    "entry": "../../modules/generation-core/browser.ts",
+    "manifest": "../../modules/generation-core/browser.manifest.json"
+  },
+  {
+    "id": "ui.local-runtime",
+    "entry": "../../modules/local-runtime/browser.ts",
+    "manifest": "../../modules/local-runtime/browser.manifest.json"
+  },
+  {
+    "id": "ui.workflow-runtime",
+    "entry": "../../modules/workflow-runtime/browser.ts",
+    "manifest": "../../modules/workflow-runtime/browser.manifest.json"
+  },
+  {
+    "id": "ui.asset-media",
+    "entry": "../../modules/asset-media/browser.ts",
+    "manifest": "../../modules/asset-media/browser.manifest.json"
+  },
+  {
+    "id": "ui.canvas-ui",
+    "entry": "../../modules/canvas-ui/browser.ts",
+    "manifest": "../../modules/canvas-ui/browser.manifest.json"
+  },
+  {
+    "id": "ui.project",
+    "entry": "../../modules/project/browser.ts",
+    "manifest": "../../modules/project/browser.manifest.json"
+  },
+  {
+    "id": "ui.prompt",
+    "entry": "../../modules/agent/promptPlugin.ts",
+    "manifest": "../../modules/agent/browser.prompt.manifest.json"
+  },
+  {
+    "id": "ui.agent",
+    "entry": "../../modules/agent/browser.ts",
+    "manifest": "../../modules/agent/browser.manifest.json"
+  },
+  {
+    "id": "ui.desktop-shell-observability",
+    "entry": "../../modules/desktop-shell-observability/browser.ts",
+    "manifest": "../../modules/desktop-shell-observability/browser.manifest.json"
+  },
+  {
+    "id": "ui.canvas-shell",
+    "entry": "../../modules/canvas-ui/rootPlugin.tsx",
+    "manifest": "../../modules/canvas-ui/browser.root.manifest.json"
+  }
+]

@@ -1,0 +1,15 @@
+name: Architecture
+on: [push, pull_request]
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.20.0'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check:architecture
+      - run: npm run check:local-only
+      - run: npm run unit -- tests/architecture-rules.test.js tests/drama-parser-order.test.js --testTimeout=30000

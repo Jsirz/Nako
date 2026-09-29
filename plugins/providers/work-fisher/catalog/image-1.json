@@ -1,0 +1,425 @@
+[
+  {
+    "name": "GPT Image 2.5 · Work-Fisher 低价扩展版",
+    "canonicalModel": "GPT Image 2.5",
+    "variantLabel": "低价扩展版",
+    "maxInputs": 15,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "5:4",
+      "4:5",
+      "2:1",
+      "1:2",
+      "3:1",
+      "1:3",
+      "21:9",
+      "9:21"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 15
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 15,
+          "image": 15
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2.5-lowprice"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2.5-lowprice"
+      }
+    }
+  },
+  {
+    "name": "GPT Image 2.5 · Work-Fisher Flare",
+    "canonicalModel": "GPT Image 2.5",
+    "variantLabel": "Flare",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "5:4",
+      "4:5",
+      "2:1",
+      "1:2",
+      "3:1",
+      "1:3",
+      "21:9",
+      "9:21"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 16
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 16,
+          "image": 16
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      },
+      {
+        "key": "quality",
+        "label": "画质",
+        "type": "select",
+        "default": "low",
+        "options": [
+          {
+            "label": "auto",
+            "value": "auto"
+          },
+          {
+            "label": "low",
+            "value": "low"
+          },
+          {
+            "label": "medium",
+            "value": "medium"
+          },
+          {
+            "label": "high",
+            "value": "high"
+          },
+          {
+            "label": "xhigh",
+            "value": "xhigh"
+          },
+          {
+            "label": "max",
+            "value": "max"
+          }
+        ]
+      },
+      {
+        "key": "output_format",
+        "label": "输出格式",
+        "type": "select",
+        "default": "png",
+        "options": [
+          {
+            "label": "png",
+            "value": "png"
+          },
+          {
+            "label": "jpeg",
+            "value": "jpeg"
+          },
+          {
+            "label": "webp",
+            "value": "webp"
+          }
+        ]
+      },
+      {
+        "key": "background",
+        "label": "背景",
+        "type": "select",
+        "default": "auto",
+        "options": [
+          {
+            "label": "auto",
+            "value": "auto"
+          },
+          {
+            "label": "transparent",
+            "value": "transparent"
+          },
+          {
+            "label": "opaque",
+            "value": "opaque"
+          }
+        ]
+      },
+      {
+        "key": "moderation",
+        "label": "内容审核",
+        "type": "select",
+        "default": "low",
+        "options": [
+          {
+            "label": "low",
+            "value": "low"
+          },
+          {
+            "label": "auto",
+            "value": "auto"
+          }
+        ]
+      },
+      {
+        "key": "output_compression",
+        "label": "压缩质量（JPEG/WebP）",
+        "type": "slider",
+        "default": 100,
+        "min": 0,
+        "max": 100
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2.5-flare"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2.5-flare"
+      }
+    }
+  },
+  {
+    "name": "GPT Image 2.5 · Work-Fisher Sunburst",
+    "canonicalModel": "GPT Image 2.5",
+    "variantLabel": "Sunburst",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "5:4",
+      "4:5",
+      "2:1",
+      "1:2",
+      "3:1",
+      "1:3",
+      "21:9",
+      "9:21"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 16
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 16,
+          "image": 16
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      },
+      {
+        "key": "quality",
+        "label": "画质",
+        "type": "select",
+        "default": "low",
+        "options": [
+          {
+            "label": "auto",
+            "value": "auto"
+          },
+          {
+            "label": "low",
+            "value": "low"
+          },
+          {
+            "label": "medium",
+            "value": "medium"
+          },
+          {
+            "label": "high",
+            "value": "high"
+          },
+          {
+            "label": "xhigh",
+            "value": "xhigh"
+          },
+          {
+            "label": "max",
+            "value": "max"
+          }
+        ]
+      },
+      {
+        "key": "output_format",
+        "label": "输出格式",
+        "type": "select",
+        "default": "png",
+        "options": [
+          {
+            "label": "png",
+            "value": "png"
+          },
+          {
+            "label": "jpeg",
+            "value": "jpeg"
+          },
+          {
+            "label": "webp",
+            "value": "webp"
+          }
+        ]
+      },
+      {
+        "key": "background",
+        "label": "背景",
+        "type": "select",
+        "default": "auto",
+        "options": [
+          {
+            "label": "auto",
+            "value": "auto"
+          },
+          {
+            "label": "transparent",
+            "value": "transparent"
+          },
+          {
+            "label": "opaque",
+            "value": "opaque"
+          }
+        ]
+      },
+      {
+        "key": "moderation",
+        "label": "内容审核",
+        "type": "select",
+        "default": "low",
+        "options": [
+          {
+            "label": "low",
+            "value": "low"
+          },
+          {
+            "label": "auto",
+            "value": "auto"
+          }
+        ]
+      },
+      {
+        "key": "output_compression",
+        "label": "压缩质量（JPEG/WebP）",
+        "type": "slider",
+        "default": 100,
+        "min": 0,
+        "max": 100
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2.5-sunburst"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2.5-sunburst"
+      }
+    }
+  }
+]

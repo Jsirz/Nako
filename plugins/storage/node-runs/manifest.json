@@ -1,0 +1,4 @@
+{
+  "id": "storage.node-runs", "version": "1.0.0", "apiVersion": "^1.0.0", "type": "storage",
+  "services": { "provides": ["nodes.store"] }, "reloadRequired": true
+}

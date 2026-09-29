@@ -1,0 +1,59 @@
+{
+  "id": "provider.doubao",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "provider",
+  "dependencies": {
+    "generation-core": "^1.0.0"
+  },
+  "capabilities": [
+    "generation.text",
+    "generation.image",
+    "generation.video"
+  ],
+  "services": {
+    "requires": [
+      "generation.providers"
+    ],
+    "provides": [
+      "provider.DoubaoTextProvider",
+      "provider.DoubaoImageProvider",
+      "provider.DoubaoVideoProvider"
+    ]
+  },
+  "credentials": [
+    "provider.doubao"
+  ],
+  "providers": [
+    {
+      "name": "DoubaoTextProvider",
+      "kinds": [
+        "text"
+      ],
+      "execution": "immediate",
+      "requiredSecrets": [
+        "ARK_API_KEY"
+      ]
+    },
+    {
+      "name": "DoubaoImageProvider",
+      "kinds": [
+        "image"
+      ],
+      "execution": "immediate",
+      "requiredSecrets": [
+        "ARK_API_KEY"
+      ]
+    },
+    {
+      "name": "DoubaoVideoProvider",
+      "kinds": [
+        "video"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "ARK_API_KEY"
+      ]
+    }
+  ]
+}

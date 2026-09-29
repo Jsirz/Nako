@@ -1,0 +1,18 @@
+[
+  "modules/identity-account/api/credentialStore.js",
+  "modules/identity-account/api/server/security/externalUrlPolicy.js",
+  "modules/identity-account/api/server/security/localAuthentication.js",
+  "modules/identity-account/api/server/security/localAuthenticationRuntime.js",
+  "modules/identity-account/api/server/security/publicLibraryGuard.js",
+  "modules/identity-account/api/server/security/redaction.js",
+  "modules/identity-account/api/server/security/requestContext.js",
+  "modules/identity-account/api/server/security/safeProxyRouter.js",
+  "modules/identity-account/api/ui/appearance/CanvasAppearanceSettings.ts",
+  "modules/identity-account/api/ui/appearance/CanvasWallpaper.ts",
+  "modules/identity-account/api/ui/profile/canvasAvatar.ts",
+  "modules/identity-account/api/ui/profile/localProfile.ts",
+  "modules/identity-account/api/ui/profile/localUser.ts",
+  "modules/identity-account/api/server/credentials/providerCredentialStore.mjs",
+  "modules/identity-account/api/server/credentials/macosCredentialProtector.mjs",
+  "modules/identity-account/api/server/security/privateLibraryGuard.js"
+]

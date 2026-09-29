@@ -1,0 +1,445 @@
+[
+  {
+    "name": "Seedance 2.0 Standard · Work-Fisher",
+    "canonicalModel": "Seedance 2.0",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "2k",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 10,
+          "image": 9,
+          "video": 3,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-standard-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-standard-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-standard-multi"
+      }
+    }
+  },
+  {
+    "name": "Seedance 2.0 Fast · Work-Fisher",
+    "canonicalModel": "Seedance 2.0 Fast",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 10,
+          "image": 9,
+          "video": 3,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-fast-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-fast-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-fast-multi"
+      }
+    }
+  },
+  {
+    "name": "Seedance 2.0 Mini · Work-Fisher",
+    "canonicalModel": "Seedance 2.0 Mini",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 10,
+          "image": 9,
+          "video": 3,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-mini-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-mini-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-mini-multi"
+      }
+    }
+  },
+  {
+    "name": "Seedance 2.0 Fast · Work-Fisher宽审核",
+    "canonicalModel": "Seedance 2.0 Fast",
+    "variantLabel": "宽审核",
+    "timeEstimate": "15min",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "2k",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 1
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 1,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 1,
+          "image": 9,
+          "video": 3,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 2,
+        "max": 15,
+        "unit": "s"
+      },
+      {
+        "key": "generate_audio",
+        "label": "生成声音",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "number",
+        "default": -1,
+        "min": -1,
+        "max": 2147483647
+      },
+      {
+        "key": "return_last_frame",
+        "label": "返回尾帧",
+        "type": "toggle",
+        "default": false
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-fast-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-fast-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-fast-multi"
+      }
+    }
+  },
+  {
+    "name": "Seedance 2.0 Mini · Work-Fisher宽审核",
+    "canonicalModel": "Seedance 2.0 Mini",
+    "variantLabel": "宽审核",
+    "timeEstimate": "15min",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "2k",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 1
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 1,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 1,
+          "image": 9,
+          "video": 3,
+          "audio": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 2,
+        "max": 15,
+        "unit": "s"
+      },
+      {
+        "key": "generate_audio",
+        "label": "生成声音",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "number",
+        "default": -1,
+        "min": -1,
+        "max": 2147483647
+      },
+      {
+        "key": "return_last_frame",
+        "label": "返回尾帧",
+        "type": "toggle",
+        "default": false
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-mini-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-mini-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.0-global-mini-multi"
+      }
+    }
+  }
+]

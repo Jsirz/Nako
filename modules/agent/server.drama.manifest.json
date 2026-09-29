@@ -1,0 +1,32 @@
+{
+  "id": "module.agent.drama",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "module.workflow-runtime": "^1.0.0",
+    "storage.agent-files": "^1.0.0",
+    "media.filesystem": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "workflow.execution",
+      "agent.persistence",
+      "media.generation",
+      "media.agent",
+      "generation.runtime",
+      "generation.defaults",
+      "generation.textTransport"
+    ],
+    "provides": [
+      "agent.drama"
+    ]
+  },
+  "capabilities": [
+    "module.agent.drama"
+  ]
+}

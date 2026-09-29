@@ -1,0 +1,26 @@
+{
+  "id": "module.asset-media",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "media.filesystem": "^1.0.0",
+    "media.ffmpeg-sharp": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "media.operations",
+      "media.editing"
+    ],
+    "provides": [
+      "media.projectFiles"
+    ]
+  },
+  "capabilities": [
+    "module.asset-media"
+  ]
+}

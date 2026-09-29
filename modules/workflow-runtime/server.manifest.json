@@ -1,0 +1,26 @@
+{
+  "id": "module.workflow-runtime",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "module.generation": "^1.0.0",
+    "workflow-runtime": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "generation.runtime",
+      "workflow.executors"
+    ],
+    "provides": [
+      "workflow.execution"
+    ]
+  },
+  "capabilities": [
+    "module.workflow-runtime"
+  ]
+}

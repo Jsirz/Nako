@@ -1,0 +1,23 @@
+[
+  "modules/canvas-ui/api/ui/app/canvasComponentType.ts",
+  "modules/canvas-ui/api/ui/app/presentation.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasAssetInsertion.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasClipboard.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasConnections.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasGroups.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasLayout.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasNavigation.ts",
+  "modules/canvas-ui/api/ui/canvas/canvasWorkflowPresets.ts",
+  "modules/canvas-ui/api/ui/design/designSystem.ts",
+  "modules/canvas-ui/api/ui/design/dom.ts",
+  "modules/canvas-ui/api/ui/design/modalFocus.ts",
+  "modules/canvas-ui/api/ui/dialogs/canvasImageAngle.ts",
+  "modules/canvas-ui/api/ui/dialogs/canvasTooltip.ts",
+  "modules/canvas-ui/api/ui/dialogs/imageAnnotationDrawing.ts",
+  "modules/canvas-ui/api/ui/dialogs/imageResizeGeometry.ts",
+  "modules/canvas-ui/api/ui/lifecycle/enhancementLifecycle.ts",
+  "modules/canvas-ui/api/ui/nodes/canvasNodeOperations.ts",
+  "modules/canvas-ui/api/ui/nodes/mediaComposer.ts",
+  "modules/canvas-ui/api/ui/nodes/nodeGraphClient.ts",
+  "modules/canvas-ui/api/ui/settings/settingsOperation.ts"
+]

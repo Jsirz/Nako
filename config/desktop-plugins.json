@@ -1,0 +1,12 @@
+[
+  {
+    "id": "desktop.identity-account",
+    "entry": "../modules/identity-account/desktopPlugin.mjs",
+    "manifest": "../modules/identity-account/desktop.manifest.json"
+  },
+  {
+    "id": "desktop.application-updates",
+    "entry": "../modules/desktop-shell-observability/desktopPlugin.mjs",
+    "manifest": "../modules/desktop-shell-observability/desktop.manifest.json"
+  }
+]

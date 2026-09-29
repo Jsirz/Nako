@@ -1,0 +1,37 @@
+{
+  "id": "module.nodes",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "module.generation": "^1.0.0",
+    "module.project": "^1.0.0",
+    "storage.node-runs": "^1.0.0",
+    "media.filesystem": "^1.0.0",
+    "media.ffmpeg-sharp": "^1.0.0",
+    "module.workflow-runtime": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "node.registry",
+      "node.packages",
+      "nodes.store",
+      "generation.runtime",
+      "project.repository",
+      "media.store",
+      "media.agent",
+      "media.processor",
+      "workflow.execution"
+    ],
+    "provides": [
+      "nodes.runtime"
+    ]
+  },
+  "capabilities": [
+    "module.nodes"
+  ]
+}

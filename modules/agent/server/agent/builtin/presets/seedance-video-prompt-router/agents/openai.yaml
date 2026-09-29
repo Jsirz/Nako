@@ -1,0 +1,4 @@
+interface:
+  display_name: "Seedance视频提示词路由"
+  short_description: "按剧本赛道生成即梦Seedance视频提示词"
+  default_prompt: "Use $seedance-video-prompt-router to route this screenplay fragment and generate Seedance video prompts."

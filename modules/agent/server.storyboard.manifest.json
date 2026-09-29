@@ -1,0 +1,26 @@
+{
+  "id": "module.agent.storyboard",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "module.generation": "^1.0.0",
+    "media.filesystem": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "media.agent",
+      "generation.runtime",
+      "generation.defaults",
+      "generation.textTransport"
+    ],
+    "provides": []
+  },
+  "capabilities": [
+    "module.agent.storyboard"
+  ]
+}

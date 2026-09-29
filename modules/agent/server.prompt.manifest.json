@@ -1,0 +1,28 @@
+{
+  "id": "module.prompt",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "generation-core": "^1.0.0",
+    "storage.agent-files": "^1.0.0",
+    "media.filesystem": "^1.0.0",
+    "platform.text-transport": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "generation.defaults",
+      "generation.textTransport",
+      "agent.persistence",
+      "media.agent"
+    ],
+    "provides": []
+  },
+  "capabilities": [
+    "module.prompt"
+  ]
+}

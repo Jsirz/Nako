@@ -1,0 +1,53 @@
+import './canvasWorkspace.css';
+import type { useCanvasDocumentEffects } from './useCanvasDocumentEffects';
+export function renderCanvasControls(
+  context: ReturnType<typeof useCanvasDocumentEffects> & { batchSourceNodeIds: string[] },
+) {
+  const {
+    React,
+    Controls,
+    view,
+    showGridSlider,
+    setShowGridSlider,
+    gridColumns,
+    setGridColumns,
+    isCompact,
+    setCompact,
+    isMinimapOpen,
+    setMinimapOpen,
+    minimapWidth,
+    zoomControlsRef,
+    viewport,
+    setViewport,
+    canvasRef,
+    handleSliderZoom,
+    focusOnNodes,
+    nodes,
+    selectedNodeIds,
+    gridLayoutNodes,
+    getWorkflowEpoch,
+  } = context;
+  return React.createElement(Controls, {
+    key: 'controls',
+    view,
+    canvasRef,
+    documentEpoch: getWorkflowEpoch(),
+    nodes,
+    viewport,
+    onViewportChange: setViewport,
+    isMinimapOpen,
+    setIsMinimapOpen: setMinimapOpen,
+    minimapWidth,
+    zoomControlsRef,
+    onResetCanvas: focusOnNodes,
+    onSliderZoom: handleSliderZoom,
+    showGridSlider: !context.readOnly && showGridSlider,
+    setShowGridSlider,
+    gridColumns,
+    setGridColumns,
+    isCompact,
+    setIsCompact: setCompact,
+    onGridLayout: gridLayoutNodes,
+    selectedNodeIds,
+  });
+}

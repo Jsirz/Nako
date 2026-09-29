@@ -1,0 +1,36 @@
+{
+  "id": "provider.kling",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "provider",
+  "dependencies": {
+    "generation-core": "^1.0.0"
+  },
+  "capabilities": [
+    "generation.video"
+  ],
+  "services": {
+    "requires": [
+      "generation.providers"
+    ],
+    "provides": [
+      "provider.KlingVideoProvider"
+    ]
+  },
+  "credentials": [
+    "provider.kling"
+  ],
+  "providers": [
+    {
+      "name": "KlingVideoProvider",
+      "kinds": [
+        "video"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "KLING_ACCESS_KEY",
+        "KLING_SECRET_KEY"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+[
+  {
+    "name": "GM 3.8 Flash · Work-Fisher",
+    "canonicalModel": "GM 3.8 Flash",
+    "brand": "GM",
+    "timeEstimate": "1min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "workfisher/gm-3.8-flash"
+      }
+    }
+  },
+  {
+    "name": "GPT-6 Astra · Work-Fisher",
+    "canonicalModel": "GPT-6 Astra",
+    "brand": "GPT",
+    "timeEstimate": "1min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "workfisher/g6-astra"
+      }
+    }
+  },
+  {
+    "name": "GPT-5.6 Sol · Work-Fisher",
+    "canonicalModel": "GPT-5.6 Sol",
+    "brand": "GPT",
+    "timeEstimate": "1min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "workfisher/g5.6-sol"
+      }
+    }
+  },
+  {
+    "name": "GPT-5.6 Terra · Work-Fisher",
+    "canonicalModel": "GPT-5.6 Terra",
+    "brand": "GPT",
+    "timeEstimate": "1min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "workfisher/g5.6-terra"
+      }
+    }
+  },
+  {
+    "name": "GPT-5.6 Luna · Work-Fisher",
+    "canonicalModel": "GPT-5.6 Luna",
+    "brand": "GPT",
+    "timeEstimate": "1min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [
+      {
+        "label": "多模态对话",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": {
+      "multimodal-chat": {
+        "path": "/v1/chat/completions",
+        "model": "workfisher/g5.6-luna"
+      }
+    }
+  }
+]

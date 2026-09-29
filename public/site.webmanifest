@@ -1,0 +1,7 @@
+{
+  "name": "Nako 画布",
+  "short_name": "Nako",
+  "start_url": "/",
+  "display": "standalone",
+  "icons": [{ "src": "/nako-logo.png", "sizes": "254x255", "type": "image/png" }]
+}

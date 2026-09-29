@@ -1,0 +1,35 @@
+{
+  "id": "provider.deepseek",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "provider",
+  "dependencies": {
+    "generation-core": "^1.0.0"
+  },
+  "capabilities": [
+    "generation.text"
+  ],
+  "services": {
+    "requires": [
+      "generation.providers"
+    ],
+    "provides": [
+      "provider.DeepSeekProvider"
+    ]
+  },
+  "credentials": [
+    "provider.deepseek"
+  ],
+  "providers": [
+    {
+      "name": "DeepSeekProvider",
+      "kinds": [
+        "text"
+      ],
+      "execution": "immediate",
+      "requiredSecrets": [
+        "DEEPSEEK_API_KEY"
+      ]
+    }
+  ]
+}

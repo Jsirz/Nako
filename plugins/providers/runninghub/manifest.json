@@ -1,0 +1,72 @@
+{
+  "id": "provider.runninghub",
+  "configPrefixes": [
+    "RUNNINGHUB_"
+  ],
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "provider",
+  "dependencies": {
+    "generation-core": "^1.0.0"
+  },
+  "capabilities": [
+    "generation.image",
+    "generation.video"
+  ],
+  "services": {
+    "requires": [
+      "generation.providers"
+    ],
+    "provides": [
+      "provider.RunningHubImageProvider",
+      "provider.RunningHubGlobalImageProvider",
+      "provider.RunningHubVideoProvider",
+      "provider.RunningHubGlobalVideoProvider"
+    ]
+  },
+  "credentials": [
+    "provider.runninghub"
+  ],
+  "providers": [
+    {
+      "name": "RunningHubImageProvider",
+      "kinds": [
+        "image"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "RUNNINGHUB_API_KEY"
+      ]
+    },
+    {
+      "name": "RunningHubGlobalImageProvider",
+      "kinds": [
+        "image"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "RUNNINGHUB_GLOBAL_API_KEY"
+      ]
+    },
+    {
+      "name": "RunningHubVideoProvider",
+      "kinds": [
+        "video"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "RUNNINGHUB_API_KEY"
+      ]
+    },
+    {
+      "name": "RunningHubGlobalVideoProvider",
+      "kinds": [
+        "video"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "RUNNINGHUB_GLOBAL_API_KEY"
+      ]
+    }
+  ]
+}

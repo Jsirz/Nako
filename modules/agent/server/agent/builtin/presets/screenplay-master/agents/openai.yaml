@@ -1,0 +1,4 @@
+interface:
+  display_name: "Screenplay Master"
+  short_description: "中文微短剧剧本创作与质量检查工作流"
+  default_prompt: "Use $screenplay-master to develop a Chinese vertical short-drama script from this idea."

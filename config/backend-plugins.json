@@ -1,0 +1,256 @@
+[
+  {
+    "id": "storage.node-runs", "entry": "../plugins/storage/node-runs/index.js", "manifest": "../plugins/storage/node-runs/manifest.json",
+    "factory": "createNodeRunStoragePlugin", "options": { "privateDirectory": "privateDirectory" }
+  },
+  {
+    "id": "generation-core",
+    "entry": "../modules/generation-core/registryPlugin.js",
+    "manifest": "../modules/generation-core/manifest.json"
+  },
+  {
+    "id": "workflow-runtime",
+    "entry": "../modules/workflow-runtime/registryPlugin.js",
+    "manifest": "../modules/workflow-runtime/manifest.json"
+  },
+  {
+    "id": "storage.sqlite",
+    "entry": "../plugins/storage/sqlite/index.js",
+    "manifest": "../plugins/storage/sqlite/manifest.json",
+    "factory": "createSqlitePlugin",
+    "options": {
+      "libraryDir": "libraryDirectory"
+    }
+  },
+  {
+    "id": "storage.task-journal",
+    "entry": "../plugins/storage/task-journal/index.js",
+    "manifest": "../plugins/storage/task-journal/manifest.json",
+    "factory": "createTaskJournalPlugin",
+    "options": {
+      "libraryDirectory": "libraryDirectory",
+      "privateDirectory": "generationDirectory"
+    }
+  },
+  {
+    "id": "media.filesystem",
+    "entry": "../plugins/media/filesystem/index.js",
+    "manifest": "../plugins/media/filesystem/manifest.json",
+    "factory": "createFilesystemMediaPlugin",
+    "options": {
+      "libraryDirectory": "libraryDirectory",
+      "publicDirectory": "publicDirectory"
+    }
+  },
+  {
+    "id": "media.ffmpeg-sharp",
+    "entry": "../plugins/media/ffmpeg-sharp/index.js",
+    "manifest": "../plugins/media/ffmpeg-sharp/manifest.json",
+    "factory": "createMediaProcessorPlugin",
+    "options": {
+      "libraryDirectory": "libraryDirectory"
+    }
+  },
+  {
+    "id": "platform.text-transport",
+    "entry": "../plugins/platform/text-transport/index.js",
+    "manifest": "../plugins/platform/text-transport/manifest.json",
+    "credentialGrants": [
+      "provider.doubao",
+      "provider.openai",
+      "provider.deepseek",
+      "provider.official-text",
+      "provider.ecloud",
+      "provider.work-fisher"
+    ]
+  },
+  {
+    "id": "storage.agent-files",
+    "entry": "../plugins/storage/agent-files/index.js",
+    "manifest": "../plugins/storage/agent-files/manifest.json",
+    "factory": "createAgentPersistencePlugin",
+    "options": {
+      "libraryDirectory": "libraryDirectory",
+      "privateDirectory": "privateDirectory"
+    }
+  },
+  {
+    "id": "provider.seedvr2",
+    "entry": "../plugins/providers/seedvr2/index.js",
+    "manifest": "../plugins/providers/seedvr2/manifest.json",
+    "credentialKeys": [
+      "RUNNINGHUB_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.seedvr2"
+    ]
+  },
+  {
+    "id": "provider.doubao",
+    "entry": "../plugins/providers/doubao/index.js",
+    "manifest": "../plugins/providers/doubao/manifest.json",
+    "credentialKeys": [
+      "ARK_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.doubao"
+    ]
+  },
+  {
+    "id": "provider.openai",
+    "entry": "../plugins/providers/openai/index.js",
+    "manifest": "../plugins/providers/openai/manifest.json",
+    "credentialKeys": [
+      "OPENAI_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.openai"
+    ]
+  },
+  {
+    "id": "provider.deepseek",
+    "entry": "../plugins/providers/deepseek/index.js",
+    "manifest": "../plugins/providers/deepseek/manifest.json",
+    "credentialKeys": [
+      "DEEPSEEK_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.deepseek"
+    ]
+  },
+  {
+    "id": "provider.official-text",
+    "entry": "../plugins/providers/official-text/index.js",
+    "manifest": "../plugins/providers/official-text/manifest.json",
+    "credentialKeys": [
+      "ZHIPU_API_KEY",
+      "MOONSHOT_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.official-text"
+    ]
+  },
+  {
+    "id": "provider.jimeng",
+    "entry": "../plugins/providers/jimeng/index.js",
+    "manifest": "../plugins/providers/jimeng/manifest.json",
+    "credentialKeys": [
+      "JIMENG_ACCESS_KEY",
+      "JIMENG_SECRET_KEY"
+    ],
+    "credentialGrants": [
+      "provider.jimeng"
+    ]
+  },
+  {
+    "id": "provider.libtv",
+    "entry": "../plugins/providers/libtv/index.js",
+    "manifest": "../plugins/providers/libtv/manifest.json"
+  },
+  {
+    "id": "provider.dreamina",
+    "entry": "../plugins/providers/dreamina/index.js",
+    "manifest": "../plugins/providers/dreamina/manifest.json"
+  },
+  {
+    "id": "provider.runninghub",
+    "entry": "../plugins/providers/runninghub/index.js",
+    "manifest": "../plugins/providers/runninghub/manifest.json",
+    "credentialKeys": [
+      "RUNNINGHUB_API_KEY",
+      "RUNNINGHUB_GLOBAL_API_KEY",
+      "RUNNINGHUB_IMAGE_ACCESS_PASSWORD",
+      "RUNNINGHUB_VIDEO_ACCESS_PASSWORD"
+    ],
+    "credentialGrants": [
+      "provider.runninghub"
+    ],
+    "configPrefixes": [
+      "RUNNINGHUB_"
+    ]
+  },
+  {
+    "id": "provider.mureka",
+    "entry": "../plugins/providers/mureka/index.js",
+    "manifest": "../plugins/providers/mureka/manifest.json",
+    "credentialKeys": [
+      "MUREKA_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.mureka"
+    ]
+  },
+  {
+    "id": "provider.kling",
+    "entry": "../plugins/providers/kling/index.js",
+    "manifest": "../plugins/providers/kling/manifest.json",
+    "credentialKeys": [
+      "KLING_ACCESS_KEY",
+      "KLING_SECRET_KEY"
+    ],
+    "credentialGrants": [
+      "provider.kling"
+    ]
+  },
+  {
+    "id": "provider.aliyun",
+    "entry": "../plugins/providers/aliyun/index.js",
+    "manifest": "../plugins/providers/aliyun/manifest.json",
+    "credentialKeys": [
+      "ALIYUN_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.aliyun"
+    ]
+  },
+  {
+    "id": "provider.grok",
+    "entry": "../plugins/providers/grok/index.js",
+    "manifest": "../plugins/providers/grok/manifest.json",
+    "credentialKeys": [
+      "GROK_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.grok"
+    ]
+  },
+  {
+    "id": "workflow.local-comfyui",
+    "entry": "../plugins/workflows/local-comfyui/index.js",
+    "manifest": "../plugins/workflows/local-comfyui/manifest.json"
+  },
+  {
+    "id": "workflow.runninghub-workflow",
+    "entry": "../plugins/workflows/runninghub-workflow/index.js",
+    "manifest": "../plugins/workflows/runninghub-workflow/manifest.json",
+    "credentialGrants": [
+      "provider.runninghub"
+    ]
+  },
+  {
+    "id": "workflow.runninghub-webapp",
+    "entry": "../plugins/workflows/runninghub-webapp/index.js",
+    "manifest": "../plugins/workflows/runninghub-webapp/manifest.json",
+    "credentialGrants": [
+      "provider.runninghub"
+    ]
+  },
+  {
+    "id": "provider.ecloud",
+    "entry": "../plugins/providers/ecloud/index.js",
+    "manifest": "../plugins/providers/ecloud/manifest.json",
+    "credentialKeys": [
+      "ECLOUD_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.ecloud"
+    ]
+  },
+  {
+    "id": "provider.work-fisher",
+    "entry": "../plugins/providers/work-fisher/index.js",
+    "manifest": "../plugins/providers/work-fisher/manifest.json",
+    "credentialKeys": ["WORK_FISHER_API_KEY"],
+    "credentialGrants": ["provider.work-fisher"]
+  }
+]

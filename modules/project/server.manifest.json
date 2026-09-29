@@ -1,0 +1,29 @@
+{
+  "id": "module.project",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "storage.sqlite": "^1.0.0",
+    "module.asset-media": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "project.repository",
+      "media.projectFiles"
+    ],
+    "provides": [
+      "project.snapshots"
+    ],
+    "optional": [
+      "agent.archive"
+    ]
+  },
+  "capabilities": [
+    "module.project"
+  ]
+}

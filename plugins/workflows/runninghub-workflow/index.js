@@ -1,0 +1,2 @@
+import { defineExecutorPlugin } from '../../../modules/workflow-runtime/api/defineExecutor.js';
+export default defineExecutorPlugin({ id: 'runninghub-workflow', exportName: 'RunningHubWorkflowExecutor', credentialId: 'provider.runninghub', loadClient: () => import('../shared/runninghubClient.js').then(module => module.RunningHubWorkflowClient), load: () => import('../shared/runninghubExecutor.js') });

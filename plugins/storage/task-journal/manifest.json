@@ -1,0 +1,15 @@
+{
+  "id": "storage.task-journal",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "storage",
+  "services": {
+    "provides": [
+      "generation.taskStore"
+    ]
+  },
+  "capabilities": [
+    "generation.recovery"
+  ],
+  "reloadRequired": true
+}

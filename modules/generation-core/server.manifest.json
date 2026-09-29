@@ -1,0 +1,31 @@
+{
+  "id": "module.generation",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0",
+    "module.local-runtime": "^1.0.0",
+    "module.identity-account": "^1.0.0",
+    "storage.task-journal": "^1.0.0",
+    "media.filesystem": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes",
+      "local.runtime",
+      "generation.taskStore",
+      "media.generation",
+      "preferences.repository"
+    ],
+    "provides": [
+      "generation.runtime",
+      "generation.defaults"
+    ]
+  },
+  "capabilities": [
+    "module.generation"
+  ]
+}

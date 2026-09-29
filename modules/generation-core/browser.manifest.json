@@ -1,0 +1,18 @@
+{
+  "id": "ui.generation-core",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "ui.identity-account": "^1.0.0"
+  },
+  "capabilities": [
+    "ui.generation-core"
+  ],
+  "services": {
+    "provides": [
+      "generation.defaults"
+    ]
+  }
+}

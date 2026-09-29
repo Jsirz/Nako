@@ -1,0 +1,18 @@
+{
+  "id": "ui.canvas-ui",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "ui.asset-media": "^1.0.0"
+  },
+  "capabilities": [
+    "ui.canvas-ui"
+  ],
+  "services": {
+    "provides": [
+      "node.registry", "nodes.client"
+    ]
+  }
+}

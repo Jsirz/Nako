@@ -1,0 +1,471 @@
+[
+  {
+    "name": "MiniMax H3 · Work-Fisher",
+    "canonicalModel": "MiniMax H3",
+    "brand": "MiniMax",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "480p",
+      "720p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 1
+        }
+      },
+      {
+        "label": "多图参考",
+        "value": "reference-video",
+        "allowedInputs": {
+          "text": 10,
+          "image": 9
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 5,
+        "max": 15,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "minimax-h3-ow-t2v-fast"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "minimax-h3-ow-i2v-fast"
+      },
+      "reference-video": {
+        "path": "/v1/videos",
+        "model": "minimax-h3-ow-r2v-fast"
+      }
+    }
+  },
+  {
+    "name": "Seedance 2.5 Standard · Work-Fisher",
+    "canonicalModel": "Seedance 2.5",
+    "brand": "Seedance",
+    "timeEstimate": "15min",
+    "maxInputs": 50,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "2k",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 10,
+          "image": 30,
+          "video": 10,
+          "audio": 10
+        }
+      },
+      {
+        "label": "视频编辑",
+        "value": "video-edit",
+        "fixedDuration": -1,
+        "fixedAspectRatio": "adaptive",
+        "referenceVideoDuration": {
+          "min": 4,
+          "max": 30
+        },
+        "allowedInputs": {
+          "text": 10,
+          "image": 30,
+          "video": 1,
+          "audio": 10
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 30,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-standard-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-standard-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-standard-multi"
+      },
+      "video-edit": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-standard-multi"
+      }
+    }
+  },
+  {
+    "name": "Seedance 2.5 Standard · Work-Fisher宽审核",
+    "canonicalModel": "Seedance 2.5",
+    "variantLabel": "宽审核",
+    "brand": "Seedance",
+    "timeEstimate": "15min",
+    "maxInputs": 50,
+    "supportedReferenceTypes": [
+      "text",
+      "image",
+      "video",
+      "audio"
+    ],
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p",
+      "2k",
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      },
+      {
+        "label": "全能参考",
+        "value": "multimodal",
+        "allowedInputs": {
+          "text": 10,
+          "image": 30,
+          "video": 10,
+          "audio": 10
+        }
+      },
+      {
+        "label": "视频编辑",
+        "value": "video-edit",
+        "fixedDuration": -1,
+        "fixedAspectRatio": "adaptive",
+        "referenceVideoDuration": {
+          "min": 4,
+          "max": 30
+        },
+        "allowedInputs": {
+          "text": 10,
+          "image": 30,
+          "video": 1,
+          "audio": 10
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 4,
+        "max": 30,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-global-standard-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-global-standard-i2v"
+      },
+      "multimodal": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-global-standard-multi"
+      },
+      "video-edit": {
+        "path": "/v1/videos",
+        "model": "seedance-2.5-global-standard-multi"
+      }
+    }
+  },
+  {
+    "name": "Kling V3 Turbo · Work-Fisher",
+    "canonicalModel": "Kling V3 Turbo",
+    "brand": "Kling",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 5,
+        "max": 10,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-v3-turbo-std-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-v3-turbo-std-i2v"
+      }
+    }
+  },
+  {
+    "name": "Kling V3 Turbo Pro · Work-Fisher",
+    "canonicalModel": "Kling V3 Turbo",
+    "variantLabel": "Pro",
+    "brand": "Kling",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 5,
+        "max": 10,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-v3-turbo-pro-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-v3-turbo-pro-i2v"
+      }
+    }
+  },
+  {
+    "name": "Kling V3 4K · Work-Fisher",
+    "canonicalModel": "Kling V3 4K",
+    "brand": "Kling",
+    "timeEstimate": "15min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "resolutions": [
+      "4k"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "videoModes": [
+      {
+        "label": "文生视频",
+        "value": "text-to-video",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "首帧",
+        "value": "first-frame",
+        "allowedInputs": {
+          "text": 10,
+          "image": 2
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "duration",
+        "label": "生成时长",
+        "type": "slider",
+        "default": 5,
+        "min": 5,
+        "max": 10,
+        "unit": "s"
+      }
+    ],
+    "kind": "video",
+    "provider": "WorkFisherVideoProvider",
+    "endpoint": {
+      "text-to-video": {
+        "path": "/v1/videos",
+        "model": "kling-v3-4k-t2v"
+      },
+      "first-frame": {
+        "path": "/v1/videos",
+        "model": "kling-v3-4k-i2v"
+      }
+    }
+  }
+]

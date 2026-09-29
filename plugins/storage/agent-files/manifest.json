@@ -1,0 +1,17 @@
+{
+  "id": "storage.agent-files",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "storage",
+  "services": {
+    "provides": [
+      "agent.persistence",
+      "agent.skills"
+    ]
+  },
+  "capabilities": [
+    "agent.persistence",
+    "agent.skills"
+  ],
+  "reloadRequired": true
+}

@@ -1,0 +1,5 @@
+[
+  "modules/generation-providers/api/server/providers/baseProvider.js",
+  "modules/generation-providers/api/server/providers/cliMediaInputs.js",
+  "modules/generation-providers/api/server/providers/providerKit.js"
+]

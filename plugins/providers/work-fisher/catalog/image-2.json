@@ -1,0 +1,415 @@
+[
+  {
+    "name": "GPT Image 2 · Work-Fisher",
+    "canonicalModel": "GPT Image 2",
+    "timeEstimate": "5min",
+    "maxInputs": 16,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 16
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 16,
+          "image": 16
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2-lowprice"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g-v2-lowprice"
+      }
+    }
+  },
+  {
+    "name": "GPT Image 2 · Work-Fisher官方高价",
+    "displayName": "GPT Image 2 · 网页版满血版",
+    "canonicalModel": "GPT Image 2",
+    "variantLabel": "网页版满血版",
+    "timeEstimate": "2min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 10
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g2-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-g2-i2i"
+      }
+    }
+  },
+  {
+    "name": "Grok 2 · Work-Fisher",
+    "canonicalModel": "Grok 2",
+    "brand": "Grok 2",
+    "timeEstimate": "2min",
+    "maxInputs": 3,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "16:9",
+      "9:16",
+      "3:2",
+      "2:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图片编辑",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-gk-v2"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-gk-v2-edit"
+      }
+    }
+  },
+  {
+    "name": "Nano Banana Flash · Work-Fisher",
+    "canonicalModel": "Nano Banana Flash",
+    "timeEstimate": "1min",
+    "maxInputs": 14,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 14
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 14,
+          "image": 14
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-flash"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-flash"
+      }
+    }
+  },
+  {
+    "name": "Nano Banana 2 Lite · Work-Fisher",
+    "canonicalModel": "Nano Banana 2 Lite",
+    "timeEstimate": "1min",
+    "maxInputs": 14,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 14
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 14,
+          "image": 14
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-2-lite"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-2-lite"
+      }
+    }
+  },
+  {
+    "name": "Nano Banana 2 · Work-Fisher",
+    "canonicalModel": "Nano Banana 2",
+    "timeEstimate": "2min",
+    "maxInputs": 14,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "512",
+      "1K",
+      "2K",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9",
+      "1:8",
+      "8:1"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 14
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 14,
+          "image": 14
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-2"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-2"
+      }
+    }
+  }
+]

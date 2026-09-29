@@ -1,0 +1,24 @@
+{
+  "id": "workflow.runninghub-webapp",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "workflow",
+  "dependencies": {
+    "workflow-runtime": "^1.0.0"
+  },
+  "capabilities": [
+    "workflow.runninghub-webapp"
+  ],
+  "services": {
+    "requires": [
+      "workflow.executors"
+    ],
+    "provides": [
+      "workflow.factory.runninghub-webapp"
+    ]
+  },
+  "credentials": [
+    "provider.runninghub"
+  ],
+  "reloadRequired": true
+}

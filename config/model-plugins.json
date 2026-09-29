@@ -1,0 +1,117 @@
+[
+  {
+    "id": "provider.doubao",
+    "entry": "../plugins/providers/doubao/models.ts",
+    "exports": [
+      "TEXT_MODELS",
+      "IMAGE_MODELS",
+      "VIDEO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.deepseek",
+    "entry": "../plugins/providers/deepseek/models.ts",
+    "exports": [
+      "TEXT_MODELS"
+    ]
+  },
+  {
+    "id": "provider.official-text",
+    "entry": "../plugins/providers/official-text/models.ts",
+    "exports": [
+      "TEXT_MODELS"
+    ]
+  },
+  {
+    "id": "provider.libtv",
+    "entry": "../plugins/providers/libtv/models.ts",
+    "exports": [
+      "IMAGE_MODELS",
+      "VIDEO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.dreamina",
+    "entry": "../plugins/providers/dreamina/models.ts",
+    "exports": [
+      "IMAGE_MODELS",
+      "VIDEO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.jimeng",
+    "entry": "../plugins/providers/jimeng/models.ts",
+    "exports": [
+      "IMAGE_MODELS"
+    ]
+  },
+  {
+    "id": "provider.openai",
+    "entry": "../plugins/providers/openai/models.ts",
+    "exports": [
+      "IMAGE_MODELS"
+    ]
+  },
+  {
+    "id": "provider.runninghub",
+    "entry": "../plugins/providers/runninghub/models.ts",
+    "exports": [
+      "IMAGE_MODELS",
+      "VIDEO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.seedvr2",
+    "entry": "../plugins/providers/seedvr2/models.ts",
+    "exports": [
+      "IMAGE_MODELS"
+    ]
+  },
+  {
+    "id": "provider.mureka",
+    "entry": "../plugins/providers/mureka/models.ts",
+    "exports": [
+      "AUDIO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.kling",
+    "entry": "../plugins/providers/kling/models.ts",
+    "exports": [
+      "VIDEO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.ecloud",
+    "entry": "../plugins/providers/ecloud/models.ts",
+    "exports": [
+      "TEXT_MODELS",
+      "IMAGE_MODELS",
+      "VIDEO_MODELS",
+      "AUDIO_MODELS"
+    ]
+  },
+  {
+    "id": "provider.work-fisher",
+    "entry": "../plugins/providers/work-fisher/models.ts",
+    "exports": [
+      "TEXT_MODELS",
+      "IMAGE_MODELS",
+      "VIDEO_MODELS",
+      "AUDIO_MODELS"
+    ],
+    "data": [
+        "catalog/text-1.json",
+        "catalog/text-2.json",
+      "catalog/image-1.json",
+      "catalog/image-2.json",
+      "catalog/image-3.json",
+      "catalog/image-4.json",
+      "catalog/video-1.json",
+      "catalog/video-2.json",
+      "catalog/video-3.json",
+      "catalog/video-4.json",
+      "catalog/audio-1.json"
+    ]
+  }
+]

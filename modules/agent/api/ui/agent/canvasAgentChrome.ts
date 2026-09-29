@@ -1,0 +1,2 @@
+// Public module API. Implementation ownership stays inside agent.
+export * from '../../../ui/agent/canvasAgentChrome';

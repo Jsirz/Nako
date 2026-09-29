@@ -1,0 +1,36 @@
+{
+  "id": "provider.jimeng",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "provider",
+  "dependencies": {
+    "generation-core": "^1.0.0"
+  },
+  "capabilities": [
+    "generation.image"
+  ],
+  "services": {
+    "requires": [
+      "generation.providers"
+    ],
+    "provides": [
+      "provider.JimengImageProvider"
+    ]
+  },
+  "credentials": [
+    "provider.jimeng"
+  ],
+  "providers": [
+    {
+      "name": "JimengImageProvider",
+      "kinds": [
+        "image"
+      ],
+      "execution": "polling",
+      "requiredSecrets": [
+        "JIMENG_ACCESS_KEY",
+        "JIMENG_SECRET_KEY"
+      ]
+    }
+  ]
+}

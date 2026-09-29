@@ -1,0 +1,22 @@
+{
+  "id": "module.identity-account",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": {
+    "host.runtime": "^1.0.0"
+  },
+  "services": {
+    "requires": [
+      "host.runtime",
+      "http.routes"
+    ],
+    "provides": [
+      "preferences.repository"
+    ]
+  },
+  "capabilities": [
+    "module.identity-account"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "platform.text-transport",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "platform",
+  "services": {
+    "provides": [
+      "generation.textTransport"
+    ]
+  },
+  "capabilities": [
+    "generation.chat-stream"
+  ],
+  "reloadRequired": true,
+  "credentials": [
+    "provider.doubao",
+    "provider.openai",
+    "provider.deepseek",
+    "provider.official-text",
+    "provider.ecloud",
+    "provider.work-fisher"
+  ]
+}

@@ -1,0 +1,276 @@
+[
+  {
+    "name": "Qwen Image 3.0 · Work-Fisher",
+    "canonicalModel": "Qwen Image 3.0",
+    "timeEstimate": "2min",
+    "maxInputs": 3,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图像编辑",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-i2i"
+      }
+    }
+  },
+  {
+    "name": "Qwen Image 3.0 Pro · Work-Fisher",
+    "canonicalModel": "Qwen Image 3.0 Pro",
+    "timeEstimate": "2min",
+    "maxInputs": 3,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图像编辑",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-pro-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-pro-i2i"
+      }
+    }
+  },
+  {
+    "name": "Qwen Image 3.0 · Work-Fisher宽审核",
+    "canonicalModel": "Qwen Image 3.0",
+    "variantLabel": "宽审核",
+    "timeEstimate": "2min",
+    "maxInputs": 3,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图像编辑",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-global-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-global-i2i"
+      }
+    }
+  },
+  {
+    "name": "Qwen Image 3.0 Pro · Work-Fisher宽审核",
+    "canonicalModel": "Qwen Image 3.0 Pro",
+    "variantLabel": "宽审核",
+    "timeEstimate": "2min",
+    "maxInputs": 3,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图像编辑",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 3
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-global-pro-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "qwen-image-3.0-global-pro-i2i"
+      }
+    }
+  }
+]

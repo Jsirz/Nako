@@ -1,0 +1,505 @@
+{
+  "id": "nako.canvas-core",
+  "version": "2.0.0",
+  "apiVersion": "^2.0.0",
+  "title": "Nako 基础节点",
+  "entry": "index.mjs",
+  "capabilities": [
+    "models.generate",
+    "media.compose",
+    "workflow.execute"
+  ],
+  "nodes": [
+    {
+      "type": "text",
+      "version": "1.0.0",
+      "category": "generation",
+      "title": "文本生成",
+      "inputs": [
+        {
+          "id": "context",
+          "media": [
+            "text",
+            "image",
+            "video",
+            "audio"
+          ],
+          "multiple": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "media": [
+            "text"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "default": ""
+          },
+          "model": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1
+          }
+        }
+      },
+      "render": {
+        "kind": "native",
+        "component": "Text"
+      },
+      "executor": {
+        "method": "text",
+        "transport": "rpc",
+        "timeoutMs": 1800000
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "network"
+      },
+      "capabilities": [
+        "models.generate"
+      ]
+    },
+    {
+      "type": "image",
+      "version": "1.0.0",
+      "category": "generation",
+      "title": "图像生成",
+      "inputs": [
+        {
+          "id": "references",
+          "media": [
+            "text",
+            "image"
+          ],
+          "multiple": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "image",
+          "media": [
+            "image"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "default": ""
+          },
+          "model": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1
+          }
+        }
+      },
+      "render": {
+        "kind": "native",
+        "component": "Image"
+      },
+      "executor": {
+        "method": "image",
+        "transport": "rpc",
+        "timeoutMs": 1800000
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "network"
+      },
+      "capabilities": [
+        "models.generate"
+      ]
+    },
+    {
+      "type": "video",
+      "version": "1.0.0",
+      "category": "generation",
+      "title": "视频生成",
+      "inputs": [
+        {
+          "id": "references",
+          "media": [
+            "text",
+            "image",
+            "video",
+            "audio"
+          ],
+          "multiple": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "video",
+          "media": [
+            "video"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "default": ""
+          },
+          "model": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1
+          }
+        }
+      },
+      "render": {
+        "kind": "native",
+        "component": "Video"
+      },
+      "executor": {
+        "method": "video",
+        "transport": "rpc",
+        "timeoutMs": 1800000
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "network"
+      },
+      "capabilities": [
+        "models.generate"
+      ]
+    },
+    {
+      "type": "audio",
+      "version": "1.0.0",
+      "category": "generation",
+      "title": "音频生成",
+      "inputs": [
+        {
+          "id": "references",
+          "media": [
+            "text",
+            "image",
+            "video",
+            "audio"
+          ],
+          "multiple": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "audio",
+          "media": [
+            "audio"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "default": ""
+          },
+          "model": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "default": 1
+          }
+        }
+      },
+      "render": {
+        "kind": "native",
+        "component": "Audio"
+      },
+      "executor": {
+        "method": "audio",
+        "transport": "rpc",
+        "timeoutMs": 1800000
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "network"
+      },
+      "capabilities": [
+        "models.generate"
+      ]
+    },
+    {
+      "type": "upload-image",
+      "version": "1.0.0",
+      "category": "asset",
+      "title": "上传图片",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "image",
+          "media": [
+            "image"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "render": {
+        "kind": "native",
+        "component": "Image"
+      },
+      "executor": {
+        "method": "assetimage",
+        "transport": "rpc"
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "none"
+      },
+      "initialStatus": "success",
+      "capabilities": []
+    },
+    {
+      "type": "upload-video",
+      "version": "1.0.0",
+      "category": "asset",
+      "title": "上传视频",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "video",
+          "media": [
+            "video"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "render": {
+        "kind": "native",
+        "component": "Video"
+      },
+      "executor": {
+        "method": "assetvideo",
+        "transport": "rpc"
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "none"
+      },
+      "initialStatus": "success",
+      "capabilities": []
+    },
+    {
+      "type": "upload-audio",
+      "version": "1.0.0",
+      "category": "asset",
+      "title": "上传音频",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "audio",
+          "media": [
+            "audio"
+          ],
+          "required": true
+        }
+      ],
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ]
+      },
+      "render": {
+        "kind": "native",
+        "component": "Audio"
+      },
+      "executor": {
+        "method": "assetaudio",
+        "transport": "rpc"
+      },
+      "agent": {
+        "exposed": true,
+        "sideEffect": "none"
+      },
+      "initialStatus": "success",
+      "capabilities": []
+    },
+    {
+      "type": "image-compare",
+      "version": "1.0.0",
+      "title": "图片对比",
+      "category": "tool",
+      "inputs": [
+        {
+          "id": "images",
+          "media": [
+            "image"
+          ],
+          "required": true,
+          "multiple": true,
+          "maximum": 2
+        }
+      ],
+      "outputs": [
+        {
+          "id": "image",
+          "media": [
+            "image"
+          ]
+        }
+      ],
+      "render": {
+        "kind": "native",
+        "component": "Image Compare"
+      },
+      "capabilities": [],
+      "executor": {
+        "method": "compare",
+        "transport": "rpc"
+      }
+    },
+    {
+      "type": "image-composite",
+      "version": "1.0.0",
+      "title": "图片合成",
+      "category": "tool",
+      "inputs": [
+        {
+          "id": "images",
+          "media": [
+            "image"
+          ],
+          "required": true,
+          "multiple": true,
+          "maximum": 10
+        }
+      ],
+      "outputs": [
+        {
+          "id": "image",
+          "media": [
+            "image"
+          ]
+        }
+      ],
+      "render": {
+        "kind": "native",
+        "component": "Image Composite"
+      },
+      "capabilities": [
+        "media.compose"
+      ],
+      "executor": {
+        "method": "compose",
+        "transport": "rpc"
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "integer",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 4
+          }
+        }
+      }
+    },
+    {
+      "type": "comfyui",
+      "version": "1.0.0",
+      "category": "workflow",
+      "title": "工作流",
+      "inputs": [
+        {
+          "id": "dynamic",
+          "media": [
+            "any"
+          ],
+          "multiple": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "dynamic",
+          "media": [
+            "any"
+          ],
+          "multiple": true
+        }
+      ],
+      "render": {
+        "kind": "native",
+        "component": "ComfyUI"
+      },
+      "capabilities": [
+        "workflow.execute"
+      ],
+      "executor": {
+        "method": "workflow",
+        "transport": "rpc",
+        "timeoutMs": 1800000
+      },
+      "parameters": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {}
+      }
+    }
+  ]
+}

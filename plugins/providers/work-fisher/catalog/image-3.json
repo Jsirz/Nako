@@ -1,0 +1,478 @@
+[
+  {
+    "name": "Nano Banana Pro · Work-Fisher",
+    "canonicalModel": "Nano Banana Pro",
+    "timeEstimate": "2min",
+    "maxInputs": 14,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "9:16",
+      "16:9",
+      "3:4",
+      "4:3",
+      "21:9"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 14
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 14,
+          "image": 14
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-pro"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "workfisher-image-nb-pro"
+      }
+    }
+  },
+  {
+    "name": "Seedream 5.0 Pro · Work-Fisher",
+    "canonicalModel": "Seedream v5 Pro",
+    "timeEstimate": "3min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "3:4",
+      "4:3",
+      "4:5",
+      "5:4",
+      "9:16",
+      "16:9",
+      "1:2",
+      "2:1",
+      "1:4",
+      "4:1",
+      "1:8",
+      "8:1",
+      "21:9"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 10
+        }
+      },
+      {
+        "label": "图层拆分",
+        "value": "layer-decomposition",
+        "allowedInputs": {
+          "text": 10,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "seedream-v5-pro-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "seedream-v5-pro-i2i"
+      },
+      "layer-decomposition": {
+        "path": "/v1/image/generations",
+        "model": "seedream-v5-pro-layer-decomposition"
+      }
+    }
+  },
+  {
+    "name": "Seedream 5.0 Pro · Work-Fisher宽审核",
+    "canonicalModel": "Seedream v5 Pro",
+    "variantLabel": "宽审核",
+    "timeEstimate": "3min",
+    "maxInputs": 10,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K",
+      "2K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "3:4",
+      "4:3",
+      "4:5",
+      "5:4",
+      "9:16",
+      "16:9",
+      "1:2",
+      "2:1",
+      "1:4",
+      "4:1",
+      "1:8",
+      "8:1",
+      "21:9"
+    ],
+    "imageModes": [
+      {
+        "label": "文生图",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 10
+        }
+      },
+      {
+        "label": "图生图",
+        "value": "image-to-image",
+        "allowedInputs": {
+          "text": 10,
+          "image": 10
+        }
+      },
+      {
+        "label": "图层拆分",
+        "value": "layer-decomposition",
+        "allowedInputs": {
+          "text": 10,
+          "image": 1
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "批量生成数量",
+        "type": "number",
+        "default": 1,
+        "min": 1,
+        "step": 1
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/image/generations",
+        "model": "dola-seedream-5.0-pro-t2i"
+      },
+      "image-to-image": {
+        "path": "/v1/image/generations",
+        "model": "dola-seedream-5.0-pro-i2i"
+      },
+      "layer-decomposition": {
+        "path": "/v1/image/generations",
+        "model": "dola-seedream-5.0-pro-layer-decomposition"
+      }
+    }
+  },
+  {
+    "name": "Midjourney Imagine · Work-Fisher",
+    "canonicalModel": "Midjourney Imagine",
+    "timeEstimate": "15min",
+    "maxInputs": 14,
+    "supportedReferenceTypes": [
+      "text",
+      "image"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "resolutions": [
+      "1K"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "2:3",
+      "3:2",
+      "3:4",
+      "4:3",
+      "9:16",
+      "16:9"
+    ],
+    "imageModes": [
+      {
+        "label": "Imagine",
+        "value": "text-to-image",
+        "allowedInputs": {
+          "text": 1,
+          "image": 13
+        }
+      }
+    ],
+    "advancedParams": [
+      {
+        "key": "generateCount",
+        "label": "保留结果数",
+        "type": "slider",
+        "default": 1,
+        "min": 1,
+        "max": 4
+      },
+      {
+        "key": "version",
+        "label": "模型版本",
+        "type": "select",
+        "default": "8.2",
+        "options": [
+          {
+            "label": "V8.2",
+            "value": "8.2"
+          },
+          {
+            "label": "V8.1",
+            "value": "8.1"
+          },
+          {
+            "label": "V7",
+            "value": "7"
+          },
+          {
+            "label": "V6.1",
+            "value": "6.1"
+          },
+          {
+            "label": "V5.2",
+            "value": "5.2"
+          },
+          {
+            "label": "V5.1",
+            "value": "5.1"
+          }
+        ]
+      },
+      {
+        "key": "speed",
+        "label": "生成速度",
+        "type": "select",
+        "default": "fast",
+        "options": [
+          {
+            "label": "Relax",
+            "value": "relax"
+          },
+          {
+            "label": "Fast",
+            "value": "fast"
+          },
+          {
+            "label": "Turbo",
+            "value": "turbo"
+          }
+        ]
+      },
+      {
+        "key": "quality",
+        "label": "质量",
+        "type": "select",
+        "default": "1",
+        "options": [
+          {
+            "label": "0.25",
+            "value": "0.25"
+          },
+          {
+            "label": "0.5",
+            "value": "0.5"
+          },
+          {
+            "label": "1",
+            "value": "1"
+          },
+          {
+            "label": "2",
+            "value": "2"
+          }
+        ]
+      },
+      {
+        "key": "seed",
+        "label": "Seed",
+        "type": "number",
+        "min": 0,
+        "max": 4294967295
+      },
+      {
+        "key": "stylize",
+        "label": "风格化",
+        "type": "number",
+        "min": 0,
+        "max": 1000
+      },
+      {
+        "key": "chaos",
+        "label": "变化强度",
+        "type": "number",
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "weird",
+        "label": "怪异程度",
+        "type": "number",
+        "min": 0,
+        "max": 3000
+      },
+      {
+        "key": "iw",
+        "label": "普通参考权重",
+        "type": "number",
+        "min": 0,
+        "max": 3,
+        "step": 0.1
+      },
+      {
+        "key": "cw",
+        "label": "角色参考权重",
+        "type": "number",
+        "min": 0,
+        "max": 100,
+        "step": 1
+      },
+      {
+        "key": "sw",
+        "label": "风格参考权重",
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "step": 1
+      },
+      {
+        "key": "dw",
+        "label": "深度参考权重",
+        "type": "number",
+        "min": 0,
+        "max": 100,
+        "step": 1
+      },
+      {
+        "key": "negative_prompt",
+        "label": "负面提示词",
+        "type": "text"
+      },
+      {
+        "key": "tile",
+        "label": "无缝平铺",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "niji",
+        "label": "Niji 模式",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "raw",
+        "label": "Raw 模式",
+        "type": "toggle",
+        "default": true
+      },
+      {
+        "key": "draft",
+        "label": "Draft 模式",
+        "type": "toggle",
+        "default": false
+      },
+      {
+        "key": "hd",
+        "label": "HD 模式",
+        "type": "toggle",
+        "default": true
+      }
+    ],
+    "kind": "image",
+    "provider": "WorkFisherImageProvider",
+    "endpoint": {
+      "text-to-image": {
+        "path": "/v1/midjourney/generations",
+        "model": "midjourney-imagine"
+      }
+    }
+  }
+]
