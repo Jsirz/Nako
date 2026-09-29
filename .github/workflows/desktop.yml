@@ -1,6 +1,15 @@
 name: Desktop packages
 on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
   workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 jobs:
   package:
     strategy:
@@ -10,21 +19,31 @@ jobs:
           - os: windows-latest
             target: win
             arch: x64
+            certificate: WIN_CSC_LINK
+            password: WIN_CSC_KEY_PASSWORD
           - os: macos-15-intel
             target: mac
             arch: x64
+            certificate: MAC_CSC_LINK
+            password: MAC_CSC_KEY_PASSWORD
           - os: macos-15
             target: mac
             arch: arm64
+            certificate: MAC_CSC_LINK
+            password: MAC_CSC_KEY_PASSWORD
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.20.0'
+          node-version-file: package.json
           architecture: ${{ matrix.arch }}
           cache: npm
-      - run: npm ci
+      - name: Validate release version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: node scripts/desktop/validateRelease.mjs
+      - run: npm ci --ignore-scripts
       - name: Install SQLite Node-API binary for tests
         run: node ../prebuild-install/bin.js -r napi
         working-directory: node_modules/sqlite3
@@ -32,14 +51,24 @@ jobs:
       - run: npm run check:local-only
       - run: npm run typecheck
       - run: npm run unit -- --testTimeout=30000
-      - run: npm run desktop:package:${{ matrix.target }}
+      - name: Build installers and update metadata
+        if: github.event_name != 'pull_request'
+        run: npm run desktop:package:${{ matrix.target }}
         env:
           NAKO_UPDATE_URL: ${{ vars.NAKO_UPDATE_URL }}
+          CSC_LINK: ${{ secrets[matrix.certificate] }}
+          CSC_KEY_PASSWORD: ${{ secrets[matrix.password] }}
+          APPLE_ID: ${{ matrix.target == 'mac' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.target == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.target == 'mac' && secrets.APPLE_TEAM_ID || '' }}
       - run: npm run desktop:smoke
+        if: github.event_name != 'pull_request'
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: Nako-${{ matrix.target }}-${{ matrix.arch }}
           if-no-files-found: error
+          retention-days: 14
           path: |
             release/Nako-*.exe
             release/Nako-*.dmg
@@ -47,3 +76,35 @@ jobs:
             release/SHA256SUMS-*.txt
             release/latest*.yml
             release/*.blockmap
+      - name: Upload smoke test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ matrix.target }}-${{ matrix.arch }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            .verification/packaged-*/result.json
+            .verification/packaged-*/*.png
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Nako-*
+          path: release
+      - name: Publish complete private release
+        run: node scripts/desktop/publishRelease.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

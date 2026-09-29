@@ -193,6 +193,14 @@ it('does not start a queued network check after disposal', async () => {
   expect(updater.checkForUpdates).not.toHaveBeenCalled();
 });
 
+it('preserves the configured update server when the CI variable is empty', () => {
+  vi.stubEnv('NAKO_UPDATE_URL', '');
+  try {
+    expect(configuration.updateFeed('win32', 'x64'))
+      .toBe('https://nako.tos-cn-guangzhou.volces.com/nako/windows-x64/');
+  } finally { vi.unstubAllEnvs(); }
+});
+
 it('separates update feeds by platform and CPU', () => {
   expect(configuration.updateFeed('win32', 'x64', 'https://updates.example.com/nako'))
     .toBe('https://updates.example.com/nako/windows-x64/');
