@@ -46,7 +46,9 @@ async function downloadArchive(file) {
 async function installArchive(appRoot, archive, staging) {
   await verifyMediaArchive(archive);
   const prefix = MEDIA_RUNTIME.directory;
-  await execute('tar.exe', ['-xf', archive, '-C', staging,
+  // Git Bash also supplies tar.exe, which treats a Windows drive letter as a remote host.
+  const tar = path.join(process.env.SystemRoot || process.env.WINDIR, 'System32', 'tar.exe');
+  await execute(tar, ['-xf', archive, '-C', staging,
     `${prefix}/bin/ffmpeg.exe`, `${prefix}/bin/ffprobe.exe`, `${prefix}/LICENSE`, `${prefix}/README.txt`],
   { windowsHide: true, timeout: 120000, maxBuffer: 1024 * 1024 });
   const extracted = path.join(staging, prefix);
