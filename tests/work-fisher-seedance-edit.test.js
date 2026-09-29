@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createWorkFisherHandlers } from '../plugins/providers/work-fisher/implementation.js';
@@ -12,7 +12,7 @@ const imageUrl = 'https://media.example.test/character.png';
 const mp4 = Buffer.from([0, 0, 0, 20, 102, 116, 121, 112, 105, 115, 111, 109]);
 let directory, config;
 beforeEach(async () => {
-  directory = await mkdtemp(path.join(os.tmpdir(), 'nako-seedance-edit-'));
+  directory = await realpath(await mkdtemp(path.join(os.tmpdir(), 'nako-seedance-edit-')));
   config = { WORK_FISHER_API_KEY: 'fixture-key', LIBRARY_DIR: directory };
   await mkdir(path.join(directory, 'media', 'p', 'videos'), { recursive: true });
   await writeFile(path.join(directory, 'media', 'p', 'videos', 'input.mp4'), mp4);
