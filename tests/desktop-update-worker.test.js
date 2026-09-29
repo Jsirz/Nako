@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { execFile, spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, copyFile, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, copyFile, writeFile, readFile, rm, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,7 @@ const windows = process.platform === 'win32';
 let root, harness, fake;
 beforeAll(async () => {
   if (!windows) return;
-  root = await mkdtemp(path.join(os.tmpdir(), 'nako-worker-test-'));
+  root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'nako-worker-test-')));
   harness = path.join(root, 'harness.exe'); fake = path.join(root, 'fake.exe');
   const csc = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319/csc.exe');
   await run(csc, ['/nologo', '/target:exe', `/out:${harness}`, '/reference:System.Web.Extensions.dll',

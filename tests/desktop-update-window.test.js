@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, it } from 'vitest';
 import { execFile, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { promisify } from 'node:util';
-import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { buildUpdateHelper } from '../scripts/desktop/buildUpdateHelper.mjs';
@@ -12,7 +12,7 @@ const windows = process.platform === 'win32';
 let root, helper, probe;
 beforeAll(async () => {
   if (!windows) return;
-  root = await mkdtemp(path.join(os.tmpdir(), 'nako-window-test-'));
+  root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'nako-window-test-')));
   helper = path.join(root, 'NakoUpdate.exe');
   probe = path.join(root, 'probe.exe');
   await buildUpdateHelper(path.resolve('.'), helper);
