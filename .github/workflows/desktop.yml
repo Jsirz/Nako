@@ -69,6 +69,7 @@ jobs:
           name: Nako-${{ matrix.target }}-${{ matrix.arch }}
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
           path: |
             release/Nako-*.exe
             release/Nako-*.dmg
@@ -83,6 +84,7 @@ jobs:
           name: smoke-${{ matrix.target }}-${{ matrix.arch }}
           if-no-files-found: ignore
           retention-days: 7
+          include-hidden-files: true
           path: |
             .verification/packaged-*/result.json
             .verification/packaged-*/*.png
