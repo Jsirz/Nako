@@ -25,13 +25,9 @@ jobs:
           - os: macos-15-intel
             target: mac
             arch: x64
-            certificate: MAC_CSC_LINK
-            password: MAC_CSC_KEY_PASSWORD
           - os: macos-15
             target: mac
             arch: arm64
-            certificate: MAC_CSC_LINK
-            password: MAC_CSC_KEY_PASSWORD
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
@@ -63,13 +59,30 @@ jobs:
           npm run desktop:package:${{ matrix.target }}
         env:
           NAKO_UPDATE_URL: ${{ vars.NAKO_UPDATE_URL }}
-          CSC_LINK: ${{ secrets[matrix.certificate] }}
-          CSC_KEY_PASSWORD: ${{ secrets[matrix.password] }}
-          APPLE_ID: ${{ matrix.target == 'mac' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.target == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.target == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+          CSC_LINK: ${{ matrix.target == 'win' && secrets.WIN_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'win' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+      - name: Sign Sparkle update archive and appcast
+        if: github.event_name != 'pull_request' && matrix.target == 'mac'
+        run: node scripts/desktop/generateSparkleAppcast.mjs
+        env:
+          NAKO_UPDATE_URL: ${{ vars.NAKO_UPDATE_URL }}
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
       - run: npm run desktop:smoke
         if: github.event_name != 'pull_request'
+      - name: Fetch pinned Sparkle native integration tests
+        if: github.event_name != 'pull_request' && matrix.target == 'mac'
+        uses: actions/checkout@v4
+        with:
+          repository: Innei/electron-sparkle-updater
+          ref: 57975bd3b851713fe9d27d756574578a613ace19
+          path: .verification/sparkle-upstream
+          persist-credentials: false
+      - name: Verify native ad-hoc signed cross-version installation
+        if: github.event_name != 'pull_request' && matrix.target == 'mac'
+        run: >-
+          python3 .verification/sparkle-upstream/native/tests/integration.py
+          --framework .packaging/app/node_modules/electron-sparkle-updater/native/vendor/Sparkle.framework
+          --tools .packaging/app/node_modules/electron-sparkle-updater/native/vendor/bin
       - uses: actions/upload-artifact@v4
         if: github.event_name != 'pull_request'
         with:
@@ -83,6 +96,7 @@ jobs:
             release/Nako-*.zip
             release/SHA256SUMS-*.txt
             release/latest*.yml
+            release/appcast.xml
             release/*.blockmap
       - name: Upload smoke test diagnostics
         if: always()

@@ -1,4 +1,5 @@
 [
+  "modules/desktop-shell-observability/api/desktop/sparkleUpdater.mjs",
   "modules/desktop-shell-observability/api/desktop/windowsUpdateHandoff.mjs",
   "modules/desktop-shell-observability/api/pluginRouter.js",
   "modules/desktop-shell-observability/api/server/runtime/backendLifecycleDiagnostics.js",

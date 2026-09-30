@@ -6,8 +6,8 @@ import path from 'node:path';
 
 export const releasePlatforms = [
   { target: 'win', arch: 'x64', feed: 'windows-x64', metadata: 'latest.yml' },
-  { target: 'mac', arch: 'arm64', feed: 'mac-arm64', metadata: 'latest-mac.yml' },
-  { target: 'mac', arch: 'x64', feed: 'mac-x64', metadata: 'latest-mac.yml' },
+  { target: 'mac', arch: 'arm64', feed: 'mac-arm64', metadata: 'appcast.xml' },
+  { target: 'mac', arch: 'x64', feed: 'mac-x64', metadata: 'appcast.xml' },
 ];
 
 export async function sha256(file) {
@@ -42,14 +42,20 @@ export async function prepareRelease(directory, version) {
       verified.add(name);
     }
     const info = await readFile(path.join(source, metadata), 'utf8');
-    assert.equal(info.split('\n')[0].trim(), `version: ${version}`, `Wrong update version: ${source}`);
+    if (target === 'win') {
+      assert.equal(info.split('\n')[0].trim(), `version: ${version}`, `Wrong update version: ${source}`);
+    } else {
+      assert.ok(info.includes(`<sparkle:version>${version}</sparkle:version>`), `Wrong update version: ${source}`);
+      assert.ok(info.includes('sparkle:edSignature=') && info.includes('<!-- sparkle-signatures:'),
+        `Unsigned Sparkle metadata: ${source}`);
+    }
     assert.ok(info.includes(installers.find(name => name.endsWith(target === 'win' ? '.exe' : '.zip'))),
       `Update metadata does not reference the correct installer: ${source}`);
     const names = [...installers, checksumName, metadata,
       ...files.filter(name => installers.some(installer => name === `${installer}.blockmap`))];
     for (const name of names) {
-      // Release assets share one directory; keep both original latest-mac.yml files in Actions artifacts.
-      const destinationName = target === 'mac' && name === metadata ? `latest-mac-${arch}.yml` : name;
+      // Architecture-specific appcasts retain their original name in Actions artifacts.
+      const destinationName = target === 'mac' && name === metadata ? `appcast-mac-${arch}.xml` : name;
       const destination = path.join(output, destinationName);
       assert.ok(!assets.includes(destination), `Duplicate release asset: ${destinationName}`);
       await copyFile(path.join(source, name), destination);

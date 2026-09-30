@@ -21,7 +21,8 @@ export function createUpdateController({ updater, version, disabledReason, publi
     state = { ...state, ...patch };
     publish(snapshot());
   }
-  function fail() {
+  function fail(error) {
+    if (error) console.error('Desktop update failed', error);
     const restoreBackend = !disposed && state.phase === 'installing';
     change({ phase: 'error', percent: undefined, message: '更新失败，请检查网络或稍后重试' });
     if (restoreBackend) void Promise.resolve().then(onInstallFailure).catch(() => {});
@@ -43,7 +44,8 @@ export function createUpdateController({ updater, version, disabledReason, publi
     listen('update-not-available', () => change({ phase: 'current', nextVersion: undefined,
       message: '当前已是最新版本', checkedAt: new Date().toISOString() }));
     listen('download-progress', progress => change({ phase: 'downloading',
-      percent: Math.max(0, Math.min(100, Number(progress.percent) || 0)), message: '正在下载更新' }));
+      percent: Math.max(0, Math.min(100, Number(progress.percent) || 0)),
+      message: progress.phase === 'apply' ? '正在校验并准备更新' : '正在下载更新' }));
     listen('update-downloaded', info => {
       downloaded = info;
       change({ phase: 'downloaded', nextVersion: info.version,
@@ -119,6 +121,7 @@ export function createUpdateController({ updater, version, disabledReason, publi
       clearTimer(timer);
       timer = undefined;
       cancellation?.cancel();
+      updater?.dispose?.();
       const remove = () => {
         for (const [event, handler] of listeners) updater.removeListener(event, handler);
       };

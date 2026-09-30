@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { ensureMediaRuntime } from '../runtime/mediaRuntime.mjs';
 import updateConfiguration from './updateFeed.cjs';
+import desktopUpdates from '../../config/desktop-updates.json' with { type: 'json' };
 import { buildUpdateHelper } from './buildUpdateHelper.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -46,13 +47,17 @@ async function copyApplication() {
   // Ship clean defaults, never values from a developer's environment template.
   await writeFile(path.join(stage, '.env.example'), 'SERVER_PORT = 3001\nCOMFYUI_SERVER_URL = 127.0.0.1:8188\nCOMFYUI_AUTO_START = true\n');
   await writeFile(path.join(stage, 'config/desktop-updates.json'),
-    JSON.stringify({ url: updateConfiguration.updateFeed() }, null, 2) + '\n');
+    JSON.stringify({ ...desktopUpdates, url: updateConfiguration.updateFeed() }, null, 2) + '\n');
 }
 
 async function installDependencies() {
   const npm = process.env.npm_execpath;
   if (!npm) throw new Error('请通过 npm run desktop:package:win 或 desktop:package:mac 打包。');
   await run([npm, 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], stage);
+  if (target === 'mac') await run([
+    path.join(stage, 'node_modules/electron-sparkle-updater/bin/electron-sparkle-updater.js'),
+    'rebuild', '--electron-version', electron.devDependencies.electron, '--arch', process.arch,
+  ], stage);
   // Explicitly install the pinned Node-API binary; do not run arbitrary dependency scripts.
   const require = createRequire(path.join(stage, 'package.json'));
   await run([require.resolve('prebuild-install/bin.js'), '-r', 'napi'], path.join(stage, 'node_modules/sqlite3'));

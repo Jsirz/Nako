@@ -214,6 +214,8 @@ async function start() {
     safeStorage,
     broadcast,
     updates: await createUpdateEnvironment({ app, version: productVersion,
+      prepareQuit: () => { quitting = true; },
+      cancelQuit: () => { quitting = false; },
       publish: (state) => broadcast('application-update:state', state),
       onInstallFailure: async () => {
         if (canvasOpen && backend?.userId()) await backend.start(backend.userId());

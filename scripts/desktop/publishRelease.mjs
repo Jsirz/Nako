@@ -21,8 +21,11 @@ else {
     '',
     'The client keeps its configured HTTPS update service. Private GitHub Releases are for member downloads.',
     'For update-server deployment, use the original per-platform Actions artifacts.',
-    'On the update server, latest-mac-arm64.yml and latest-mac-x64.yml must each be named latest-mac.yml',
+    'macOS now uses Sparkle with ad-hoc app signing and Ed25519 signed updates.',
+    'Existing macOS users must manually install this migration release once.',
+    'On the update server, appcast-mac-arm64.xml and appcast-mac-x64.xml must each be named appcast.xml',
     'in their respective mac-arm64/ and mac-x64/ directories. Upload metadata last.',
+    'Do not edit the signed appcast. Automatic updates require uploading these assets to the configured HTTPS service.',
     '',
     'See docs/GitHub发布说明.md for signing, update deployment, and release instructions.',
   ].join('\n'));

@@ -23,7 +23,9 @@ async function fixture() {
       lines.push(`${await sha256(path.join(source, name))}  ${name}`);
     }
     await writeFile(path.join(source, `SHA256SUMS-${target}-${arch}.txt`), lines.join('\n') + '\n');
-    await writeFile(path.join(source, metadata), `version: 1.5.5\nfiles:\n${installers.join('\n')}\n`);
+    await writeFile(path.join(source, metadata), target === 'win'
+      ? `version: 1.5.5\nfiles:\n${installers.join('\n')}\n`
+      : `<sparkle:version>1.5.5</sparkle:version>\n${installers.join('\n')}\nsparkle:edSignature="fixture"\n<!-- sparkle-signatures: -->`);
   }
   return directory;
 }
@@ -33,15 +35,15 @@ it('publishes both Mac update manifests without overwriting the original files',
   const assets = await prepareRelease(directory, '1.5.5');
   expect(assets).toHaveLength(12);
   for (const arch of ['arm64', 'x64']) {
-    const original = await readFile(path.join(directory, `Nako-mac-${arch}/latest-mac.yml`), 'utf8');
-    expect(await readFile(path.join(directory, `publish/latest-mac-${arch}.yml`), 'utf8')).toBe(original);
+    const original = await readFile(path.join(directory, `Nako-mac-${arch}/appcast.xml`), 'utf8');
+    expect(await readFile(path.join(directory, `publish/appcast-mac-${arch}.xml`), 'utf8')).toBe(original);
     expect(original).toContain(`mac-${arch}.zip`);
   }
 });
 
 it('rejects missing platforms before publishing', async () => {
   const directory = await fixture();
-  await rm(path.join(directory, 'Nako-mac-x64/latest-mac.yml'));
+  await rm(path.join(directory, 'Nako-mac-x64/appcast.xml'));
   await expect(prepareRelease(directory, '1.5.5')).rejects.toThrow('Missing release asset');
 });
 
@@ -53,6 +55,6 @@ it('rejects modified installers before publishing', async () => {
 
 it('rejects metadata for the wrong version', async () => {
   const directory = await fixture();
-  await writeFile(path.join(directory, 'Nako-mac-arm64/latest-mac.yml'), 'version: 1.5.4\n');
+  await writeFile(path.join(directory, 'Nako-mac-arm64/appcast.xml'), '<sparkle:version>1.5.4</sparkle:version>');
   await expect(prepareRelease(directory, '1.5.5')).rejects.toThrow('Wrong update version');
 });
