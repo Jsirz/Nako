@@ -86,6 +86,10 @@ if (existsSync(path.join(electronDist, process.platform === 'win32' ? 'electron.
   builderArguments.push(`-c.electronDist=${electronDist}`);
 await run(builderArguments);
 const output = path.join(root, 'release');
+if (target === 'mac') {
+  for (const extension of ['zip', 'dmg']) await rm(
+    path.join(output, `Nako-${metadata.version}-mac-${process.arch}.${extension}.blockmap`), { force: true });
+}
 const artifacts = (await readdir(output)).filter((name) => name.startsWith(`Nako-${metadata.version}-`)
   && name.includes(`-${process.arch}`) && /\.(exe|dmg|zip)$/.test(name));
 const checksums = [];

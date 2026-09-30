@@ -57,6 +57,14 @@ try {
   const info = await page.evaluate(() => window.nakoShell.info());
   assert.equal(info.version, expectedVersion);
   assert.equal(info.productVersion, expectedVersion);
+  // The update server may still contain the previous release (or no Sparkle feed during migration).
+  // Complete the real check and dismiss its prompt before exercising unrelated application UI.
+  const initialUpdate = await page.evaluate(() => window.nakoDesktop.updates.check());
+  if (initialUpdate.phase === 'error') {
+    await page.getByRole('dialog', { name: '更新失败' }).getByRole('button', { name: '关闭', exact: true }).click();
+  } else if (initialUpdate.phase === 'available') {
+    await page.getByRole('button', { name: '稍后提醒', exact: true }).click();
+  }
   assert.equal((await api(page, '/api/config/keys')).status, 200);
   await page.getByRole('button', { name: '新建项目', exact: true }).click();
   await page.getByRole('button', { name: 'SKILL 管理', exact: true }).waitFor();
