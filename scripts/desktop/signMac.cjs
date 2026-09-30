@@ -13,7 +13,11 @@ module.exports = async context => {
   // Sign every Mach-O leaf before signing nested bundles, then seal the complete host bundle.
   const magic = new Set(['cffaedfe', 'cefaedfe', 'cafebabe', 'bebafeca', 'cafebabf']);
   function walk(directory) {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    // codesign recognizes a framework's main executable as the whole framework;
+    // sign Helpers/ first even when the main executable sorts before it by name.
+    const entries = readdirSync(directory, { withFileTypes: true })
+      .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()));
+    for (const entry of entries) {
       if (entry.isSymbolicLink()) continue;
       const file = path.join(directory, entry.name);
       if (entry.isDirectory()) {
