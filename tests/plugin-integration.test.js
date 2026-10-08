@@ -119,13 +119,9 @@ describe('built-in plugins with isolated local storage', () => {
       expect(retiredMedia.status).toBe(400);
       for (const key of [undefined, '   ']) {
         secrets.ECLOUD_API_KEY = key;
-        const response = await fetch(origin + '/api/agent/v2/runs', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ...input, protocol: 2, operationId: 'missing-key' }),
+        await expect(client.streamMessage(input, () => {})).rejects.toMatchObject({
+          code: 'PROVIDER_CREDENTIAL_MISSING',
         });
-        expect(response.status).toBe(503);
-        expect(await response.json()).toMatchObject({ code: 'AI_CONFIGURATION_REQUIRED' });
       }
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(JSON.stringify(await store.get(input.sessionId))).not.toContain('test-ecloud-');

@@ -46,7 +46,7 @@ async function setup(initial = graph(), options = {}) {
   const services = createSqliteProjectServices(store);
   app.use('/api', createProjectTransferRouter({ store: services.repository,
     directories: services.directories, transactions: services.transactions,
-    files: createProjectFileStore(), mediaDirectory: media,
+    files: createProjectFileStore(), mediaDirectory: media, sanitizeNodes: nodes => nodes,
     getAgentArchive: () => options.withoutAgent ? undefined : agentArchive,
     writeSnapshot: options.writeSnapshot || (async () => {}), syncFolderProjectCounts: async () => {} }));
   const server = await new Promise(resolve => { const server = app.listen(0, '127.0.0.1', () => resolve(server)); });

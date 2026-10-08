@@ -124,7 +124,7 @@ it('publishes only remaining model contributions and rejects old relay models', 
     models.some((model) => model.provider.startsWith('Relay') || model.source === 'relay'),
   ).toBe(false);
   const workFisher = models.filter(model => model.source === 'work_fisher');
-  expect(workFisher).toHaveLength(56);
+  expect(workFisher).toHaveLength(55);
   expect(workFisher.every(model => model.provider.startsWith('WorkFisher'))).toBe(true);
   expect(JSON.stringify(models.filter(model => model.source !== 'work_fisher'))).not.toMatch(/work-fisher\.com/);
 });
