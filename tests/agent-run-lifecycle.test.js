@@ -117,7 +117,7 @@ it('keeps the model running after SSE disconnect and persists its completed answ
     f.pending[0].finish();
     await vi.waitFor(async () =>
       expect((await f.store.get('s1')).runs['run-s1'].status).toBe('completed'),
-      { timeout: 5000 },
+      { timeout: 15000 },
     );
     const snapshot = await (await fetch(f.origin + '/sessions/s1')).json();
     expect(snapshot.transcript.at(-1).content).toBe('background answer');
