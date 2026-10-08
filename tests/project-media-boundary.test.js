@@ -57,7 +57,8 @@ describe('project media adapter boundary', () => {
     const [first, second] = await Promise.all([cache.get(saved.url, 128), cache.get(saved.url, 128)]);
     expect(first).toEqual(second);
     expect(first.kind).toBe('thumbnail');
-    expect((await sharp(path.join(f.libraryDirectory, '.cache', 'thumbnails', `${first.id}.webp`)).metadata()).width).toBe(128);
+    const thumbnail = fs.readFileSync(path.join(f.libraryDirectory, '.cache', 'thumbnails', `${first.id}.webp`));
+    expect((await sharp(thumbnail).metadata()).width).toBe(128);
     await expect(cache.get('/library/../escape.png')).rejects.toMatchObject({ code: ERRORS.invalidMedia, status: 403 });
     await expect(cache.get('https://example.test/image.png')).rejects.toMatchObject({ code: ERRORS.invalidMedia });
     await expect(cache.get('/library/media/project/images/missing.png')).rejects.toMatchObject({ code: ERRORS.mediaNotFound, status: 404 });

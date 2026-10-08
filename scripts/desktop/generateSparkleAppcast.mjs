@@ -64,8 +64,10 @@ try {
   for (const enclosure of generatedDeltas ? (Array.isArray(generatedDeltas) ? generatedDeltas : [generatedDeltas]) : []) {
     const url = new URL(enclosure['@_url']);
     const original = decodeURIComponent(url.pathname.split('/').at(-1));
-    assert.match(original, /^[a-zA-Z0-9._-]+\.delta$/);
-    const name = original.replace(/\.delta$/, `-mac-${process.arch}.delta`);
+    assert.ok(original.endsWith('.delta') && !/[\\/\0]/.test(original), 'Invalid generated delta path');
+    const from = enclosure['@_sparkle:deltaFrom'];
+    assert.match(from, /^\d+\.\d+\.\d+$/);
+    const name = `Nako-${metadata.version}-mac-${process.arch}-from-${from}.delta`;
     await rename(path.join(archive, original), path.join(archive, name));
     url.pathname = path.posix.join(path.posix.dirname(url.pathname), name);
     enclosure['@_url'] = url.href;
