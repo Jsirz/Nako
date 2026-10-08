@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import './helpers/promptComposition.js';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, waitFor } from '@testing-library/dom';
 import { browserHost } from '../modules/kernel/browser.ts';

@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 import express from 'express';
-import { createServerPluginHost } from '../modules/desktop-shell-observability/api/serverHost.js';
+import { createServerPluginHost } from './helpers/serverPluginHost.js';
+import { createTextGenerationService } from '../plugins/platform/text-transport/service.js';
 import { createMediaAssetRouter } from '../modules/asset-media/api/server/media/mediaAssetRouter.js';
 import { createMediaEditingRouter } from '../modules/asset-media/api/server/media/mediaEditingRouter.js';
 import { createDramaModelGenerator } from '../modules/agent/api/server/agent/drama/dramaModelGenerator.js';
@@ -58,9 +59,7 @@ describe('built-in plugins with isolated local storage', () => {
         configuration: { disabled: [], options: {} },
       });
       const transport = host.services.get('generation.textTransport');
-      const credentials = transport.credentials('EcloudTextProvider');
-      expect(Object.keys(credentials)).toEqual([]);
-      expect(JSON.stringify(credentials)).toBe('{}');
+      expect(transport).not.toHaveProperty('credentials');
       const model = Object.values(loadModelCatalog()).find(
         (item) =>
           item.provider === 'EcloudTextProvider' &&
@@ -86,8 +85,9 @@ describe('built-in plugins with isolated local storage', () => {
         createAgentRouter({
       createDramaConversation: (sessionStore) => createDramaConversationService({ sessionStore }),
           sessionStore: store,
-          textTransport: { ...transport, fetcher },
-          getCredentials: async (provider) => transport.credentials(provider),
+          textTransport: createTextGenerationService({
+            fetcher, modelCatalog: loadModelCatalog, credentials: { get: () => secrets },
+          }),
           mediaService: host.services.get('media.agent'),
           onHarness: (value) => {
             harness = value;
@@ -129,7 +129,7 @@ describe('built-in plugins with isolated local storage', () => {
       }
       expect(fetcher).toHaveBeenCalledTimes(2);
       expect(JSON.stringify(await store.get(input.sessionId))).not.toContain('test-ecloud-');
-      expect(JSON.stringify(credentials)).toBe('{}');
+      expect(transport).not.toHaveProperty('credentials');
     } finally {
       await harness?.close();
       if (server) await new Promise((resolve) => server.close(resolve));
@@ -192,7 +192,7 @@ describe('built-in plugins with isolated local storage', () => {
         'test-node',
       );
       expect(generationMedia.findLatest('test-node').resultUrl).toBe(generated.url);
-      expect(generated.path.startsWith(directory)).toBe(true);
+      expect(generated.url.startsWith('/library/media/')).toBe(true);
       const recordStore = host.services.get('agent.persistence').createExecutionStore();
       const record = await recordStore.read('plan-test', saved.id);
       await recordStore.write(record);
@@ -207,7 +207,8 @@ describe('built-in plugins with isolated local storage', () => {
       const generatePlan = createDramaModelGenerator({
         getCredentials: () => ({ ARK_API_KEY: 'test-only' }),
         readImages: host.services.get('media.agent').imageContent,
-        textTransport: {
+        textTransport: createTextGenerationService({
+          modelCatalog: loadModelCatalog, credentials: { get: () => ({ ARK_API_KEY: 'test-only' }) },
           fetcher: async (_url, input) => {
             submitted++;
             expect(JSON.parse(input.body).messages.map((message) => message.role)).toEqual([
@@ -223,7 +224,7 @@ describe('built-in plugins with isolated local storage', () => {
               ],
             });
           },
-        },
+        }),
       });
       expect(
         await generatePlan({
@@ -281,7 +282,7 @@ describe('built-in plugins with isolated local storage', () => {
       );
       expect(favorite.status).toBe(200);
       await store.remove(asset.id);
-      expect(await store.read(asset.id)).toBeNull();
+      await expect(store.read(asset.id)).rejects.toMatchObject({ status: 404 });
     } finally {
       if (server) await new Promise((resolve) => server.close(resolve));
       await host?.stop();

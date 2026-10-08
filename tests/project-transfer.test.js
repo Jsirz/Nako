@@ -11,6 +11,8 @@ import { createAgentWorkspaceStore } from '../plugins/storage/agent-files/agentW
 import { createAgentArchiveService } from '../modules/agent/server/harness/archive.js';
 import { createSessionService, sessionView, contextMessages } from '../modules/agent/server/harness/session.js';
 import { assistantMessage } from '../modules/agent/server/harness/modelAdapter.js';
+import { createSqliteProjectServices } from '../plugins/storage/sqlite/projectRepository.js';
+import { createProjectFileStore } from '../plugins/storage/sqlite/projectFileStore.js';
 
 const cleanup = [];
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close(); });
@@ -41,7 +43,10 @@ async function setup(initial = graph(), options = {}) {
   const workspaces = createAgentWorkspaceStore(path.join(directory, 'private'));
   const agentArchive = createAgentArchiveService({ sessions, workspaces });
   const app = express();
-  app.use('/api', createProjectTransferRouter({ store, mediaDirectory: media,
+  const services = createSqliteProjectServices(store);
+  app.use('/api', createProjectTransferRouter({ store: services.repository,
+    directories: services.directories, transactions: services.transactions,
+    files: createProjectFileStore(), mediaDirectory: media,
     getAgentArchive: () => options.withoutAgent ? undefined : agentArchive,
     writeSnapshot: options.writeSnapshot || (async () => {}), syncFolderProjectCounts: async () => {} }));
   const server = await new Promise(resolve => { const server = app.listen(0, '127.0.0.1', () => resolve(server)); });

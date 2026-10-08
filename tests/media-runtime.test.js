@@ -10,7 +10,8 @@ it('reports a missing probe as a component failure rather than an invalid video'
   try {
     const probe = createMediaMetadataProbe({ ffprobePath: path.join(directory, 'ffprobe.exe') });
     await expect(probe(path.join(directory, 'video.mp4'), 'videos')).rejects.toMatchObject({
-      status: 503, code: 'BUNDLED_MEDIA_PROBE_UNAVAILABLE', cause: { code: 'ENOENT' },
+      status: 503, code: 'MEDIA_STORAGE_FAILED', cause: { code: 'ENOENT' },
+      context: { operationCode: 'BUNDLED_MEDIA_PROBE_UNAVAILABLE' },
     });
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

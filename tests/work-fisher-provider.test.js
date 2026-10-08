@@ -16,15 +16,15 @@ const mp3 = Buffer.from('ID3fixture');
 const json = (value, status = 200) => Response.json(value, { status });
 describe('Work-Fisher provider', () => {
   it('publishes fixed upstream models without discovery or caller-defined model IDs', () => {
-    expect(MODEL_DEFINITIONS).toHaveLength(56);
-    expect(MODEL_DEFINITIONS.filter((model) => model.selectable !== false)).toHaveLength(53);
+    expect(MODEL_DEFINITIONS).toHaveLength(55);
+    expect(MODEL_DEFINITIONS.filter((model) => model.selectable !== false)).toHaveLength(52);
     expect(
       Object.fromEntries(
         Object.entries(Object.groupBy(MODEL_DEFINITIONS, (model) => model.kind)).map(
           ([kind, models]) => [kind, models.length],
         ),
       ),
-    ).toEqual({ text: 10, image: 17, video: 24, audio: 5 });
+    ).toEqual({ text: 9, image: 17, video: 24, audio: 5 });
     expect(createWorkFisherHandlers().WorkFisherVideoProvider).not.toHaveProperty('listModels');
     expect(MODEL_DEFINITIONS.map((model) => model.name)).toEqual(
       expect.arrayContaining([

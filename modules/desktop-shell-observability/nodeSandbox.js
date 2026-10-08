@@ -33,14 +33,14 @@ export function executeIsolatedNode({ sources, entry, method, timeoutMs = 120000
     context.signal?.addEventListener('abort', abort, { once: true });
     const failed = error => {
       if (settled) return;
-      report({ message: error.message, code: error.code, stderr });
+      report({ message: error.message, code: error.code, stderr: stderr.slice(-1024) });
       finish(nodeError(NODE_ERROR.FAILED, `节点隔离进程通信或启动失败：${error.message}`));
     };
     child.on('error', failed);
     // close follows exit and drains stderr, including bootstrap/dependency failures.
     child.on('close', (exitCode, signal) => {
       if (settled) return;
-      report({ exitCode, signal, stderr });
+      report({ exitCode, signal, stderr: stderr.slice(-1024) });
       finish(nodeError(NODE_ERROR.FAILED,
         `节点隔离进程退出（退出码 ${exitCode ?? '未知'}${signal ? `，信号 ${signal}` : ''}），请查看后端错误日志`,
         { exitCode, signal }));

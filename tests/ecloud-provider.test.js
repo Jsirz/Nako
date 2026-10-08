@@ -8,7 +8,7 @@ import { createEcloudHandlers } from '../plugins/providers/ecloud/implementation
 import { ECLOUD_ENDPOINTS, ECLOUD_VIDEO_MODELS } from '../plugins/providers/ecloud/protocol.js';
 import { BaseProvider } from '../modules/generation-providers/server/providers/baseProvider.js';
 import { remoteTaskReference } from '../modules/generation-core/server/generation/generationTaskRecovery.js';
-import { createServerPluginHost } from '../modules/desktop-shell-observability/api/serverHost.js';
+import { createServerPluginHost } from './helpers/serverPluginHost.js';
 import { buildSourceSettings } from '../modules/generation-core/server/generation/modelAvailability.js';
 import { classifyGenerationError } from '../modules/generation-core/server/generation/generationErrors.js';
 import { ecloudInputError } from '../plugins/providers/ecloud/media.js';

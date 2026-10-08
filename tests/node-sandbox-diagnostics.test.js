@@ -25,7 +25,7 @@ it('captures bounded stderr and exit details while keeping raw diagnostics out o
   await assertion;
   const details = logger.error.mock.calls[0][1];
   expect(details).toMatchObject({ pluginId: 'test.node', runId: 'run1', nodeId: 'node1', exitCode: 1 });
-  expect(details.stderr.length).toBe(8192);
+  expect(details.stderr.length).toBe(1024);
   expect(details.stderr).toMatch(/bootstrap dependency failed$/);
   await expect(pending).rejects.not.toThrow('bootstrap dependency failed');
 });

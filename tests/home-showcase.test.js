@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import * as React from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, afterAll, expect, it, vi } from 'vitest';
 import { render, fireEvent, screen, cleanup, waitFor } from '@testing-library/react';
 import { SkillShowcase } from '../modules/agent/ui/skills/skillShowcase';
 import { ProjectDashboardHome } from '../modules/project/ui/navigation/projectDashboardHome';
@@ -12,6 +12,10 @@ import { ShareShowcase } from '../modules/project/ui/navigation/shareShowcase';
 import { previewShowcaseArchive, restoreShowcaseArchive } from '../modules/project/ui/navigation/shareShowcaseImport';
 import { DashboardBrowserHeader } from '../modules/project/ui/navigation/dashboardBrowserHeader';
 import { DashboardCollection } from '../modules/project/ui/navigation/dashboardCollection';
+import { browserHost } from '../modules/kernel/browser.ts';
+import { activateModal } from '../modules/canvas-ui/ui/design/modalFocus';
+const releaseProjectUi = browserHost.services.register('ui.canvas.project', { activateModal });
+afterAll(releaseProjectUi);
 const records = () => [
   {
     slug: 'visual',

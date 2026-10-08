@@ -113,12 +113,17 @@ it('resolves the active Provider on every prompt request instead of retaining th
     createPromptAssistantRouter({
       generateText: ({ systemPrompt, message, ...input }) =>
         createDramaModelGenerator({
-          textTransport: { fetcher: generateText },
+          textTransport: createTextGenerationService({ fetcher: (...args) => {
+            const provider = registry.get('GlmTextProvider');
+            if (!provider) throw new Error('Fixture provider disabled');
+            return provider.generateText(...args);
+          },
+            modelCatalog: loadModelCatalog, credentials: { get: () => ({ ZHIPU_API_KEY: 'fixture-only' }) } }),
           getCredentials: () => ({ ZHIPU_API_KEY: 'fixture-only' }),
           readImages: async () => [],
         })({
           ...input,
-          model: 'glm-5.3-flash',
+          model: Object.values(loadModelCatalog()).find(model => model.provider === 'GlmTextProvider').name,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message },
@@ -157,3 +162,5 @@ it('preserves shared workflow URL and instance validation after separating proto
   expect(() => normalizeRunningHubBaseUrl('https://user:password@www.runninghub.cn')).toThrow();
   expect(() => normalizeRunningHubInstanceType('unlimited')).toThrow();
 });
+import { createTextGenerationService } from '../plugins/platform/text-transport/service.js';
+import { loadModelCatalog } from '../modules/generation-core/api/server/config/modelCatalog.js';

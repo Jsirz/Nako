@@ -276,3 +276,4 @@ it('never automatically approves recovered or cross-session batches', async () =
     expect(creation.approve).not.toHaveBeenCalled();
   }
 });
+import './helpers/promptComposition.js';

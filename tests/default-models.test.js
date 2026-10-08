@@ -13,6 +13,7 @@ import { loadModelCatalog } from '../modules/generation-core/server/config/model
 import { createGenerationRouter } from '../modules/generation-core/server/routes/generation.js';
 import { createGenerationRuntime } from '../modules/generation-core/server/generation/generationRuntime.js';
 import { createDramaModelGenerator } from '../modules/agent/server/agent/drama/dramaModelGenerator.js';
+import { createTextGenerationService } from '../plugins/platform/text-transport/service.js';
 
 const kinds = ['text', 'image', 'video', 'audio'];
 const catalog = loadModelCatalog();
@@ -168,7 +169,8 @@ it('uses the default text model for prompt and drama generation without changing
     defaultModels: defaults,
     getCredentials: () => ({ FIXTURE_KEY: 'test-only' }),
     readImages: async () => [],
-    textTransport: {
+    textTransport: createTextGenerationService({
+      modelCatalog: loadModelCatalog, credentials: { get: () => ({ ECLOUD_API_KEY: 'test-only' }) },
       fetcher: async (_url, init) => {
         requests.push(JSON.parse(init.body));
         return Response.json({
@@ -177,7 +179,7 @@ it('uses the default text model for prompt and drama generation without changing
           ],
         });
       },
-    },
+    }),
   });
   expect(
     await generate({

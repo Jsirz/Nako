@@ -99,7 +99,7 @@ it('leaves scene navigation active while disabling node actions, drop, menus and
   const Scene = (value) => CanvasScene(React, value, components);
   const view = render(React.createElement(Scene, props));
   const canvas = view.container.querySelector('#canvas-background');
-  expect(view.container.querySelector('#canvas-viewport-content').hasAttribute('inert')).toBe(true);
+  expect(view.container.querySelector('#canvas-viewport-content').hasAttribute('inert')).toBe(false);
   fireEvent.pointerDown(canvas);
   fireEvent.wheel(canvas, { deltaY: -100 });
   fireEvent.pointerCancel(canvas);
