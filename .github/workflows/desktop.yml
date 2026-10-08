@@ -13,6 +13,8 @@ concurrency:
 jobs:
   package:
     name: ${{ matrix.target }}-${{ matrix.arch }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -85,24 +87,15 @@ jobs:
           python3 .verification/sparkle-upstream/native/tests/integration.py
           --framework .packaging/app/node_modules/electron-sparkle-updater/native/vendor/Sparkle.framework
           --tools .packaging/app/node_modules/electron-sparkle-updater/native/vendor/bin
-      - uses: actions/upload-artifact@v4
-        if: github.event_name != 'pull_request'
-        with:
-          name: Nako-${{ matrix.target }}-${{ matrix.arch }}
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
-          path: |
-            release/Nako-*.exe
-            release/Nako-*.dmg
-            release/Nako-*.zip
-            release/SHA256SUMS-*.txt
-            release/latest*.yml
-            release/appcast.xml
-            release/*.delta
-            release/*.blockmap
+      - name: Stage verified platform assets in draft Release
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+        run: node scripts/desktop/stageRelease.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
       - name: Upload smoke test diagnostics
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: smoke-${{ matrix.target }}-${{ matrix.arch }}
@@ -125,10 +118,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: package.json
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: Nako-*
-          path: release
       - name: Publish complete private release
         run: node scripts/desktop/publishRelease.mjs
         env:

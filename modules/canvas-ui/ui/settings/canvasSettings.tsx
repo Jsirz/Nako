@@ -1,6 +1,6 @@
-import { accountUi, generationUi, localRuntimeUi, mediaSettings } from '../../../kernel/browser';
 /** @jsxRuntime classic */
 /** @jsx React.createElement */
+import { accountUi, generationUi, localRuntimeUi, mediaSettings } from '../../../kernel/browser';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
@@ -125,7 +125,7 @@ export function CanvasSettings(React: Runtime, props: CanvasSettingsProps, depen
   return renderCanvasSettings(React, props, dependencies, state);
 }
 
-function renderCanvasSettings(_React: Runtime, props: CanvasSettingsProps, dependencies: Dependencies,
+function renderCanvasSettings(React: Runtime, props: CanvasSettingsProps, dependencies: Dependencies,
   state: ReturnType<typeof useCanvasSettingsState>) {
   const { section, message, dialogRef, hostRef, avatarReadRef, close, select, upload, setMessage } = state;
   const name = props.localUserName || '协作者', { CloseIcon } = dependencies;

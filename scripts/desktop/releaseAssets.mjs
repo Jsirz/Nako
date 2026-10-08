@@ -16,12 +16,12 @@ export async function sha256(file) {
   return hash.digest('hex');
 }
 
-export async function prepareRelease(directory, version) {
+export async function prepareRelease(directory, version, platforms = releasePlatforms) {
   assert.match(version, /^[0-9]+[.][0-9]+[.][0-9]+$/);
   const output = path.join(directory, 'publish');
   await mkdir(output, { recursive: true });
   const assets = [];
-  for (const platform of releasePlatforms) {
+  for (const platform of platforms) {
     const { target, arch, metadata } = platform;
     const source = path.join(directory, `Nako-${target}-${arch}`);
     const installers = target === 'win'

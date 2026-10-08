@@ -29,7 +29,7 @@
 
 更新控制先等待项目保存；安装失败恢复可恢复后端，不能把下载完成当安装成功。Windows/macOS 打包、签名和部署步骤分别在用户操作文档。静态核查不代替两平台成品、真机更新及重启保留数据验证。
 
-macOS 从 1.5.8 发布单段 Sparkle 差分，客户端仍使用原有检查/确认/下载/安装接口，SUDeltaChainHistory=0 表示不启用多段链。发布脚本 generateSparkleAppcast.mjs 从 GitHub 取得最近两个同架构、已签名的稳定 ZIP，校验基线签名，使用 Sparkle generate_appcast 只为当前版本生成差分，再校验新 ZIP、清单及 .delta 签名。releaseAssets.mjs 校验安装包和差分的 SHA-256，Actions 保留 .delta 并发布到私有 Release；HTTPS 更新源仍需部署同架构完整 ZIP、全部差分和签名清单，最后更新清单。原生 Sparkle 对不适用或失败的差分回退完整包。
+macOS 从 1.5.8 发布单段 Sparkle 差分，客户端仍使用原有检查/确认/下载/安装接口，SUDeltaChainHistory=0 表示不启用多段链。发布脚本 generateSparkleAppcast.mjs 从 GitHub 取得最近两个同架构、已签名的稳定 ZIP，校验基线签名，使用 Sparkle generate_appcast 只为当前版本生成差分，再校验新 ZIP、清单及 .delta 签名。releaseAssets.mjs 校验安装包和差分的 SHA-256，stageRelease.mjs 将验证后的单平台文件暂存到草稿 Release，publishRelease.mjs 在所有平台成功后下载并重新校验完整文件再发布，避免依赖 Actions 产物存储额度；HTTPS 更新源仍需部署同架构完整 ZIP、全部差分和签名清单，最后更新清单。原生 Sparkle 对不适用或失败的差分回退完整包。
 
 <!-- source-inventory:start -->
 ## 文件目录

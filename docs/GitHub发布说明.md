@@ -5,13 +5,13 @@
 
 ## 自动执行规则
 
-- 推送 main 或手动运行 Desktop packages：三平台执行架构检查、本地边界检查、类型检查、全部单元测试、构建和成品冒烟测试，安装包保存在 Actions Artifacts（14 天）。
+- 推送 main 或手动运行 Desktop packages：三平台执行架构检查、本地边界检查、类型检查、全部单元测试、构建和成品冒烟测试。安装包只在版本标签流程中保存到 Release。
 - Pull Request：执行检查与测试，不使用签名 Secrets 打包。
-- 推送 v<版本号>：三平台全部成功后，先创建草稿并上传完整资产，再发布 Release。标签必须与根 package.json 和 package-lock.json 一致。
+- 推送 v<版本号>：各平台验证成功后将文件上传到同一个草稿 Release；三平台全部成功后，发布任务下载完整资产并校验 SHA-256 与清单，再公开 Release。标签必须与根 package.json 和 package-lock.json 一致；安装包不占用 Actions Artifacts 存储。
 - Architecture 工作流另外执行快速检查。
 
 构建使用 package.json 固定的 Node 版本，以及 windows-latest、macos-15-intel、macos-15 runner。
-只有发布任务拥有 contents: write 权限。仓库保持私有。
+打包任务与最终发布任务拥有 contents: write 权限，用于暂存草稿和完成发布。仓库保持私有。
 
 ## 发布版本
 
@@ -35,7 +35,7 @@ git push origin v1.5.8
 | Mac x64 | Nako-版本-mac-x64.dmg | ZIP、签名 .delta、appcast-mac-x64.xml、SHA256SUMS |
 
 Mac 使用 electron-sparkle-updater 0.5.2，要求 macOS 12+，不再生成 Squirrel 的 YAML 和 blockmap。
-Actions 每个 Mac 构件中清单原名为 appcast.xml；Release 中按架构重命名，避免覆盖。
+每个 Mac 构建目录中清单原名为 appcast.xml；Release 中按架构重命名，差分文件名也包含架构，避免覆盖。
 
 更新根目录默认为 https://nako.tos-cn-guangzhou.volces.com/nako。
 仓库变量 NAKO_UPDATE_URL 可以替换它，空变量仍沿用现有地址。
