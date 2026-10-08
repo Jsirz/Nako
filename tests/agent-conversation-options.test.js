@@ -7,7 +7,7 @@ import { AgentConversationOptions } from '../modules/agent/ui/agent/AgentConvers
 import { withGenerationApproval } from '../modules/agent/ui/agent/agentGenerationApproval';
 import { createCanvasCreationControl } from '../modules/agent/ui/agent/canvasCreationControl';
 import { installModelCatalog } from '../modules/generation-core/models/catalog';
-import modelCatalog from '../modules/generation-core/server/config/modelCatalog.generated.json';
+import { modelContributions } from '../apps/canvas/modelContributions';
 import { TEXT_MODELS as ECLOUD_MODELS } from '../plugins/providers/ecloud/models';
 import { TEXT_MODELS as DOUBAO_MODELS } from '../plugins/providers/doubao/models';
 
@@ -127,9 +127,7 @@ it('maps thinking preferences without inventing unsupported parameters across mo
 });
 
 function generationFixture({ direct = false, beforeResult } = {}) {
-  installModelCatalog(Object.fromEntries(['text', 'image', 'audio', 'video'].map(kind => [
-    kind.toUpperCase() + '_MODELS', Object.values(modelCatalog).filter(model => model.kind === kind),
-  ])));
+  installModelCatalog(modelContributions);
   let nodes = [
     {
       id: 'image-1',
