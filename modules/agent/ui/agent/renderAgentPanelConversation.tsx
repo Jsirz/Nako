@@ -1,5 +1,6 @@
 /** @jsxRuntime classic */
 /** @jsx React.createElement */
+/** @jsxFrag React.Fragment */
 import { AgentAttachmentPreview } from './AgentAttachmentPreview';
 import { AgentCanvasActions } from './AgentCanvasActions';
 import { AgentTimelineActivity, AgentUnlinkedActivity } from './AgentTimelineActivity';

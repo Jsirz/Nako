@@ -173,7 +173,7 @@ function renderVideoPlayer(
 ) {
   const { data, selected, inputUrl } = props;
   const { ImageIcon, VideoIcon } = components;
-  const { videoRef, muted, buffering, playbackError, hover, setHover, snapshotBusy, snapshotError,
+  const { videoRef, muted, buffering, playbackError, setHover, snapshotBusy, snapshotError,
     isLoading, hasResult, togglePlay, frameStyle, retry } = state;
   const content = (
     <div
@@ -315,7 +315,7 @@ function renderVideoPlayer(
 }
 
 function renderVideoControls(
-  React: VideoRuntime,
+  _React: VideoRuntime,
   { onSnapshot, onSnapshotFirstLast }: Props,
   { MuteIcon, VolumeIcon, PauseIcon, PlayIcon, Tooltip, FramesIcon, SnapshotIcon }: Components,
   state: VideoViewState,

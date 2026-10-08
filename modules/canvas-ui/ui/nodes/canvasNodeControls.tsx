@@ -199,7 +199,7 @@ function useDimensionMenu(React: ComposerRuntime, disabled: boolean | undefined)
 }
 
 function renderDimensions(
-  React: ComposerRuntime,
+  _React: ComposerRuntime,
   { data, onUpdate, allRatios, supportedRatios, allResolutions, supportedResolutions,
     disabled, videoSettings }: DimensionProps,
   { open, setOpen, root }: ReturnType<typeof useDimensionMenu>,

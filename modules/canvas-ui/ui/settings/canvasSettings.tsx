@@ -36,7 +36,7 @@ type Section = (typeof sections)[number][0];
 function useCanvasSettingsState(
   React: Runtime,
   props: CanvasSettingsProps,
-  dependencies: Dependencies,
+  _dependencies: Dependencies,
 ) {
   const [section, setSection] = React.useState<Section>('profile');
   const [message, setMessage] = React.useState('');
@@ -125,7 +125,7 @@ export function CanvasSettings(React: Runtime, props: CanvasSettingsProps, depen
   return renderCanvasSettings(React, props, dependencies, state);
 }
 
-function renderCanvasSettings(React: Runtime, props: CanvasSettingsProps, dependencies: Dependencies,
+function renderCanvasSettings(_React: Runtime, props: CanvasSettingsProps, dependencies: Dependencies,
   state: ReturnType<typeof useCanvasSettingsState>) {
   const { section, message, dialogRef, hostRef, avatarReadRef, close, select, upload, setMessage } = state;
   const name = props.localUserName || '协作者', { CloseIcon } = dependencies;

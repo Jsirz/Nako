@@ -18,7 +18,7 @@ function withDefaultModel(node: CanvasNode, kind: ModelKind): CanvasNode {
 import { browserServices } from '../../../kernel/browser';
 import type { CanvasNode } from '../../../contracts/canvasDocument';
 import { resolveImageGenerationMode } from './imageMode';
-import { resolveVideoGenerationMode, type VideoModeDefinition } from './videoMode';
+import { resolveVideoGenerationMode } from './videoMode';
 import { resolveMidjourneyReferencePayload } from './midjourneyReferences';
 
 import type { GenerationModel, GenerationModels } from '../../../contracts/generationUi';

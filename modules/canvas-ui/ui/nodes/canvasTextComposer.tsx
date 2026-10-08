@@ -33,7 +33,7 @@ interface Asset {
 }
 interface TextModel {
   name: string;
-  cost?: number;
+  cost?: number | Partial<Record<string, number>>;
   endpoint?: Record<string, { model?: string }>;
   languageModes?: Array<{ value: string }>;
   priceTextByMode?: Record<string, Record<string, string>>;

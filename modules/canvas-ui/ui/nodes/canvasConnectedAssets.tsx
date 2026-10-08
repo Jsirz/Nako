@@ -271,7 +271,7 @@ function renderConnectedAssetStrip(
   );
 }
 
-function renderConnectedAssetPreviews(React: Runtime, state: ReturnType<typeof useConnectedAssetState>) {
+function renderConnectedAssetPreviews(_React: Runtime, state: ReturnType<typeof useConnectedAssetState>) {
   const { hover, hovered, preview, keepHover, closeHover, setPreviewId, setHover } = state;
   return <>
       {hover &&

@@ -358,7 +358,7 @@ function renderAssetHistory(
 }
 
 function renderAssetHistoryList(
-  React: Runtime, { Spinner, ImageIcon, AudioIcon, DeleteIcon }: Icons,
+  _React: Runtime, { Spinner, ImageIcon, AudioIcon, DeleteIcon }: Icons,
   { state, kind, scrollRef, deleteId, setDeleteId, actions, sentinelRef }: ReturnType<typeof useAssetHistoryState>,
   groups: Map<string, Asset[]>, select: (asset: Asset) => void,
 ) {

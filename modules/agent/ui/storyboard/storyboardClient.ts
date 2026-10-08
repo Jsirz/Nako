@@ -63,14 +63,12 @@ type ErrorBody = {
 };
 
 export class StoryboardClientError extends AgentOperationError {
-  code: string;
   status: number;
   retryable: boolean;
 
   constructor(message: string, code: string, status: number, retryable: boolean) {
     super(message, { operation: 'storyboard-client-request' }, code, status);
     this.name = 'StoryboardClientError';
-    this.code = code;
     this.status = status;
     this.retryable = retryable;
   }

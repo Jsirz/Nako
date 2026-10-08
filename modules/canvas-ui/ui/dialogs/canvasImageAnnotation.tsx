@@ -547,7 +547,7 @@ function renderAnnotationToolbar(React: Runtime, { saveLabel = '保存' }: Props
   ;
 }
 
-function renderAnnotationStage(React: Runtime, { node }: Props, { Spinner }: Icons, state: AnnotationState, actions: AnnotationActions) {
+function renderAnnotationStage(_React: Runtime, { node }: Props, { Spinner }: Icons, state: AnnotationState, actions: AnnotationActions) {
   const { stageRef, loaded, error, viewport, display, canvasRef, panning, drawing, setCursorVisible,
     cursorVisible, cursor, brushSize, tool, color, opacity } = state;
   const { wheel, pointerDown, pointerMove, pointerUp } = actions;
@@ -631,7 +631,7 @@ function renderAnnotationStage(React: Runtime, { node }: Props, { Spinner }: Ico
   ;
 }
 
-function renderAnnotationZoom(React: Runtime, { viewport }: AnnotationState, { zoomIn, zoomOut, resetView }: AnnotationActions) {
+function renderAnnotationZoom(_React: Runtime, { viewport }: AnnotationState, { zoomIn, zoomOut, resetView }: AnnotationActions) {
   return (
           <div
             className={

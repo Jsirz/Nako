@@ -260,7 +260,7 @@ function renderViewportControls(
 }
 
 function renderViewportHelp(
-  React: Runtime, view: string,
+  _React: Runtime, view: string,
   { helpOpen, setHelpOpen, helpKeyDown }: ReturnType<typeof useViewportControlState>,
 ) {
   return view === 'canvas' && (

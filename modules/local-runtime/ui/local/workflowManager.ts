@@ -60,7 +60,6 @@ export function createWorkflowManager(
     loadDeployedRecords,
     resetDraft,
     hydrate,
-    syncCurrentCanvasNode,
     refreshStatus,
   } = actions;
 

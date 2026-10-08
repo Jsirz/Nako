@@ -2,7 +2,7 @@ import { MINIMAX_H3_DURATION, describeMiniMaxH3Duration } from '../../../asset-m
 import type { Runtime } from './canvasMiniMaxNodeTypes';
 import type { MiniMaxNodeState } from './useCanvasMiniMaxNodeState';
 
-function renderDurationSlider(React: Runtime, { node, update, closeMenu }: MiniMaxNodeState) {
+function renderDurationSlider(_React: Runtime, { node, update, closeMenu }: MiniMaxNodeState) {
   const durationConfig = MINIMAX_H3_DURATION,
     seconds = Number(node.duration ?? durationConfig.defaultSeconds),
     durationInfo = describeMiniMaxH3Duration(seconds);
@@ -73,7 +73,7 @@ function renderDurationSlider(React: Runtime, { node, update, closeMenu }: MiniM
     </div>
   );
 }
-function renderMenuOptions(React: Runtime, { menuOptions, currentValue, choose }: MiniMaxNodeState) {
+function renderMenuOptions(_React: Runtime, { menuOptions, currentValue, choose }: MiniMaxNodeState) {
   return (
     <div style={{ display: 'grid', gap: '4px' }}>
       {menuOptions.map((value) => {

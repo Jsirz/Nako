@@ -263,7 +263,7 @@ function renderImageComposer(
 }
 
 function renderImageReferences(
-  React: ComposerRuntime,
+  _React: ComposerRuntime,
   { data: node, onUpdate }: MediaComposerProps,
   { model, references, assignments, busy, referenceOptions }: ReturnType<typeof useImageComposerState>,
 ) {
@@ -336,7 +336,7 @@ function renderImageReferences(
 }
 
 function renderImageModeMenu(
-  React: ComposerRuntime,
+  _React: ComposerRuntime,
   { data: node, onUpdate }: MediaComposerProps,
   { Tooltip }: MediaComposerComponents,
   { specialModes, modeRoot, modeOpen, setModeOpen, busy, modeLabel, hasImageInput }:

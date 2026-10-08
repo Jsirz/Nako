@@ -71,7 +71,7 @@ function useLibraryGridState(React: Runtime, props: GridProps) {
 }
 
 function renderLibraryItemPreview(
-  React: Runtime, workflow: GridProps['workflow'],
+  _React: Runtime, workflow: GridProps['workflow'],
   { WorkflowIcon, AudioIcon, ImageIcon, VideoIcon }: Icons,
   { failedImages, setFailedImages }: ReturnType<typeof useLibraryGridState>,
   item: LibraryItem,
@@ -125,7 +125,7 @@ function renderLibraryItemPreview(
 }
 
 function libraryItemActions(
-  React: Runtime, { workflow, onEditAsset, onDeleteAsset, deleting }: GridProps,
+  _React: Runtime, { workflow, onEditAsset, onDeleteAsset, deleting }: GridProps,
   { DeleteIcon }: Icons,
   { busy, categoryOf, setConfirmation, setEditing, confirmation, owner }:
     ReturnType<typeof useLibraryGridState>,
@@ -379,7 +379,7 @@ function renderLibraryGrid(
 }
 
 function renderLibraryAssetEditor(
-  React: Runtime, { onEditAsset, saving }: GridProps,
+  _React: Runtime, { onEditAsset, saving }: GridProps,
   { editing, setEditing, busy, owner, editInput, categories }: ReturnType<typeof useLibraryGridState>,
 ) {
   return editing && (

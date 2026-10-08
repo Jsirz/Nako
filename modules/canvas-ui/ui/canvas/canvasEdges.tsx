@@ -313,7 +313,7 @@ export function CanvasEdges(React: Runtime, props: Props, geometry: Geometry) {
 }
 
 function renderTemporaryEdges(
-  React: Runtime,
+  _React: Runtime,
   props: Props,
   { getPortX, getPortY, getHeight }: Geometry,
   byId: Map<string, EdgeNode>,

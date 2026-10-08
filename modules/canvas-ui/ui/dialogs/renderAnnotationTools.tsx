@@ -11,7 +11,7 @@ const tools: { tool: AnnotationTool; title: string; paths?: string[]; circle?: b
   { tool: 'eraser', title: '橡皮擦', paths: ['M19 20h-10.5l-4.21 -4.3a1 1 0 0 1 0 -1.41l10 -10a1 1 0 0 1 1.41 0l5 5a1 1 0 0 1 0 1.41l-9.2 9.3', 'M18 13.3l-6.3 -6.3'] },
 ];
 
-export function renderAnnotationTools(React: Runtime, tool: AnnotationTool, setTool: (tool: AnnotationTool) => void) {
+export function renderAnnotationTools(_React: Runtime, tool: AnnotationTool, setTool: (tool: AnnotationTool) => void) {
   return (
     <div role={'group'} className={'flex items-center gap-1 p-1 rounded-full bg-[var(--nk-input)]'}>
       {tools.map(entry => (
@@ -41,7 +41,7 @@ interface BrushSettings {
 const numberClass = 'h-7 px-1.5 rounded-md bg-[var(--nk-input)] border border-[var(--nk-border-control)] text-[10px] text-[var(--nk-text)] outline-none focus:border-[var(--nk-info)] text-center tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none';
 const sliderClass = 'w-full h-1 bg-[var(--nk-surface-raised)] rounded-lg appearance-none cursor-pointer accent-[var(--nk-focus)]';
 
-export function renderAnnotationBrushSettings(React: Runtime, { brushSize, setBrushSize, color, setColor, opacity, setOpacity }: BrushSettings) {
+export function renderAnnotationBrushSettings(_React: Runtime, { brushSize, setBrushSize, color, setColor, opacity, setOpacity }: BrushSettings) {
   return (
     <div className={'flex items-center gap-3 px-2'}>
       <div className={'flex items-center justify-center w-10 h-10 shrink-0 bg-[var(--nk-input)] rounded-lg'}>

@@ -3,7 +3,7 @@ import type { Dependencies, Runtime } from './canvasImageCropTypes';
 import type { ImageCropState } from './useCanvasImageCropState';
 import type { ImageCropGestures } from './imageCropGestures';
 
-function renderPanoramaViews(React: Runtime, state: ImageCropState) {
+function renderPanoramaViews(_React: Runtime, state: ImageCropState) {
   const { viewPreview, selectedViews, setViewPreview, setSelectedViews } = state;
   return (
     <div className="absolute inset-0 z-10 bg-[var(--nk-input)] flex flex-col" aria-label="全景视角预览">
@@ -104,7 +104,7 @@ function renderPanoramaStage(React: Runtime, state: ImageCropState, dependencies
     </div>
   );
 }
-function renderCropStage(React: Runtime, state: ImageCropState, gestures: ImageCropGestures) {
+function renderCropStage(_React: Runtime, state: ImageCropState, gestures: ImageCropGestures) {
   const { display, loaded, url, canvasRef, hover } = state;
   const size = { width: display.width + cropMargin * 2, height: display.height + cropMargin * 2 };
   return (

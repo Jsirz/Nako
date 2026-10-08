@@ -1,7 +1,7 @@
 import { ERRORS, PluginError } from '../../../contracts/index.js';
 import { browserServices, promptComposition } from '../../../kernel/browser';
 import { declaredNodeOutput } from '../../../contracts/nodeValues.js';
-import type { GenerationTaskStatus, GenerationTaskEvent, GenerationTaskState, GenerationPromptNode, GenerationSchedulerAdapter } from '../../../contracts/generationScheduler';
+import type { GenerationTaskStatus, GenerationTaskEvent, GenerationPromptNode, GenerationSchedulerAdapter } from '../../../contracts/generationScheduler';
 export type { GenerationTaskStatus, GenerationTaskEvent, GenerationTaskState, GenerationPromptNode, GenerationSchedulerAdapter } from '../../../contracts/generationScheduler';
 
 declare global {

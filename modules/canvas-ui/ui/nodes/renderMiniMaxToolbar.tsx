@@ -3,7 +3,7 @@ import type { MiniMaxNodeState } from './useCanvasMiniMaxNodeState';
 import { inputStyle, triggerStyle } from './canvasMiniMaxNodeStyles';
 import { renderMiniMaxQuickMenu } from './renderMiniMaxQuickMenu';
 
-function renderGenerationControls(React: Runtime, state: MiniMaxNodeState) {
+function renderGenerationControls(_React: Runtime, state: MiniMaxNodeState) {
   const { node, menu, openMenu, stop, update, settingsOpen, busy, props } = state;
   const onGenerate = props.onMiniMaxH3T2VAGenerate;
   return (

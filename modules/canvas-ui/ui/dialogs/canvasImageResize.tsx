@@ -173,7 +173,7 @@ function useImageResizeState(React: Runtime, { node, onSave, onClose, projectId 
 }
 
 function renderImageResize(
-  React: Runtime,
+  _React: Runtime,
   { node, onClose }: Props & { node: ImageNode },
   { Close, Save, Spinner }: Icons,
   { rootRef, original, mode, scale, width, height, saving, error, url,

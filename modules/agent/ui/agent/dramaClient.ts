@@ -36,7 +36,7 @@ export interface DramaComposition {
 }
 
 export class DramaClientError extends AgentOperationError {
-  constructor(message: string, readonly code: string, readonly status: number) { super(message, { operation: 'drama-client-request' }, code, status); this.name = 'DramaClientError'; }
+  constructor(message: string, code: string, status: number) { super(message, { operation: 'drama-client-request' }, code, status); this.name = 'DramaClientError'; }
 }
 
 export function createDramaClient(fetcher: typeof fetch = globalThis.fetch) {

@@ -98,7 +98,7 @@ export type AgentStreamResult = { response: string; topic?: string; messageCount
 export class AgentClientError extends AgentOperationError {
   constructor(
     message: string,
-    public code: string,
+    code: string,
     public status: number,
     public retryable: boolean,
   ) {

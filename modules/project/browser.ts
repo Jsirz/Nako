@@ -22,9 +22,9 @@ const plugin: PluginDefinition = {
       trackBrowserResource(context, installCanvasSession());
       context.services.register<ProjectPreferencesService>('ui.project.preferences', Object.freeze({
         currentProjectId: () => installCanvasSession().load()?.workflowId,
-        getItem: (key) => preferenceStorage().getItem(key),
-        setItem: (key, value) => preferenceStorage().setItem(key, value),
-        removeItem: (key) => preferenceStorage().removeItem(key),
+        getItem: (key: string) => preferenceStorage().getItem(key),
+        setItem: (key: string, value: string) => preferenceStorage().setItem(key, value),
+        removeItem: (key: string) => preferenceStorage().removeItem(key),
       }));
       trackBrowserResource(context, installCanvasAutoSave());
     });

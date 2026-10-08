@@ -177,7 +177,7 @@ function renderSelectionBounds(
   );
 }
 
-function renderSelectionResizeHandles(React: Runtime, { isGroup, borderColor, resizeSelection }: ReturnType<typeof selectionBoundsGeometry>) {
+function renderSelectionResizeHandles(_React: Runtime, { isGroup, borderColor, resizeSelection }: ReturnType<typeof selectionBoundsGeometry>) {
   return !isGroup &&
         [
           { pos: 'top-left', cursor: 'nw-resize', top: -4, left: -4 },
@@ -313,7 +313,7 @@ function renderSelectionConnectors(React: Runtime, props: Props) {
 }
 
 function renderSelectionGroupTitle(
-  React: Runtime, { group, isSelected }: Props,
+  _React: Runtime, { group, isSelected }: Props,
   { editing, draft, setDraft, inputRef, startRename, commitTitle, titleKeyDown }: ReturnType<typeof useSelectionRename>,
   { isGroup, controlScale, accent }: ReturnType<typeof selectionBoundsGeometry>,
 ) {
@@ -391,7 +391,7 @@ function renderSelectionGroupTitle(
       );
 }
 
-function renderSelectionGroupActions(React: Runtime, props: Props, geometry: ReturnType<typeof selectionBoundsGeometry>) {
+function renderSelectionGroupActions(_React: Runtime, props: Props, geometry: ReturnType<typeof selectionBoundsGeometry>) {
   const { isSelected, isDragging, onCreateCollage, onToggleGridSlider, showGridSlider,
     gridColumns, onGroup, onUngroup } = props;
   const { canGroup, isGroup, controlScale } = geometry;

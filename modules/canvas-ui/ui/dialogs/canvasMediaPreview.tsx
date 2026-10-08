@@ -80,7 +80,7 @@ function useMediaPreviewTransform(React: Runtime, { mediaUrl, onClose }: Props) 
 }
 
 function renderMediaPreview(
-  React: Runtime,
+  _React: Runtime,
   { mediaUrl, onClose }: Props & { mediaUrl: string },
   { container, transform, current, drag, dragging, setDragging, update, reset, zoom, release }:
     ReturnType<typeof useMediaPreviewTransform>,

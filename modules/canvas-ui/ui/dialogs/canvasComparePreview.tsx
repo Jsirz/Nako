@@ -368,7 +368,7 @@ function renderComparePreview(
 }
 
 function renderCompareToolbar(
-  React: Runtime,
+  _React: Runtime,
   { position, setPosition, angle, setAngle, setSwapped }: ReturnType<typeof useComparePreviewState>,
 ) {
   return (

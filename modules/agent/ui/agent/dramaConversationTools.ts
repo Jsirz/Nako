@@ -445,7 +445,7 @@ function createDramaToolRenderer(canvas: DramaCanvasBridge, conversation: AgentC
 
 function renderDramaPlan(state: DramaConversationState, plan: DramaPlan, disabled: boolean,
   expanded: Map<string | undefined, boolean>, rendering: DramaRenderServices) {
-  const { local, controls: { button, check } } = rendering;
+  const { local, controls: { check } } = rendering;
   const card = local.card!;
   const profile = productionProfileForBundle(plan.bundleId);
   const assetOnly = profile?.mode === 'assets';

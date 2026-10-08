@@ -5,7 +5,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { installNodeFramework } from './nodeFramework';
 import { newNodeDimensions } from './nodeCreationDimensions';
 import { installStableCanvasClipboard } from '../canvas/canvasClipboard';
-import { connectCanvasNodes, type CanvasConnectionNode } from '../canvas/canvasConnections';
+import { connectCanvasNodes } from '../canvas/canvasConnections';
 import type { CanvasViewport } from '../canvas/canvasNavigation';
 
 import type { CanvasNode } from '../../../contracts/canvasDocument';

@@ -132,7 +132,7 @@ function useSaveDialogState(React: Runtime, props: CanvasSaveDialogProps) {
 }
 
 function renderSaveDialog(
-  React: Runtime, props: CanvasSaveDialogProps,
+  _React: Runtime, props: CanvasSaveDialogProps,
   state: ReturnType<typeof useSaveDialogState>,
 ) {
   const { name, setName, category, newCategory, ownership, setOwnership, status, error,

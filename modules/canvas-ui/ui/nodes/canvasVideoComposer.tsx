@@ -133,7 +133,7 @@ function useVideoComposerState(React: ComposerRuntime, props: MediaComposerProps
 }
 
 function renderVideoModeTabs(
-  React: ComposerRuntime, { data: node, onUpdate }: MediaComposerProps,
+  _React: ComposerRuntime, { data: node, onUpdate }: MediaComposerProps,
   { selectableModes, videoModes, inputs, effectiveMode, busy }: ReturnType<typeof useVideoComposerState>,
 ) {
   return selectableModes.length > 0 && (

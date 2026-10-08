@@ -354,7 +354,7 @@ function renderCompositePreview(React: Runtime, props: OpenCompositeProps, icons
   );
 }
 
-function renderCompositeLayers(React: Runtime, { payload }: OpenCompositeProps, icons: Icons, state: CompositeState, actions: CompositeActions) {
+function renderCompositeLayers(_React: Runtime, { payload }: OpenCompositeProps, icons: Icons, state: CompositeState, actions: CompositeActions) {
   const { layers, selected, saving } = state;
   const { scene, select, reorder } = actions;
   const IconLayers = icons.layers, IconUp = icons.up, IconDown = icons.down;
@@ -476,7 +476,7 @@ function renderCompositeWorkspace(React: Runtime, props: OpenCompositeProps, ico
   );
 }
 
-function renderCompositeToolbar(React: Runtime, { payload }: OpenCompositeProps, state: CompositeState, actions: CompositeActions) {
+function renderCompositeToolbar(_React: Runtime, { payload }: OpenCompositeProps, state: CompositeState, actions: CompositeActions) {
   const { selected, saving, history, rotationDraft, setRotationDraft, scaleDraft, setScaleDraft } = state;
   const { transform, undo, redo, rotate, scaleLayer, end, changeLayer } = actions;
   return !payload.readOnly && selected && transform && (
@@ -596,7 +596,7 @@ function renderCompositeToolbar(React: Runtime, { payload }: OpenCompositeProps,
         );
 }
 
-function renderCompositeViewport(React: Runtime, { payload }: OpenCompositeProps, state: CompositeState, actions: CompositeActions) {
+function renderCompositeViewport(_React: Runtime, { payload }: OpenCompositeProps, state: CompositeState, actions: CompositeActions) {
   const { viewport, saveLock, root, viewRef, drag, history, layers, selected, updateView, width, height, view, canvas } = state;
   const { select, render, releasePointer } = actions;
   return <div

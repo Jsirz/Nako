@@ -15,14 +15,12 @@ type AssistantErrorBody = {
 };
 
 export class PromptAssistantClientError extends AgentOperationError {
-  code: string;
   status: number;
   retryable: boolean;
 
   constructor(message: string, code: string, status: number, retryable: boolean) {
     super(message, { operation: 'prompt-assistant-client' }, code, status);
     this.name = 'PromptAssistantClientError';
-    this.code = code;
     this.status = status;
     this.retryable = retryable;
   }

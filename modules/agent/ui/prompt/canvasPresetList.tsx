@@ -142,7 +142,7 @@ type ListPanelState = {
   mutation: ReturnType<typeof usePromptMutation>; text: string; title: string;
   copy(event: ReactTypes.SyntheticEvent): Promise<void>;
 };
-function renderPresetListPanel(React: PromptRuntime, {
+function renderPresetListPanel(_React: PromptRuntime, {
   props, creating, category, categories, closeForm, setRemoved, setCategory, setSelected,
   setCreating, rootRef, items, selected, select, remove, mutation, text, title, copy,
 }: ListPanelState, { CreateForm, PresetCard, AddIcon, CopyIcon }: Components) {
@@ -270,7 +270,7 @@ function renderPresetListPanel(React: PromptRuntime, {
   );
 }
 
-function renderPresetMenu(React: PromptRuntime, error: string, panel: ReactTypes.ReactNode) {
+function renderPresetMenu(_React: PromptRuntime, error: string, panel: ReactTypes.ReactNode) {
   return (
     <div
       data-nako-preset-menu="true"

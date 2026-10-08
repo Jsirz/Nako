@@ -203,7 +203,7 @@ export function CanvasAudioPlayer(
 }
 
 function renderAudioPlayer(
-  React: Runtime,
+  _React: Runtime,
   { data, selected, onAudioTrim }: Props,
   { PlayIcon, PauseIcon, TrimIcon, ConfirmIcon, Spinner, AudioIcon, Tooltip }: Components,
   state: {

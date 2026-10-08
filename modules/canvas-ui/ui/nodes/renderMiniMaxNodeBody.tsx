@@ -124,7 +124,7 @@ export function renderMiniMaxPreview(React: Runtime, state: MiniMaxNodeState) {
     </div>
   );
 }
-function renderMiniMaxPrompt(React: Runtime, state: MiniMaxNodeState, { PromptEditor }: Components) {
+function renderMiniMaxPrompt(_React: Runtime, state: MiniMaxNodeState, { PromptEditor }: Components) {
   const { node, prompt, update, connectedNodes, stop, focusPrompt } = state;
   const count = (connectedNodes || []).filter(Boolean).length;
   return (
@@ -193,7 +193,7 @@ function renderMiniMaxPrompt(React: Runtime, state: MiniMaxNodeState, { PromptEd
     </div>
   );
 }
-function renderMiniMaxSettings(React: Runtime, { node, settingsOpen, update, stop, dimensions }: MiniMaxNodeState) {
+function renderMiniMaxSettings(_React: Runtime, { node, settingsOpen, update, stop, dimensions }: MiniMaxNodeState) {
   if (!settingsOpen) return null;
   return (
     <div

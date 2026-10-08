@@ -371,7 +371,7 @@ function promptExtensions(vendor: Vendor, currentRef: ReactTypes.RefObject<Props
     ];
 }
 
-function usePromptEditor(React: Runtime, vendor: Vendor, props: Props,
+function usePromptEditor(_React: Runtime, vendor: Vendor, props: Props,
   { editorRef, popupRef, rootRef, currentRef }: PromptEditorState, extensions: unknown[],
   sync: (editor: Editor) => void, keepPagePosition: () => void,
   schedule: (fn: () => void, delay: number) => ReturnType<typeof setTimeout>) {
@@ -515,7 +515,7 @@ function usePromptEditorLifecycle(React: Runtime, props: Props, editor: Editor |
   }, []);
 }
 
-function renderPromptEditor(React: Runtime, props: Props, vendor: Vendor, editor: Editor | null,
+function renderPromptEditor(_React: Runtime, props: Props, vendor: Vendor, editor: Editor | null,
   { rootRef, scrollRef }: PromptEditorState, keepPagePosition: () => void,
   presetError: string, reloadPresets: () => Promise<void>) {
   const { EditorContent } = vendor;

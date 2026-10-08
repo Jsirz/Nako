@@ -17,7 +17,6 @@ export function useCanvasConnectionState(context: ReturnType<typeof useCanvasDoc
     nodes,
     setNodes,
     selectedNodeIds,
-    setSelectedNodeIds,
   } = context;
 
   const {

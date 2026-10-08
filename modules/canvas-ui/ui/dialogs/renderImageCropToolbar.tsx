@@ -6,11 +6,11 @@ import type { ImageCropState } from './useCanvasImageCropState';
 import type { ImageCropSave } from './imageCropSave';
 
 const sliderClass = 'w-20 h-1 bg-[var(--nk-surface-raised)] rounded-lg appearance-none cursor-pointer accent-blue-500 disabled:cursor-not-allowed';
-function renderDivider(React: Runtime) {
+function renderDivider(_React: Runtime) {
   return <div className="shrink-0 bg-[var(--nk-surface-raised)] w-[1px] h-6 mx-1" />;
 }
 function renderCropSliders(
-  React: Runtime,
+  _React: Runtime,
   controls: Array<{ label: string; value: number; onChange(value: number): void }>,
   panorama: boolean,
   min: number,
@@ -101,7 +101,7 @@ function renderGridControls(React: Runtime, state: ImageCropState) {
     </>
   );
 }
-function renderPanoramaControls(React: Runtime, state: ImageCropState, save: ImageCropSave) {
+function renderPanoramaControls(_React: Runtime, state: ImageCropState, save: ImageCropSave) {
   const { props, panoramaReady, fov, setFov, mirror, setMirror, guides, setGuides, setSceneVersion, rootRef, setError } = state;
   return (
     <>
@@ -176,7 +176,7 @@ function renderPanoramaControls(React: Runtime, state: ImageCropState, save: Ima
     </>
   );
 }
-function renderRatioControl(React: Runtime, state: ImageCropState, { Chevron }: Dependencies) {
+function renderRatioControl(_React: Runtime, state: ImageCropState, { Chevron }: Dependencies) {
   const { ratioOpen, setRatioOpen, ratioLabel, selectRatio } = state;
   return (
     <div className="relative">

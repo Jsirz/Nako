@@ -183,7 +183,7 @@ export function CanvasImagePreview(
 }
 
 function renderImagePreview(
-  React: Runtime,
+  _React: Runtime,
   { data: node, selected, onUpload, renderHeader }: Props,
   { DownloadIcon, ImageIcon }: Components,
   state: {
