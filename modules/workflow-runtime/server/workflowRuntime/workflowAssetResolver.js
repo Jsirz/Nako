@@ -1,3 +1,4 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import crypto from 'node:crypto';
 import { constants } from 'node:fs';
 import {
@@ -148,7 +149,7 @@ export class WorkflowAssetResolver {
     this.mediaDirectory = path.resolve(libraryDirectory, 'media');
     this.snapshotRoot = snapshotRoot ? path.resolve(snapshotRoot) : null;
     if (this.snapshotRoot && isInsideOrEqual(this.libraryDirectory, this.snapshotRoot)) {
-      throw new Error('Workflow asset snapshots must be stored outside the public library');
+      throw workflowRuntimeError('Workflow asset snapshots must be stored outside the public library', 'createWorkflowAssetResolver', 'WORKFLOW_STORAGE_EXPOSED');
     }
     this.maximumBytes = maximumBytes;
   }

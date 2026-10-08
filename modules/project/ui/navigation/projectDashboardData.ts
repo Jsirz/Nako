@@ -1,3 +1,4 @@
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 export interface DashboardProject {
   id: string;
   title: string;
@@ -89,11 +90,11 @@ export function createDashboardClient(fetcher: typeof fetch = fetch) {
       response = await fetcher(path, init);
     } catch (error) {
       if (init.signal?.aborted) throw error;
-      throw Error(
+      throw new ProjectError(PROJECT_ERRORS.request,
         init.method && init.method !== 'GET'
           ? '操作结果未确认，请先刷新列表核对'
           : '项目列表读取失败，请刷新重试',
-        { cause: error },
+        { cause: error, context: { operation: 'dashboardRequest', path, method: init.method || 'GET' } },
       );
     }
     if (response.status === 204) return null;
@@ -101,14 +102,14 @@ export function createDashboardClient(fetcher: typeof fetch = fetch) {
     try {
       body = await response.json();
     } catch {
-      throw Error(response.ok ? '项目服务返回了无效数据' : '项目服务暂时不可用');
+      throw new ProjectError(PROJECT_ERRORS.invalidDocument, response.ok ? '项目服务返回了无效数据' : '项目服务暂时不可用', { context: { operation: 'dashboardRequest', path }, status: response.status });
     }
     if (!response.ok) {
       const message =
         body && typeof body === 'object' && 'error' in body && typeof body.error === 'string'
           ? body.error
           : '项目操作失败，请重试';
-      throw Error(message);
+      throw new ProjectError(PROJECT_ERRORS.request, message, { context: { operation: 'dashboardRequest', path }, status: response.status });
     }
     return body;
   };
@@ -126,7 +127,7 @@ export function createDashboardClient(fetcher: typeof fetch = fetch) {
         request('/api/workflows', { signal }),
         request('/api/folders', { signal }),
       ]);
-      if (!Array.isArray(projects) || !Array.isArray(folders)) throw Error('项目列表数据无效');
+      if (!Array.isArray(projects) || !Array.isArray(folders)) throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目列表数据无效', { context: { operation: 'listDashboard' } });
       if (
         projects.some(
           (item) => !item || typeof item.id !== 'string' || typeof item.title !== 'string',
@@ -135,7 +136,7 @@ export function createDashboardClient(fetcher: typeof fetch = fetch) {
           (item) => !item || typeof item.id !== 'string' || typeof item.name !== 'string',
         )
       )
-        throw Error('项目或文件夹信息无效');
+        throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目或文件夹信息无效', { context: { operation: 'listDashboard' } });
       return { projects, folders };
     },
     async createFolder(parentId: string | null, signal?: AbortSignal): Promise<DashboardFolder> {
@@ -151,7 +152,7 @@ export function createDashboardClient(fetcher: typeof fetch = fetch) {
         !('id' in result) ||
         typeof result.id !== 'string'
       )
-        throw Error('文件夹创建结果无效，请刷新列表核对');
+        throw new ProjectError(PROJECT_ERRORS.invalidDocument, '文件夹创建结果无效，请刷新列表核对', { context: { operation: 'createFolder', parentId } });
       return result as DashboardFolder;
     },
     renameFolder: (folder: DashboardFolder, name: string, signal?: AbortSignal) =>
@@ -178,7 +179,7 @@ export function createDashboardClient(fetcher: typeof fetch = fetch) {
         !Array.isArray(result.pendingDelete) ||
         result.pendingDelete.some((file) => typeof file !== 'string')
       )
-        throw Error('清理预览数据无效');
+        throw new ProjectError(PROJECT_ERRORS.invalidDocument, '清理预览数据无效', { context: { operation: 'previewCleanup', projectId: id } });
       return result.pendingDelete;
     },
     cleanupProject: (id: string, signal?: AbortSignal) =>

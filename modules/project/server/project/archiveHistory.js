@@ -1,24 +1,23 @@
-import { readFile, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { validateAgentArchive, agentArchiveError } from '../../../contracts/agentArchive.js';
 
 const MAX_HISTORY_BYTES = 32 * 1024 * 1024;
-export async function writeAgentHistories(directory, projectIds, service) {
+export async function writeAgentHistories(files, directory, projectIds, service) {
   if (!service) return [];
   const projects = [];
   for (const id of projectIds) projects.push(await service.exportProject(id));
   const json = JSON.stringify({ projects });
   if (Buffer.byteLength(json) > MAX_HISTORY_BYTES)
     throw agentArchiveError('聊天记录超过 32 MB，无法打包');
-  await writeFile(path.join(directory, 'agent.json'), json, 'utf8');
+  await files.writeText(path.join(directory, 'agent.json'), json);
   return ['agent.json'];
 }
 
-export async function readAgentHistories(directory, projectIds, service) {
+export async function readAgentHistories(files, directory, projectIds, service) {
   const file = path.join(directory, 'agent.json');
   let size;
   try {
-    size = (await stat(file)).size;
+    size = await files.size(file);
   } catch (error) {
     if (error.code === 'ENOENT') return new Map();
     throw error;
@@ -26,7 +25,7 @@ export async function readAgentHistories(directory, projectIds, service) {
   if (size > MAX_HISTORY_BYTES) throw agentArchiveError('聊天记录超过 32 MB，无法导入');
   let data;
   try {
-    data = JSON.parse(await readFile(file, 'utf8'));
+    data = JSON.parse(await files.readText(file));
   } catch {
     throw agentArchiveError('聊天记录 JSON 已损坏');
   }

@@ -1,3 +1,4 @@
+import { DESKTOP_ERRORS, desktopError } from '../../contracts/desktopErrors.js';
 import type { OpenCanvasResult, PrepareCanvasResult } from './canvasEntry';
 export interface WorkspaceView {
   state: 'ready';
@@ -29,6 +30,6 @@ declare global {
   }
 }
 export function desktopShell(): NakoShell {
-  if (!window.nakoShell) throw new Error('本机桌面环境不可用。');
+  if (!window.nakoShell) throw desktopError(DESKTOP_ERRORS.unavailable, '本机桌面环境不可用。', 'shell.access', 503);
   return window.nakoShell;
 }

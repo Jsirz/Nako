@@ -25,41 +25,43 @@ export function installDramaConversationShortcut(
 ) {
   browserServices.__NAKO_AGENT_CONVERSATION__ = conversation;
   window.dispatchEvent(new Event('nako:agent-conversation-ready'));
-  let disposed = false;
-  let selecting = false;
-  let root: HTMLElement | null = null;
-  let expanded = false;
-  let catalog: AgentSkill[] | null = null;
-  let loading = false;
-  let error = '';
-  let filter = '';
-  let category = '';
-  let context = '';
-  let feedback = '';
-  let feedbackTimer: number | undefined;
-  let selectionChip: HTMLElement | null = null;
-  let refresh: () => void = () => {};
-  let collapse: () => void = () => {};
-  let syncPlacement: () => void = () => {};
+  const local = createSkillShortcutState();
+  const actions = createSkillShortcutActions(canvas, conversation, skills, local);
+  const mount = createSkillShortcutMount(conversation, local, actions);
+  return bindSkillShortcut(conversation, local, actions, mount);
+}
+
+function createSkillShortcutState() {
+  return {
+    disposed: false, selecting: false, root: null as HTMLElement | null, expanded: false,
+    catalog: null as AgentSkill[] | null, loading: false, error: '', filter: '', category: '',
+    context: '', feedback: '', feedbackTimer: undefined as number | undefined,
+    selectionChip: null as HTMLElement | null, refresh: () => {}, collapse: () => {}, syncPlacement: () => {},
+    catalogRevision: 0, missingSelection: '',
+  };
+}
+type SkillShortcutState = ReturnType<typeof createSkillShortcutState>;
+function createSkillShortcutActions(canvas: DramaCanvasBridge, conversation: AgentConversation,
+  skills: AgentSkillClient, local: SkillShortcutState) {
   const skillName = (slug: string) =>
-    catalog?.find((skill) => skill.slug === slug)?.name ||
+    local.catalog?.find((skill) => skill.slug === slug)?.name ||
     productionProfileForSkill(slug)?.name ||
     slug;
   const clearFeedback = () => {
-    window.clearTimeout(feedbackTimer);
-    feedback = '';
+    window.clearTimeout(local.feedbackTimer);
+    local.feedback = '';
   };
 
   const select = async (slug: string | null, focusComposer = true) => {
-    if (disposed || selecting) return;
-    selecting = true;
+    if (local.disposed || local.selecting) return;
+    local.selecting = true;
     clearFeedback();
-    error = '';
-    refresh();
+    local.error = '';
+    local.refresh();
     const project = canvas.projectId();
     const session = conversation.snapshot().sessionId;
     const current = () =>
-      !disposed &&
+      !local.disposed &&
       project === canvas.projectId() &&
       (!session || session === conversation.snapshot().sessionId);
     try {
@@ -82,21 +84,21 @@ export function installDramaConversationShortcut(
       const selected = await conversation.selectSkill(slug);
       if (!current()) return;
       if (!selected) {
-        error = '请等待当前回复或操作完成，再切换 SKILL。';
-        refresh();
+        local.error = '请等待当前回复或操作完成，再切换 SKILL。';
+        local.refresh();
         return;
       }
-      error = '';
-      feedback = slug ? `已使用「${skillName(slug)}」` : '已取消技能';
-      if (selectionChip) {
-        selectionChip.dataset.feedback = 'true';
+      local.error = '';
+      local.feedback = slug ? `已使用「${skillName(slug)}」` : '已取消技能';
+      if (local.selectionChip) {
+        local.selectionChip.dataset.feedback = 'true';
       }
-      feedbackTimer = window.setTimeout(() => {
-        feedback = '';
-        if (selectionChip) delete selectionChip.dataset.feedback;
-        refresh();
+      local.feedbackTimer = window.setTimeout(() => {
+        local.feedback = '';
+        if (local.selectionChip) delete local.selectionChip.dataset.feedback;
+        local.refresh();
       }, 2600);
-      collapse();
+      local.collapse();
       if (!focusComposer || document.querySelector('[aria-modal="true"]')) return;
       // The native React commit may still be enabling the textarea.
       for (
@@ -111,41 +113,46 @@ export function installDramaConversationShortcut(
       document.querySelector<HTMLTextAreaElement>('[data-nako-agent-composer]')?.focus();
     } catch (cause) {
       if (current()) {
-        error = cause instanceof Error ? cause.message : '暂时无法切换 SKILL。';
-        refresh();
+        local.error = cause instanceof Error ? cause.message : '暂时无法切换 SKILL。';
+        local.refresh();
       }
     } finally {
-      selecting = false;
-      if (!disposed) refresh();
+      local.selecting = false;
+      if (!local.disposed) local.refresh();
     }
   };
 
-  let catalogRevision = 0;
-  let missingSelection = '';
   const readCatalog = async () => {
-    const revision = catalogRevision;
-    if (loading || disposed) return;
-    loading = true;
-    error = '';
-    refresh();
+    const revision = local.catalogRevision;
+    if (local.loading || local.disposed) return;
+    local.loading = true;
+    local.error = '';
+    local.refresh();
     try {
       const result = await skills.list();
-      if (!disposed && revision === catalogRevision) catalog = result;
+      if (!local.disposed && revision === local.catalogRevision) local.catalog = result;
     } catch (cause) {
-      if (!disposed) error = cause instanceof Error ? cause.message : '读取技能库失败，请重试。';
+      if (!local.disposed) local.error = cause instanceof Error ? cause.message : '读取技能库失败，请重试。';
     } finally {
-      loading = false;
-      if (!disposed) {
-        refresh();
-        if (revision !== catalogRevision) void readCatalog();
+      local.loading = false;
+      if (!local.disposed) {
+        local.refresh();
+        if (revision !== local.catalogRevision) void readCatalog();
       }
     }
   };
 
+  return { select, readCatalog, skillName, clearFeedback };
+}
+
+type SkillShortcutActions = ReturnType<typeof createSkillShortcutActions>;
+function createSkillShortcutMount(conversation: AgentConversation, local: SkillShortcutState,
+  actions: SkillShortcutActions) {
+  const { select, readCatalog } = actions;
   const mount = () => {
-    if (disposed) return;
-    if (root?.isConnected) {
-      syncPlacement();
+    if (local.disposed) return;
+    if (local.root?.isConnected) {
+      local.syncPlacement();
       return;
     }
     const composer = document.querySelector<HTMLTextAreaElement>('[data-nako-agent-composer]');
@@ -156,10 +163,10 @@ export function installDramaConversationShortcut(
       composer.parentElement && composer.parentElement !== agentPanel
         ? composer.parentElement
         : composer;
-    selectionChip?.remove();
-    selectionChip = document.createElement('div');
-    selectionChip.className = 'nako-agent-skill-context';
-    selectionChip.dataset.nakoAgentSelectedSkill = 'true';
+    local.selectionChip?.remove();
+    local.selectionChip = document.createElement('div');
+    local.selectionChip.className = 'nako-agent-skill-context';
+    local.selectionChip.dataset.nakoAgentSelectedSkill = 'true';
     const chip = document.createElement('div');
     chip.className = 'nako-agent-skill-chip';
     const chipLabel = document.createElement('span');
@@ -177,23 +184,23 @@ export function installDramaConversationShortcut(
       void select(null);
     });
     chip.append(chipIcon, chipLabel, cancel);
-    selectionChip.append(chip);
+    local.selectionChip.append(chip);
     const contextSlot = agentPanel.querySelector('[data-nako-agent-context-slot]');
-    if (contextSlot) contextSlot.append(selectionChip);
-    else composer.before(selectionChip);
-    root = document.createElement('section');
-    root.setAttribute(ATTRIBUTE, 'true');
-    root.dataset.nakoSkillCatalog = 'true';
-    root.className = 'nako-agent-skills';
-    expanded = false;
-    filter = '';
+    if (contextSlot) contextSlot.append(local.selectionChip);
+    else composer.before(local.selectionChip);
+    local.root = document.createElement('section');
+    local.root.setAttribute(ATTRIBUTE, 'true');
+    local.root.dataset.nakoSkillCatalog = 'true';
+    local.root.className = 'nako-agent-skills';
+    local.expanded = false;
+    local.filter = '';
     const heading = document.createElement('h2');
     heading.className = 'nako-agent-skills-heading';
     heading.textContent = '技能库';
     const categories = document.createElement('select');
     categories.className = 'nako-agent-skills-categories';
     categories.setAttribute('aria-label', '技能分类');
-    categories.addEventListener('change', () => { category = categories.value; refresh(); });
+    categories.addEventListener('change', () => { local.category = categories.value; local.refresh(); });
     const manage = document.createElement('button');
     manage.type = 'button'; manage.className = 'nako-agent-skills-retry';
     manage.textContent = '管理技能';
@@ -238,81 +245,97 @@ export function installDramaConversationShortcut(
     });
     optionsInner.append(categories, manage, search, list);
     options.append(optionsInner);
-    root.append(heading, toggle, options, note, retry);
+    local.root.append(heading, toggle, options, note, retry);
     const skillsSlot =
       agentPanel.querySelector('[data-nako-agent-welcome-skills-slot]') ||
       agentPanel.querySelector('[data-nako-agent-skills-slot]');
-    if (skillsSlot) skillsSlot.append(root);
-    else anchor.before(root);
+    if (skillsSlot) skillsSlot.append(local.root);
+    else anchor.before(local.root);
+    bindSkillShortcutControls(agentPanel, { heading, toggle, options, hint, chipLabel, chip,
+      chipIcon, cancel, note, retry, search, categories, list }, conversation, local, actions);
+  };
+  return mount;
+}
+
+type SkillShortcutControls = {
+  heading: HTMLHeadingElement; toggle: HTMLButtonElement; options: HTMLDivElement; hint: HTMLSpanElement;
+  chipLabel: HTMLSpanElement; chip: HTMLDivElement; chipIcon: HTMLSpanElement; cancel: HTMLButtonElement;
+  note: HTMLParagraphElement; retry: HTMLButtonElement; search: HTMLInputElement;
+  categories: HTMLSelectElement; list: HTMLDivElement;
+};
+function bindSkillShortcutControls(agentPanel: Element, controls: SkillShortcutControls,
+  conversation: AgentConversation, local: SkillShortcutState,
+  { select, readCatalog, skillName }: SkillShortcutActions) {
+  const { heading, toggle, options, hint, chipLabel, chip, chipIcon, cancel, note, retry, search, categories, list } = controls;
     let listSignature = '';
-    collapse = () => {
-      expanded = false;
-      refresh();
+    local.collapse = () => {
+      local.expanded = false;
+      local.refresh();
     };
-    refresh = () => {
-      if (!root?.isConnected || disposed) return;
+    local.refresh = () => {
+      if (!local.root?.isConnected || local.disposed) return;
       const snapshot = conversation.snapshot();
       const welcome =
-        root.parentElement?.hasAttribute('data-nako-agent-welcome-skills-slot') ?? false;
-      const showOptions = welcome || expanded;
-      root.dataset.presentation = welcome ? 'welcome' : 'compact';
+        local.root.parentElement?.hasAttribute('data-nako-agent-welcome-skills-slot') ?? false;
+      const showOptions = welcome || local.expanded;
+      local.root.dataset.presentation = welcome ? 'welcome' : 'compact';
       heading.hidden = !welcome;
       toggle.hidden = welcome;
       toggle.setAttribute('aria-expanded', String(showOptions));
-      root.dataset.expanded = String(showOptions);
+      local.root.dataset.expanded = String(showOptions);
       options.setAttribute('aria-hidden', String(!showOptions));
       options.inert = !showOptions;
-      hint.textContent = expanded ? '收起' : '选择技能';
+      hint.textContent = local.expanded ? '收起' : '选择技能';
       const active = snapshot.selectedSkill;
-      const missing = active && catalog && !catalog.some(skill => skill.slug === active.slug);
-      if (!missing) missingSelection = '';
+      const missing = active && local.catalog && !local.catalog.some(skill => skill.slug === active.slug);
+      if (!missing) local.missingSelection = '';
       const selectionKey = `${snapshot.sessionId}:${active?.slug}`;
-      if (missing && missingSelection !== selectionKey && !snapshot.busy && !snapshot.restoring && !selecting) {
-        missingSelection = selectionKey;
+      if (missing && local.missingSelection !== selectionKey && !snapshot.busy && !snapshot.restoring && !local.selecting) {
+        local.missingSelection = selectionKey;
         void select(null, false);
       }
       const name = active ? skillName(active.slug) : '';
-      if (selectionChip) selectionChip.hidden = !active && !snapshot.restoring;
+      if (local.selectionChip) local.selectionChip.hidden = !active && !snapshot.restoring;
       chipLabel.textContent = snapshot.restoring ? '正在恢复技能…' : name;
       chipLabel.title = name;
       chip.dataset.active = String(Boolean(active) && !snapshot.restoring);
       chipIcon.hidden = !active || snapshot.restoring;
       cancel.hidden = !active || snapshot.restoring;
-      cancel.disabled = selecting || snapshot.busy;
+      cancel.disabled = local.selecting || snapshot.busy;
       cancel.setAttribute('aria-label', `取消使用${name}`);
-      chip.setAttribute('aria-busy', String(selecting || snapshot.restoring));
+      chip.setAttribute('aria-busy', String(local.selecting || snapshot.restoring));
       note.textContent =
-        error ||
-        (selecting ? '正在切换技能…' : feedback) ||
-        (showOptions && loading
+        local.error ||
+        (local.selecting ? '正在切换技能…' : local.feedback) ||
+        (showOptions && local.loading
           ? '正在读取技能库…'
           : showOptions && snapshot.restoring
             ? '正在读取当前选择…'
             : '');
       note.hidden = !note.textContent;
-      note.dataset.nakoState = error ? 'error' : feedback ? 'success' : 'loading';
-      retry.hidden = !error || selecting;
-      retry.disabled = loading;
-      const skillCatalog = catalog || [];
+      note.dataset.nakoState = local.error ? 'error' : local.feedback ? 'success' : 'loading';
+      retry.hidden = !local.error || local.selecting;
+      retry.disabled = local.loading;
+      const skillCatalog = local.catalog || [];
       search.hidden = skillCatalog.length <= 4;
       const names = [...new Set(skillCatalog.map(skill => skill.category || '其他'))];
       const categorySignature = JSON.stringify(names);
       if (categories.dataset.signature !== categorySignature) {
         categories.dataset.signature = categorySignature;
         categories.replaceChildren(new Option('全部分类', ''), ...names.map(name => new Option(name, name)));
-        if (!names.includes(category)) category = '';
+        if (!names.includes(local.category)) local.category = '';
       }
-      categories.value = category;
+      categories.value = local.category;
       const signature = JSON.stringify([
         showOptions,
         skillCatalog,
-        category,
-        filter,
-        loading,
+        local.category,
+        local.filter,
+        local.loading,
         snapshot.restoring,
         active,
         snapshot.busy,
-        selecting,
+        local.selecting,
       ]);
       if (signature === listSignature || !showOptions) return;
       listSignature = signature;
@@ -322,14 +345,14 @@ export function installDramaConversationShortcut(
           : null;
       list.replaceChildren();
       const matching = skillCatalog
-        .filter((skill) => !category || (skill.category || '其他') === category)
+        .filter((skill) => !local.category || (skill.category || '其他') === local.category)
         .filter((skill) =>
-          `${skill.name} ${skill.description} ${skill.slug}`.toLowerCase().includes(filter),
+          `${skill.name} ${skill.description} ${skill.slug}`.toLowerCase().includes(local.filter),
         );
-      if (!loading && catalog && !matching.length) {
+      if (!local.loading && local.catalog && !matching.length) {
         const empty = document.createElement('p');
         empty.className = 'nako-agent-skills-note';
-        empty.textContent = filter ? '没有匹配的 SKILL。' : '此分类暂无技能，可在“管理技能”中添加。';
+        empty.textContent = local.filter ? '没有匹配的 SKILL。' : '此分类暂无技能，可在“管理技能”中添加。';
         list.append(empty);
       }
       for (const skill of matching) {
@@ -341,7 +364,7 @@ export function installDramaConversationShortcut(
           !snapshot.restoring &&
           snapshot.selectedSkill?.slug === skill.slug;
         option.setAttribute('aria-pressed', String(selected));
-        option.disabled = selecting || snapshot.busy;
+        option.disabled = local.selecting || snapshot.busy;
         const name = document.createElement('strong');
         name.textContent = skill.name;
         const description = document.createElement('span');
@@ -359,61 +382,63 @@ export function installDramaConversationShortcut(
       }
     };
     toggle.addEventListener('click', () => {
-      expanded = !expanded;
-      refresh();
-      if (expanded && !catalog) void readCatalog();
+      local.expanded = !local.expanded;
+      local.refresh();
+      if (local.expanded && !local.catalog) void readCatalog();
     });
     search.addEventListener('input', () => {
-      filter = search.value.trim().toLowerCase();
-      refresh();
+      local.filter = search.value.trim().toLowerCase();
+      local.refresh();
     });
-    root.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || !expanded) return;
+    local.root!.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !local.expanded) return;
       event.preventDefault();
       event.stopPropagation();
-      collapse();
+      local.collapse();
       toggle.focus();
     });
-    syncPlacement = () => {
-      if (!root?.isConnected) return;
+    local.syncPlacement = () => {
+      if (!local.root?.isConnected) return;
       const target =
         agentPanel.querySelector('[data-nako-agent-welcome-skills-slot]') ||
         agentPanel.querySelector('[data-nako-agent-skills-slot]');
-      if (target && root.parentElement !== target) {
-        target.append(root);
-        expanded = false;
-        filter = '';
+      if (target && local.root.parentElement !== target) {
+        target.append(local.root);
+        local.expanded = false;
+        local.filter = '';
         search.value = '';
         listSignature = '';
-        refresh();
+        local.refresh();
       }
       if (
         target?.hasAttribute('data-nako-agent-welcome-skills-slot') &&
-        !catalog &&
-        !loading &&
-        !error
+        !local.catalog &&
+        !local.loading &&
+        !local.error
       )
         void readCatalog();
     };
-    refresh();
-    syncPlacement();
-  };
+    local.refresh();
+    local.syncPlacement();
+}
+function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcutState,
+  { clearFeedback, readCatalog, select }: SkillShortcutActions, mount: () => void) {
   const unobserve = observeStableEnhancement(mount);
   const unsubscribe = conversation.subscribe(() => {
     const snapshot = conversation.snapshot();
     const next = `${snapshot.projectId || ''}:${snapshot.sessionId || ''}`;
-    if (next !== context) {
-      context = next;
-      expanded = false;
-      error = '';
-      filter = '';
+    if (next !== local.context) {
+      local.context = next;
+      local.expanded = false;
+      local.error = '';
+      local.filter = '';
       clearFeedback();
-      if (selectionChip) delete selectionChip.dataset.feedback;
-      const search = root?.querySelector<HTMLInputElement>('input[type=search]');
+      if (local.selectionChip) delete local.selectionChip.dataset.feedback;
+      const search = local.root?.querySelector<HTMLInputElement>('input[type=search]');
       if (search) search.value = '';
     }
-    refresh();
-    if (snapshot.selectedSkill?.source === 'local' && !catalog && !loading && !error)
+    local.refresh();
+    if (snapshot.selectedSkill?.source === 'local' && !local.catalog && !local.loading && !local.error)
       void readCatalog();
   });
   const onSelect = (event: Event) => {
@@ -478,17 +503,17 @@ export function installDramaConversationShortcut(
     @media(prefers-reduced-motion:reduce){.nako-agent-skills *,.nako-agent-skill-context *{transition:none!important;animation:none!important}}
   `;
   document.head.append(style);
-  const onCatalogChanged = () => { catalogRevision++; catalog = null; void readCatalog(); };
+  const onCatalogChanged = () => { local.catalogRevision++; local.catalog = null; void readCatalog(); };
   window.addEventListener(SKILL_CATALOG_CHANGED, onCatalogChanged);
   window.addEventListener(SELECT_AGENT_SKILL_EVENT, onSelect);
   return () => {
-    disposed = true;
+    local.disposed = true;
     clearFeedback();
     unobserve();
     unsubscribe();
     style.remove();
-    root?.remove();
-    selectionChip?.remove();
+    local.root?.remove();
+    local.selectionChip?.remove();
     window.removeEventListener(SKILL_CATALOG_CHANGED, onCatalogChanged);
     window.removeEventListener(SELECT_AGENT_SKILL_EVENT, onSelect);
     conversation.dispose();

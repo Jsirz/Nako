@@ -127,6 +127,27 @@ export function CanvasPromptEditor(React: Runtime, props: Props, vendorRuntime: 
       currentRef.current.onChange(value);
     }
   }, []);
+  const state = { currentRef, aliveRef, lastValueRef, editorRef, popupRef, rootRef, scrollRef,
+    timersRef, framesRef, presetsRef, loadRef, queryRef, setPresetError };
+  const { presetItems, reloadPresets, makePopup } = usePromptSuggestions(React, vendor, state);
+  const extensions = React.useMemo(() => promptExtensions(vendor, currentRef, presetItems, makePopup),
+    [vendor, presetItems, makePopup]);
+  const editor = usePromptEditor(React, vendor, props, state, extensions, sync, keepPagePosition, schedule);
+  usePromptEditorLifecycle(React, props, editor, state, nextFrame);
+  return renderPromptEditor(React, props, vendor, editor, state, keepPagePosition, presetError, reloadPresets);
+}
+
+type PromptEditorState = {
+  currentRef: ReactTypes.RefObject<Props>; aliveRef: ReactTypes.RefObject<boolean>;
+  lastValueRef: ReactTypes.RefObject<string>; editorRef: ReactTypes.RefObject<Editor | null>;
+  popupRef: ReactTypes.RefObject<ReturnType<typeof createPromptSuggestions> | null>;
+  rootRef: ReactTypes.RefObject<HTMLDivElement | null>; scrollRef: ReactTypes.RefObject<HTMLDivElement | null>;
+  timersRef: ReactTypes.RefObject<Set<ReturnType<typeof setTimeout>>>; framesRef: ReactTypes.RefObject<Set<number>>;
+  presetsRef: ReactTypes.RefObject<PromptPresetConfig>; loadRef: ReactTypes.RefObject<AbortController | null>;
+  queryRef: ReactTypes.RefObject<string>; setPresetError: ReactTypes.Dispatch<ReactTypes.SetStateAction<string>>;
+};
+function usePromptSuggestions(React: Runtime, vendor: Vendor, { currentRef, presetsRef, loadRef,
+  aliveRef, popupRef, queryRef, setPresetError }: PromptEditorState) {
   const presetItems = React.useCallback((query: string) => {
     const categories = presetsRef.current[currentRef.current.type || 'image'] || [],
       needle = query.toLowerCase();
@@ -211,8 +232,13 @@ export function CanvasPromptEditor(React: Runtime, props: Props, vendorRuntime: 
     },
     [vendor.PresetList, vendor.MentionList, vendor.ui, reloadPresets],
   );
-  const extensions = React.useMemo(
-    () => [
+  return { presetItems, reloadPresets, makePopup };
+}
+
+function promptExtensions(vendor: Vendor, currentRef: ReactTypes.RefObject<Props>,
+  presetItems: ReturnType<typeof usePromptSuggestions>['presetItems'],
+  makePopup: ReturnType<typeof usePromptSuggestions>['makePopup']) {
+  return [
       vendor.StarterKit.configure({
         heading: false,
         blockquote: false,
@@ -342,9 +368,13 @@ export function CanvasPromptEditor(React: Runtime, props: Props, vendorRuntime: 
           render: () => makePopup(false),
         },
       }),
-    ],
-    [vendor, presetItems, makePopup],
-  );
+    ];
+}
+
+function usePromptEditor(React: Runtime, vendor: Vendor, props: Props,
+  { editorRef, popupRef, rootRef, currentRef }: PromptEditorState, extensions: unknown[],
+  sync: (editor: Editor) => void, keepPagePosition: () => void,
+  schedule: (fn: () => void, delay: number) => ReturnType<typeof setTimeout>) {
   const editor = vendor.useEditor(
     {
       extensions,
@@ -375,6 +405,12 @@ export function CanvasPromptEditor(React: Runtime, props: Props, vendorRuntime: 
     },
     [],
   );
+  return editor;
+}
+
+function usePromptEditorLifecycle(React: Runtime, props: Props, editor: Editor | null,
+  { editorRef, aliveRef, timersRef, framesRef, loadRef, popupRef, currentRef, rootRef, scrollRef }: PromptEditorState,
+  nextFrame: (fn: () => void) => void) {
   React.useLayoutEffect(() => {
     editorRef.current = editor;
   }, [editor]);
@@ -477,6 +513,11 @@ export function CanvasPromptEditor(React: Runtime, props: Props, vendorRuntime: 
     root.addEventListener('wheel', wheel, { passive: false });
     return () => root.removeEventListener('wheel', wheel);
   }, []);
+}
+
+function renderPromptEditor(React: Runtime, props: Props, vendor: Vendor, editor: Editor | null,
+  { rootRef, scrollRef }: PromptEditorState, keepPagePosition: () => void,
+  presetError: string, reloadPresets: () => Promise<void>) {
   const { EditorContent } = vendor;
   return (
     <div

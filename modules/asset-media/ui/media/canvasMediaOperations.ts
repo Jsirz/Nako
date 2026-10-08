@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { loadCollageImage, renderImageCollage } from './imageCollage';
 import { ASSET_CATEGORIES, assetCategory } from './assetOrganization';
 import type * as React from 'react';
@@ -86,21 +87,27 @@ const nodeType = (kind: MediaKind) =>
   ({ image: 'Upload Image', video: 'Upload Video', audio: 'Upload Audio' })[kind];
 const message = (error: unknown) => (error instanceof Error ? error.message : '素材处理失败');
 
+type MediaJob = { token: string; abort: AbortController; preview?: string };
+
 /** A project owns its media jobs. Results only replace the placeholder of the same operation. */
-export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = runtime) {
-  const projectId = binding.getProjectId();
-  let disposed = false;
-  const active = () => !disposed && binding.isActive() && binding.getProjectId() === projectId;
-  const jobs = new Map<string, { token: string; abort: AbortController; preview?: string }>();
-  const start = (nodeId: string, preview?: string) => {
-    const previous = jobs.get(nodeId);
+class CanvasMediaSession {
+  private readonly projectId: string | undefined;
+  private disposed = false;
+  private readonly jobs = new Map<string, MediaJob>();
+  constructor(private readonly binding: MediaBinding, private readonly api: MediaRuntime) {
+    this.projectId = binding.getProjectId();
+  }
+  private readonly active = () => !this.disposed && this.binding.isActive() && this.binding.getProjectId() === this.projectId;
+  private readonly start = (nodeId: string, preview?: string): MediaJob => {
+    const previous = this.jobs.get(nodeId);
     previous?.abort.abort();
-    if (previous?.preview) api.revokePreview(previous.preview);
-    const job = { token: api.createId(), abort: new AbortController(), preview };
-    jobs.set(nodeId, job);
+    if (previous?.preview) this.api.revokePreview(previous.preview);
+    const job = { token: this.api.createId(), abort: new AbortController(), preview };
+    this.jobs.set(nodeId, job);
     return job;
   };
-  const patch = (id: string, job: ReturnType<typeof start>, value: Partial<CanvasNode>) => {
+  private readonly patch = (id: string, job: MediaJob, value: Partial<CanvasNode>) => {
+    const { active, jobs, binding } = this;
     if (!active() || jobs.get(id) !== job) return false;
     let applied = false;
     binding.setNodes((nodes) =>
@@ -112,18 +119,19 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
     );
     return applied;
   };
-  const finish = (id: string, job: ReturnType<typeof start>) => {
-    if (jobs.get(id) !== job) return;
-    jobs.delete(id);
-    if (job.preview) api.revokePreview(job.preview);
+  private readonly finish = (id: string, job: MediaJob) => {
+    if (this.jobs.get(id) !== job) return;
+    this.jobs.delete(id);
+    if (job.preview) this.api.revokePreview(job.preview);
   };
-  const complete = async (
+  private readonly complete = async (
     node: CanvasNode,
-    job: ReturnType<typeof start>,
+    job: MediaJob,
     kind: MediaKind,
     request: () => Promise<string>,
     preserveOnFailure = false,
   ) => {
+    const { api, active, jobs, patch, finish } = this;
     try {
       // Attach the rejection handler immediately, before waiting for optional metadata.
       const url = await request();
@@ -152,17 +160,18 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       finish(node.id, job);
     }
   };
-  const insert = (node: CanvasNode, job: ReturnType<typeof start>) => {
+  private readonly insert = (node: CanvasNode, job: MediaJob) => {
+    const { active, binding } = this;
     if (!active()) return false;
     binding.setNodes((nodes) => [...nodes, { ...node, mediaOperationId: job.token }]);
     return true;
   };
-  return {
     async upload(
       files: ArrayLike<File> | null,
       point: { x: number; y: number },
       viewport: CanvasViewport,
     ) {
+      const { active, api, projectId, start, insert, binding, complete } = this;
       if (!active() || !files) return;
       const position = {
         x: (point.x - viewport.x) / viewport.zoom,
@@ -199,8 +208,9 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
           api.uploadFile(file, projectId, id, job.abort.signal),
         );
       }
-    },
+    }
     async replace(id: string, file: File) {
+      const { active, binding, start, complete, api, projectId } = this;
       if (!active()) return;
       const current = binding.getNodes().find((node) => node.id === id);
       if (!current) return;
@@ -228,8 +238,9 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
         () => api.uploadFile(file, projectId, id, job.abort.signal),
         true,
       );
-    },
+    }
     async snapshot(sourceId: string, frames: { data: string; title: string; offset: number }[]) {
+      const { active, binding, api, start, insert, complete, projectId } = this;
       if (!active()) return;
       const source = binding.getNodes().find((node) => node.id === sourceId);
       if (!source) return;
@@ -260,7 +271,7 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
           ),
         ),
       );
-    },
+    }
     async saveEditedImage(
       sourceId: string,
       data: string,
@@ -268,10 +279,11 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       getSourceWidth: (node: CanvasNode) => number,
       dimensions?: { width: number; height: number },
     ) {
+      const { binding, active, jobs, start, api, projectId, finish } = this;
       const original = binding.getNodes().find((node) => node.id === sourceId);
-      if (!active() || !original) throw new Error('原图片已不在当前画布。');
+      if (!active() || !original) throw mediaError('原图片已不在当前画布。');
       const key = `image-edit:${sourceId}:${title}`;
-      if (jobs.has(key)) throw new Error('图片正在保存，请稍候。');
+      if (jobs.has(key)) throw mediaError('图片正在保存，请稍候。');
       const job = start(key);
       const current = () =>
         active() &&
@@ -316,13 +328,14 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       } finally {
         finish(key, job);
       }
-    },
+    }
     async createCollage(
       ids: string[],
       getWidth: (node: CanvasNode) => number,
       getHeight: (node: CanvasNode) => number,
       imaging = { load: loadCollageImage, render: renderImageCollage },
     ) {
+      const { active, binding, jobs, start, api, projectId, finish } = this;
       if (!active()) return false;
       const selected = new Set(ids);
       const sources = binding
@@ -356,7 +369,7 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
           const image = await imaging.load(node.resultUrl as string, job.abort.signal);
           decodedPixels += image.naturalWidth * image.naturalHeight;
           if (decodedPixels > 64_000_000)
-            throw new Error('所选图片总像素过大，请减少图片数量后重试。');
+            throw mediaError('所选图片总像素过大，请减少图片数量后重试。');
           return {
             image,
             naturalWidth: image.naturalWidth,
@@ -407,7 +420,7 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
         job.abort.abort();
         finish(key, job);
       }
-    },
+    }
     async saveCroppedImages(
       sourceId: string,
       outputs: Array<{ data: string; width: number; height: number; row: number; column: number }>,
@@ -415,8 +428,9 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       getHeight: (node: CanvasNode) => number,
       onProgress?: (count: number) => void,
     ) {
+      const { binding, active, jobs, start, api, projectId, finish } = this;
       const original = binding.getNodes().find((node) => node.id === sourceId);
-      if (!active() || !original) throw new Error('原图片已不在当前画布。');
+      if (!active() || !original) throw mediaError('原图片已不在当前画布。');
       if (
         !outputs.length ||
         outputs.length > 25 ||
@@ -428,9 +442,9 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
             ),
         )
       )
-        throw new Error('裁切结果无效，请重新选择区域。');
+        throw mediaError('裁切结果无效，请重新选择区域。');
       const key = 'crop:' + sourceId;
-      if (jobs.has(key)) throw new Error('裁切图片正在保存，请稍候。');
+      if (jobs.has(key)) throw mediaError('裁切图片正在保存，请稍候。');
       const job = start(key),
         current = () =>
           active() &&
@@ -495,18 +509,19 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       } finally {
         finish(key, job);
       }
-    },
+    }
     async saveComposite(
       sourceId: string,
       data: string,
       layout: Record<string, unknown>,
       sourceWidth: number,
     ) {
-      if (!active()) throw new Error('当前画布已关闭，未保存合成图片。');
+      const { active, binding, jobs, start, api, projectId, finish } = this;
+      if (!active()) throw mediaError('当前画布已关闭，未保存合成图片。');
       if (!binding.getNodes().some((node) => node.id === sourceId))
-        throw new Error('原合成节点已删除。');
+        throw mediaError('原合成节点已删除。');
       const key = 'composite:' + sourceId;
-      if (jobs.has(key)) throw new Error('合成图片正在保存，请稍候。');
+      if (jobs.has(key)) throw mediaError('合成图片正在保存，请稍候。');
       const job = start(key),
         id = api.createId();
       const current = () =>
@@ -549,8 +564,9 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       } finally {
         finish(key, job);
       }
-    },
+    }
     async trimAudio(sourceId: string, startTime: number, endTime: number) {
+      const { active, binding, api, start, insert, complete, projectId } = this;
       if (!active()) return false;
       const source = binding.getNodes().find((node) => node.id === sourceId);
       if (
@@ -602,7 +618,7 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       } finally {
         clearTimeout(timer);
       }
-    },
+    }
     async importAsset(
       kind: MediaKind,
       url: string,
@@ -611,6 +627,7 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       generated: boolean,
       done: () => void,
     ) {
+      const { active, api, binding, projectId } = this;
       if (!active()) return;
       const metadata = await api.inspect(url, kind).catch(() => ({}) as MediaMetadata);
       if (!active()) return;
@@ -632,8 +649,9 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
       };
       binding.setNodes((nodes) => [...nodes, node]);
       done();
-    },
+    }
     dispose() {
+      const { binding, projectId, jobs, api } = this;
       // Cleanup may run after leaving the canvas. It may end this document's
       // placeholders, but never touch a different document loaded into the store.
       if (binding.getProjectId() === projectId) {
@@ -645,13 +663,28 @@ export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = run
           ),
         );
       }
-      disposed = true;
+      this.disposed = true;
       for (const job of jobs.values()) {
         job.abort.abort();
         if (job.preview) api.revokePreview(job.preview);
       }
       jobs.clear();
-    },
+    }
+}
+
+export function createCanvasMedia(binding: MediaBinding, api: MediaRuntime = runtime) {
+  const session = new CanvasMediaSession(binding, api);
+  return {
+    upload: session.upload.bind(session),
+    replace: session.replace.bind(session),
+    snapshot: session.snapshot.bind(session),
+    saveEditedImage: session.saveEditedImage.bind(session),
+    createCollage: session.createCollage.bind(session),
+    saveCroppedImages: session.saveCroppedImages.bind(session),
+    saveComposite: session.saveComposite.bind(session),
+    trimAudio: session.trimAudio.bind(session),
+    importAsset: session.importAsset.bind(session),
+    dispose: session.dispose.bind(session),
   };
 }
 
@@ -841,12 +874,12 @@ export function useCanvasCompositeSave(
       !live.current.enabled ||
       live.current.projectId !== projectId
     )
-      throw new Error('原画布会话已结束，合成图片未保存。');
+      throw mediaError('原画布会话已结束，合成图片未保存。');
     const source = live.current.getNodes().find((node) => node.id === id),
       current = owner.current;
-    if (!source || !current) throw new Error('合成节点已不在当前画布。');
+    if (!source || !current) throw mediaError('合成节点已不在当前画布。');
     const saved = await current.saveComposite(id, data, layout, options.getNodeWidth(source));
-    if (!saved) throw new Error('画布或合成内容已变化，本次结果未写回。');
+    if (!saved) throw mediaError('画布或合成内容已变化，本次结果未写回。');
   };
 }
 
@@ -872,9 +905,9 @@ export function useCanvasImageEditSave(
       !live.current.enabled ||
       live.current.projectId !== projectId
     )
-      throw new Error('原画布会话已结束，图片未保存。');
+      throw mediaError('原画布会话已结束，图片未保存。');
     const current = owner.current;
-    if (!current) throw new Error('当前画布尚未就绪。');
+    if (!current) throw mediaError('当前画布尚未就绪。');
     const saved = await current.saveEditedImage(
       id,
       data,
@@ -882,7 +915,7 @@ export function useCanvasImageEditSave(
       options.getNodeWidth,
       dimensions,
     );
-    if (!saved) throw new Error('画布或原图片已变化，本次结果未写回。');
+    if (!saved) throw mediaError('画布或原图片已变化，本次结果未写回。');
   };
 }
 
@@ -915,8 +948,8 @@ export function useCanvasCropSave(
       !live.current.enabled ||
       live.current.projectId !== projectId
     )
-      throw new Error('原画布会话已结束，裁切图片未保存。');
-    if (!owner.current) throw new Error('当前画布尚未就绪。');
+      throw mediaError('原画布会话已结束，裁切图片未保存。');
+    if (!owner.current) throw mediaError('当前画布尚未就绪。');
     const saved = await owner.current.saveCroppedImages(
       id,
       outputs,
@@ -924,7 +957,7 @@ export function useCanvasCropSave(
       options.getNodeHeight,
       onProgress,
     );
-    if (!saved) throw new Error('画布或原图片已变化，本次结果未写回。');
+    if (!saved) throw mediaError('画布或原图片已变化，本次结果未写回。');
   };
 }
 

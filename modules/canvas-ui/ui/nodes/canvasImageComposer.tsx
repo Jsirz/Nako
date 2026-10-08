@@ -24,29 +24,16 @@ import { installMidjourneyReferenceAdapter } from '../../../generation-core/api/
 const imageModes = { isAutomatic: isAutomaticImageMode };
 export function CanvasImageComposer(
   React: ComposerRuntime,
-  {
-    data: node,
-    isLoading = false,
-    connectedImageNodes: assets = [],
-    onUpdate,
-    onGenerate,
-    onSelect,
-  }: MediaComposerProps,
-  {
-    models,
-    ratios,
-    resolutions,
-    PromptEditor,
-    ConnectedAssets,
-    ModelSelector,
-    Dimensions,
-    AdvancedSettings,
-    Tooltip,
-    CollapseIcon,
-    SettingsIcon,
-    GenerateIcon,
-  }: MediaComposerComponents,
+  props: MediaComposerProps,
+  components: MediaComposerComponents,
 ) {
+  const state = useImageComposerState(React, props, components);
+  return renderImageComposer(React, props, components, state);
+}
+
+function useImageComposerState(React: ComposerRuntime, props: MediaComposerProps, components: MediaComposerComponents) {
+  const { data: node, isLoading = false, connectedImageNodes: assets = [], onUpdate } = props;
+  const { models, ratios, resolutions } = components;
   const [advancedOpen, setAdvancedOpen] = React.useState(false),
     [modeOpen, setModeOpen] = React.useState(false),
     [editing, setEditing] = React.useState(false);
@@ -111,6 +98,21 @@ export function CanvasImageComposer(
       onUpdate(node.id, changeComposerModel('image', node, next, ratios, resolutions));
   };
 
+  return { advancedOpen, setAdvancedOpen, modeOpen, setModeOpen, editing, setEditing, modeRoot,
+    model, hasImageInput, effectiveMode, specialModes, modeSupported, modeWarning, busy,
+    checking, blocked, warning, count, hasInput, disabled, references, referenceOptions,
+    assignments, modeLabel, changeModel };
+}
+
+function renderImageComposer(
+  React: ComposerRuntime, props: MediaComposerProps, components: MediaComposerComponents,
+  state: ReturnType<typeof useImageComposerState>,
+) {
+  const { data: node, readOnly = false, connectedImageNodes: assets = [], onUpdate, onGenerate, onSelect } = props;
+  const { models, ratios, resolutions, PromptEditor, ConnectedAssets, ModelSelector, Dimensions,
+    AdvancedSettings, Tooltip, CollapseIcon, SettingsIcon, GenerateIcon } = components;
+  const { advancedOpen, setAdvancedOpen, editing, setEditing, model, effectiveMode, modeWarning,
+    warning, busy, count, disabled, hasInput, checking, blocked, modeSupported, changeModel } = state;
   return (
     <div
       data-nako-generation-composer={'image'}
@@ -131,88 +133,12 @@ export function CanvasImageComposer(
         connectedImageNodes={assets}
         onUpdate={onUpdate}
       />
-      {model.name === 'Midjourney Imagine · API' && (
-        <div
-          data-nako-midjourney-references={'true'}
-          style={{
-            marginBottom: '8px',
-            padding: '8px',
-            border: '1px solid var(--nk-border)',
-            borderRadius: '8px',
-            background: 'var(--nk-surface)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              gap: '12px',
-              marginBottom: '6px',
-            }}
-          >
-            <strong style={{ fontSize: '12px', fontWeight: 600, color: 'var(--nk-text)' }}>
-              {'专用垫图'}
-            </strong>
-            <span style={{ fontSize: '10px', color: 'var(--nk-text-muted)' }}>
-              {'未指定的图片仍作为普通参考'}
-            </span>
-          </div>
-          <div
-            style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '6px' }}
-          >
-            {(references?.roles || []).map((j) => (
-              <label
-                style={{ display: 'grid', gap: '4px', minWidth: 0 }}
-                title={j.description}
-                key={j.key}
-              >
-                <span
-                  style={{ fontSize: '10px', fontWeight: 600, color: 'var(--nk-text-secondary)' }}
-                >
-                  {j.label}
-                </span>
-                <select
-                  aria-label={j.label}
-                  value={assignments[j.key] || ''}
-                  disabled={busy || referenceOptions.length === 0}
-                  onChange={(V) =>
-                    onUpdate(node.id, {
-                      midjourneyReferenceNodeIds:
-                        references?.assign(node, referenceOptions, j.key, V.currentTarget.value) ||
-                        {},
-                    })
-                  }
-                  style={{
-                    width: '100%',
-                    height: '30px',
-                    padding: '0 6px',
-                    border: '1px solid var(--nk-border)',
-                    borderRadius: '6px',
-                    background: 'var(--nk-input)',
-                    color: 'var(--nk-text)',
-                    fontSize: '11px',
-                    outline: 'none',
-                    opacity: referenceOptions.length === 0 ? 0.45 : 1,
-                  }}
-                >
-                  <option value={''}>{referenceOptions.length ? '未设置' : '先连接图片'}</option>
-                  {referenceOptions.map((V, z) => (
-                    <option value={V.id} key={V.id}>
-                      {String(V.title || V.prompt || `图片 ${z + 1}`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
+      {renderImageReferences(React, props, state)}
       <div
         className={`mb-1 relative group/prompt overflow-hidden prompt-editor-container custom-scrollbar ${editing ? 'is-prompt-editing cursor-text' : 'cursor-pointer'}`}
         onClick={(j) => {
           j.stopPropagation();
-          setEditing(true);
+          if (!readOnly) setEditing(true);
         }}
       >
         <CreativePromptTokens data={node} onUpdate={onUpdate} disabled={busy} />
@@ -222,7 +148,7 @@ export function CanvasImageComposer(
           onChange={(j) => onUpdate(node.id, { prompt: j })}
           connectedAssets={assets || []}
           isDark={!0}
-          disableDirectEdit={!editing}
+          disableDirectEdit={readOnly || !editing}
           onBlur={() => setEditing(!1)}
           key={`mention-editor-${node.id}`}
         />
@@ -267,75 +193,7 @@ export function CanvasImageComposer(
           <div className={'w-px h-3.5 bg-[var(--nk-surface-raised)]'} />
         </div>
         <div className={'relative flex items-center gap-1 h-full'}>
-          {specialModes.length > 0 && (
-            <div
-              className={'relative flex items-center h-full'}
-              ref={modeRoot}
-              onKeyDown={(event) => {
-                event.stopPropagation();
-                if (event.key === 'Escape' && modeOpen) {
-                  event.preventDefault();
-                  setModeOpen(false);
-                  modeRoot.current?.querySelector('button')?.focus();
-                }
-              }}
-            >
-              <Tooltip text={'特殊功能'}>
-                <button
-                  aria-label="特殊功能"
-                  aria-expanded={modeOpen}
-                  onClick={() => !busy && setModeOpen(!modeOpen)}
-                  disabled={busy}
-                  className={`flex items-center justify-center h-8 px-2 py-1 text-sm select-none rounded-lg transition-colors ${busy ? 'opacity-50 text-[var(--nk-text-muted)]' : 'hover:bg-[var(--nk-surface-raised)] active:bg-[var(--nk-hover)] text-[var(--nk-info)]'} ${modeOpen ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : ''}`}
-                >
-                  {(imageModes?.isAutomatic(node.imageMode) ??
-                  (!node.imageMode ||
-                    node.imageMode === 'text-to-image' ||
-                    node.imageMode === 'image-to-image'))
-                    ? '特殊功能'
-                    : modeLabel}
-                </button>
-              </Tooltip>
-              {modeOpen && (
-                <div
-                  className={
-                    'absolute bottom-full mb-2 left-1/2 -translate-x-1/2 min-w-[140px] bg-[var(--nk-surface-raised)] border border-[var(--nk-border)] rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 py-1.5'
-                  }
-                  onWheel={(j) => j.stopPropagation()}
-                >
-                  <button
-                    onClick={() => {
-                      if (busy) return;
-                      onUpdate(node.id, {
-                        imageMode: hasImageInput ? 'image-to-image' : 'text-to-image',
-                      });
-                      setModeOpen(false);
-                    }}
-                    className={`w-full flex items-center px-5 py-2.5 text-[16px] font-bold whitespace-nowrap transition-all duration-200 ${(imageModes?.isAutomatic(node.imageMode) ?? (!node.imageMode || node.imageMode === 'text-to-image' || node.imageMode === 'image-to-image')) ? 'bg-[var(--nk-selected)] text-[var(--nk-on-selected)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-hover)] hover:text-[var(--nk-text)]'}`}
-                    key={'automatic'}
-                  >
-                    <span>{'普通生成（自动）'}</span>
-                  </button>
-                  {specialModes.map((j) => {
-                    const V = node.imageMode === j.value;
-                    return (
-                      <button
-                        onClick={() => {
-                          if (busy) return;
-                          onUpdate(node.id, { imageMode: j.value });
-                          setModeOpen(false);
-                        }}
-                        className={`w-full flex items-center px-5 py-2.5 text-[16px] font-bold whitespace-nowrap transition-all duration-200 ${V ? 'bg-[var(--nk-selected)] text-[var(--nk-on-selected)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-hover)] hover:text-[var(--nk-text)]'}`}
-                        key={j.value}
-                      >
-                        <span>{j.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {renderImageModeMenu(React, props, components, state)}
           <Dimensions
             data={node}
             onUpdate={(patch) => {
@@ -399,6 +257,150 @@ export function CanvasImageComposer(
             onUpdate={onUpdate}
           />
         </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+function renderImageReferences(
+  React: ComposerRuntime,
+  { data: node, onUpdate }: MediaComposerProps,
+  { model, references, assignments, busy, referenceOptions }: ReturnType<typeof useImageComposerState>,
+) {
+  return model.name === 'Midjourney Imagine · API' && (
+    <div
+      data-nako-midjourney-references={'true'}
+      style={{
+        marginBottom: '8px',
+        padding: '8px',
+        border: '1px solid var(--nk-border)',
+        borderRadius: '8px',
+        background: 'var(--nk-surface)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: '12px',
+          marginBottom: '6px',
+        }}
+      >
+        <strong style={{ fontSize: '12px', fontWeight: 600, color: 'var(--nk-text)' }}>
+          {'专用垫图'}
+        </strong>
+        <span style={{ fontSize: '10px', color: 'var(--nk-text-muted)' }}>
+          {'未指定的图片仍作为普通参考'}
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '6px' }}>
+        {(references?.roles || []).map((j) => (
+          <label style={{ display: 'grid', gap: '4px', minWidth: 0 }} title={j.description} key={j.key}>
+            <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--nk-text-secondary)' }}>
+              {j.label}
+            </span>
+            <select
+              aria-label={j.label}
+              value={assignments[j.key] || ''}
+              disabled={busy || referenceOptions.length === 0}
+              onChange={(V) => onUpdate(node.id, {
+                midjourneyReferenceNodeIds:
+                  references?.assign(node, referenceOptions, j.key, V.currentTarget.value) || {},
+              })}
+              style={{
+                width: '100%',
+                height: '30px',
+                padding: '0 6px',
+                border: '1px solid var(--nk-border)',
+                borderRadius: '6px',
+                background: 'var(--nk-input)',
+                color: 'var(--nk-text)',
+                fontSize: '11px',
+                outline: 'none',
+                opacity: referenceOptions.length === 0 ? 0.45 : 1,
+              }}
+            >
+              <option value={''}>{referenceOptions.length ? '未设置' : '先连接图片'}</option>
+              {referenceOptions.map((V, z) => (
+                <option value={V.id} key={V.id}>
+                  {String(V.title || V.prompt || `图片 ${z + 1}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function renderImageModeMenu(
+  React: ComposerRuntime,
+  { data: node, onUpdate }: MediaComposerProps,
+  { Tooltip }: MediaComposerComponents,
+  { specialModes, modeRoot, modeOpen, setModeOpen, busy, modeLabel, hasImageInput }:
+    ReturnType<typeof useImageComposerState>,
+) {
+  return specialModes.length > 0 && (
+    <div
+      className={'relative flex items-center h-full'}
+      ref={modeRoot}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Escape' && modeOpen) {
+          event.preventDefault();
+          setModeOpen(false);
+          modeRoot.current?.querySelector('button')?.focus();
+        }
+      }}
+    >
+      <Tooltip text={'特殊功能'}>
+        <button
+          aria-label="特殊功能"
+          aria-expanded={modeOpen}
+          onClick={() => !busy && setModeOpen(!modeOpen)}
+          disabled={busy}
+          className={`flex items-center justify-center h-8 px-2 py-1 text-sm select-none rounded-lg transition-colors ${busy ? 'opacity-50 text-[var(--nk-text-muted)]' : 'hover:bg-[var(--nk-surface-raised)] active:bg-[var(--nk-hover)] text-[var(--nk-info)]'} ${modeOpen ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : ''}`}
+        >
+          {(imageModes?.isAutomatic(node.imageMode) ??
+            (!node.imageMode || node.imageMode === 'text-to-image' || node.imageMode === 'image-to-image'))
+            ? '特殊功能' : modeLabel}
+        </button>
+      </Tooltip>
+      {modeOpen && (
+        <div
+          className={'absolute bottom-full mb-2 left-1/2 -translate-x-1/2 min-w-[140px] bg-[var(--nk-surface-raised)] border border-[var(--nk-border)] rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 py-1.5'}
+          onWheel={(j) => j.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              if (busy) return;
+              onUpdate(node.id, { imageMode: hasImageInput ? 'image-to-image' : 'text-to-image' });
+              setModeOpen(false);
+            }}
+            className={`w-full flex items-center px-5 py-2.5 text-[16px] font-bold whitespace-nowrap transition-all duration-200 ${(imageModes?.isAutomatic(node.imageMode) ?? (!node.imageMode || node.imageMode === 'text-to-image' || node.imageMode === 'image-to-image')) ? 'bg-[var(--nk-selected)] text-[var(--nk-on-selected)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-hover)] hover:text-[var(--nk-text)]'}`}
+            key={'automatic'}
+          >
+            <span>{'普通生成（自动）'}</span>
+          </button>
+          {specialModes.map((j) => {
+            const V = node.imageMode === j.value;
+            return (
+              <button
+                onClick={() => {
+                  if (busy) return;
+                  onUpdate(node.id, { imageMode: j.value });
+                  setModeOpen(false);
+                }}
+                className={`w-full flex items-center px-5 py-2.5 text-[16px] font-bold whitespace-nowrap transition-all duration-200 ${V ? 'bg-[var(--nk-selected)] text-[var(--nk-on-selected)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-hover)] hover:text-[var(--nk-text)]'}`}
+                key={j.value}
+              >
+                <span>{j.label}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

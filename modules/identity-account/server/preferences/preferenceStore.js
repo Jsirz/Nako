@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS, IdentityError, identityError, identityFailure } from '../../../contracts/identityErrors.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
@@ -10,8 +11,10 @@ const MAX_KEYS = 10_000;
 const MAX_VALUE_LENGTH = 4 * 1024 * 1024;
 const MAX_DOCUMENT_LENGTH = 16 * 1024 * 1024;
 
-class PreferenceError extends Error {
-  constructor(message, status = 400) { super(message); this.status = status; }
+class PreferenceError extends IdentityError {
+  constructor(message, status = 400) {
+    super(status === 413 ? IDENTITY_ERRORS.preferenceTooLarge : IDENTITY_ERRORS.preferenceInvalid, message, 'preferences.update', status);
+  }
 }
 
 const isKey = key => typeof key === 'string' && key.length > 0 && key.length <= MAX_KEY_LENGTH && !/\p{Cc}/u.test(key);
@@ -21,7 +24,7 @@ function parseDocument(text) {
   const parsed = JSON.parse(text);
   if (parsed?.schemaVersion !== 1 || typeof parsed.browserImported !== 'boolean'
     || !parsed.values || typeof parsed.values !== 'object' || Array.isArray(parsed.values)) {
-    throw new Error('Invalid preference document');
+    throw identityError(IDENTITY_ERRORS.preferenceInvalid, 'Invalid preference document', 'preferences.parse');
   }
   const values = Object.fromEntries(Object.entries(parsed.values).filter(([key, value]) => isKey(key) && typeof value === 'string'));
   return { browserImported: parsed.browserImported, values };
@@ -58,7 +61,7 @@ export function createPreferenceStore(privateDirectory) {
       text = await readFile(file, 'utf8');
     } catch (error) {
       if (error.code === 'ENOENT') return emptyDocument();
-      throw error;
+      throw identityFailure(error, IDENTITY_ERRORS.preferenceRead, '偏好读取或保存失败。', 'preferences.read');
     }
     try {
       return parseDocument(text);

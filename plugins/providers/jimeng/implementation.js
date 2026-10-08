@@ -7,6 +7,10 @@ import crypto from 'crypto';
 import { resolveImageToBase64 } from '../../../modules/asset-media/api/server/utils/imageHelpers.js';
 import { getModelDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
+const { credentialError, submitError } = providerErrorsFor('jimeng');
+const logger = createModuleLogger('generation-providers');
 
 // ============================================================================
 // CONFIGURATION (From original jimeng service)
@@ -202,7 +206,7 @@ async function processJimengImageGeneration(params) {
     const signal = AbortSignal.timeout(actualTimeoutMs);
 
     // 1. 提交任务
-    console.log(`[Jimeng-Provider] 正在提交任务: ${prompt.substring(0, 30)}...`);
+    logger.info('Submitting Jimeng image task.', { providerId: 'jimeng', operation: 'submit', nodeId, imageModel });
     const action = 'CVSync2AsyncSubmitTask';
     const body = {
         req_key: customReqKey || "jimeng_t2i_v30",
@@ -246,11 +250,11 @@ async function processJimengImageGeneration(params) {
     const taskId = resData?.task_id;
     
     if (!taskId) {
-        throw new Error(`Jimeng submission failed: ${submitData.ResponseMetadata?.Error?.Message || 'No task ID returned'}`);
+        throw submitError(`Jimeng submission failed: ${submitData.ResponseMetadata?.Error?.Message || 'No task ID returned'}`, { upstreamCode: submitData.ResponseMetadata?.Error?.Code });
     }
 
     // 2. Polling
-    console.log(`[Jimeng] Task submitted: ${taskId}. Starting poll (Timeout: ${actualTimeoutMs / 1000 / 60}min)...`);
+    logger.info('Jimeng task submitted; starting poll.', { providerId: 'jimeng', operation: 'poll', taskId, timeoutMs: actualTimeoutMs });
     const interval = 5000;
 
     const resultImageUrl = await BaseProvider.pollTask({
@@ -335,7 +339,7 @@ export const JimengImageProvider = {
         const { nodeId, prompt, aspectRatio, resolution, imageModel, cfg_scale, use_pre_llm, generateCount, url, timeEstimate } = params;
 
         if (!JIMENG_ACCESS_KEY || !JIMENG_SECRET_KEY) {
-            throw new Error("Jimeng API credentials not configured.");
+            throw credentialError("Jimeng API credentials not configured.");
         }
 
         const { images: rawImages } = BaseProvider.getAssets(params);

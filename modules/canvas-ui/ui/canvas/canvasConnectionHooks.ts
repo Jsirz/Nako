@@ -7,7 +7,7 @@ import {
   type CanvasConnectionIdentity,
 } from './canvasConnections';
 import type { CanvasViewport } from './canvasNavigation';
-import { canConnectPackage, packageDefinition, packagePortY } from '../nodes/nodeConnectionPorts';
+import { createConnectionHitTesting } from './canvasConnectionHitTesting';
 
 type Hooks = Pick<typeof React, 'useState' | 'useRef' | 'useCallback'>;
 type Side = 'left' | 'right';
@@ -17,6 +17,7 @@ interface Node extends CanvasConnectionNode {
   kind?: string;
   comfyMode?: string;
 }
+export type { Node as ConnectionNode, DragState as ConnectionDragState };
 interface WorkflowConnections {
   getOutputPortY?(node: Node, portIndex: number): number;
   resolveAvailableInputSlot(target: Node, source: Node, sourcePort: number): number;
@@ -94,123 +95,7 @@ export function useCanvasConnections(hooks: Hooks, runtime: ConnectionRuntime) {
   };
   const template = (node: Node, mode = node.comfyMode) =>
     runtime.templates.find((item) => item.id === mode) ?? runtime.templates[0];
-  const compatible = (
-    nodes: Node[],
-    source: Node,
-    target: Node,
-    targetPort: number,
-    sourcePort: number,
-  ) => {
-    const packageAllowed = canConnectPackage(source, target, nodes, targetPort, sourcePort);
-    if (packageAllowed !== undefined) return packageAllowed ? 'default' : false;
-    const workflow = runtime.workflow(),
-      minimax = runtime.minimax();
-    if (
-      target.kind === 'workflow' &&
-      (!workflow || !workflow.canConnect(target, source, targetPort, sourcePort))
-    )
-      return false;
-    if (
-      target.comfyMode === 'minimax-h3-t2va' &&
-      minimax &&
-      !minimax.isConnectionAllowed(target, source, targetPort)
-    )
-      return false;
-    return runtime.canConnect(
-      { ...source, __nakoSourcePort: sourcePort },
-      target,
-      nodes,
-      targetPort,
-    );
-  };
-  const hover = (point: Point, nodes: Node[], viewport: CanvasViewport): DragState => {
-    const value = current.current,
-      start = value.connectionStart;
-    const next = {
-      ...value,
-      tempConnectionEnd: point,
-      hoveredNodeId: null,
-      hoveredSide: null,
-      hoveredPortIndex: null,
-      isInvalidHover: false,
-    } as DragState;
-    if (!start || !Number.isFinite(viewport.zoom) || viewport.zoom <= 0) return next;
-    const x = (point.x - viewport.x) / viewport.zoom,
-      y = (point.y - viewport.y) / viewport.zoom;
-    const node = nodes.find(
-      (item) =>
-        item.id !== start.nodeId &&
-        x >= item.x &&
-        x <= item.x + runtime.getWidth(item) &&
-        y >= item.y &&
-        y <= item.y + runtime.getHeight(item),
-    );
-    if (!node) return next;
-    const side = start.handle === 'right' ? 'left' : 'right';
-    let port = 0;
-    const origin = nodes.find((item) => item.id === start.nodeId);
-    const registered = packageDefinition(node);
-    if (registered) {
-      const ports = side === 'left' ? registered.inputs : registered.outputs;
-      port = ports.length ? Math.max(0, Math.min(ports.length - 1, Math.round((y - node.y - packagePortY(0)) / 26))) : -1;
-    }
-    if (node.type === 'ComfyUI') {
-      const ports = side === 'left' ? template(node)?.inputs : template(node)?.outputs;
-      if (node.kind === 'workflow') {
-        // An input slot is chosen only when dragging into the workflow. When
-        // dragging from an input, the hovered workflow supplies an output.
-        if (side === 'left')
-          port = origin
-            ? (runtime.workflow()?.resolveAvailableInputSlot(node, origin, start.portIndex ?? 0) ??
-              -1)
-            : -1;
-        else {
-          const outputs = Array.isArray(node.outputPorts) ? node.outputPorts : [];
-          port = -1;
-          let closest = Infinity;
-          outputs.forEach((_, index) => {
-            const center =
-              runtime.workflow()?.getOutputPortY?.(node, index) ??
-              runtime.getPortTop() +
-                runtime.portHeight / 2 +
-                index * (runtime.portHeight + runtime.portGap);
-            const distance = Math.abs(y - node.y - center);
-            if (distance < closest) {
-              closest = distance;
-              port = index;
-            }
-          });
-        }
-      } else if (node.comfyMode === 'minimax-h3-t2va' && side === 'left') {
-        port = runtime.minimax()?.resolvePortIndex(node, y - node.y, origin) ?? 0;
-      } else if (ports && ports.length > 1) {
-        port = Math.max(
-          0,
-          Math.min(
-            ports.length - 1,
-            Math.round(
-              (y - node.y - runtime.getPortTop() - runtime.portHeight / 2) /
-                (runtime.portHeight + runtime.portGap),
-            ),
-          ),
-        );
-      }
-    }
-    next.hoveredNodeId = node.id;
-    next.hoveredSide = side;
-    next.hoveredPortIndex = port;
-    if (origin)
-      next.isInvalidHover =
-        port < 0 ||
-        !compatible(
-          nodes,
-          start.handle === 'right' ? origin : node,
-          start.handle === 'right' ? node : origin,
-          start.handle === 'right' ? port : (start.portIndex ?? 0),
-          start.handle === 'right' ? (start.portIndex ?? 0) : port,
-        );
-    return next;
-  };
+  const { compatible, hover } = createConnectionHitTesting(runtime);
   const cancelConnectionDrag = () => update(empty());
   const resolveOperation = (
     nodes: Node[],
@@ -287,7 +172,7 @@ export function useCanvasConnections(hooks: Hooks, runtime: ConnectionRuntime) {
     },
     updateConnectionDrag(event: Pointer, nodes: Node[], viewport: CanvasViewport) {
       if (!current.current.isDraggingConnection) return false;
-      update(hover({ x: event.clientX, y: event.clientY }, nodes, viewport));
+      update(hover(current.current, { x: event.clientX, y: event.clientY }, nodes, viewport));
       return true;
     },
     completeConnectionDrag(

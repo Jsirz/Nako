@@ -5,6 +5,8 @@
  * 对插件拥有的模型定义求值并生成 JSON 快照。开发和便携运行时均只读快照。
  */
 
+import { createModuleLogger } from '../../../kernel/logger.js';
+const moduleLogger = createModuleLogger('generation-core');
 import fs from 'node:fs';
 import path from 'node:path';
 import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
@@ -172,17 +174,17 @@ export function createModelCatalog(modelLists) {
 export function loadModelCatalog({
   snapshotPath = DEFAULT_SNAPSHOT_PATH,
   fileSystem = fs,
-  logger = console,
+  logger = moduleLogger,
 } = {}) {
   try {
     const snapshot = JSON.parse(fileSystem.readFileSync(snapshotPath, 'utf8'));
     if (snapshot && typeof snapshot === 'object') return applyModelIdOverrides(snapshot);
-    logger.error('[ModelCatalog] 快照格式非法，云端模型将全部不可用：', snapshotPath);
+    logger.error('Model catalog snapshot invalid', { snapshotPath, operation: 'loadModelCatalog' });
   } catch (error) {
     logger.error(
       '[ModelCatalog] 读不到构建期快照，所有云端模型将返回 ' +
         'UNSUPPORTED_GENERATION_PROVIDER。请检查是否执行了 build:model-catalog。',
-      error.message,
+      { error, snapshotPath, operation: 'loadModelCatalog' },
     );
   }
   return {};

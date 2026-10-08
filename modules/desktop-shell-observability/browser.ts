@@ -1,8 +1,9 @@
-import type { NakoPlugin } from '../contracts/index.js';
+import type { PluginDefinition } from '../contracts/index.js';
+import { definePlugin } from '../kernel/plugin.js';
 import { installBackendReconnectNotice } from './ui/desktop/backendReconnectNotice';
 import { installUpdateSettings } from './ui/desktop/updateSettings';
 
-const plugin: NakoPlugin = {
+const plugin: PluginDefinition = {
   manifest: {
     id: 'ui.desktop-shell-observability',
     version: '1.0.0',
@@ -17,4 +18,4 @@ const plugin: NakoPlugin = {
     context.onDispose(installUpdateSettings());
   },
 };
-export default plugin;
+export default definePlugin(plugin);

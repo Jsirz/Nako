@@ -2,10 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import sqlite3 from 'sqlite3';
-import { BASE_LIBRARY_DIR } from '../../../modules/project/api/server/workspace/workspacePaths.js';
+import { ProjectError, PROJECT_ERRORS } from '../../../modules/contracts/projectErrors.js';
 
 const sqlite = sqlite3.verbose();
-export const SQLITE_WORKFLOW_SCHEMA_VERSION = 4;
 
 function safeParseJson(text, fallback) {
     try {
@@ -28,16 +27,16 @@ function parseWorkflowPayload(text) {
 // 工作流 SQLite 存储：替代项目 JSON / 备份 JSON
 export class SQLiteWorkflowStore {
     constructor(options = {}) {
-        const dbPath = options.dbPath || path.join(BASE_LIBRARY_DIR, 'workflows.db');
+        const dbPath = options.dbPath || (options.libraryDir && path.join(options.libraryDir, 'workflows.db'));
+        if (!dbPath) throw new ProjectError(PROJECT_ERRORS.configuration, '项目数据库路径未配置。', {
+            context: { moduleId: 'storage.sqlite', operation: 'initializeStore' }
+        });
         this.dbPath = dbPath;
         this.libraryDir = options.libraryDir || path.dirname(dbPath);
         this.db = null;
         this.initPromise = null;
-        this.workflowColumns = new Set();
-        this.folderColumns = new Set();
         this.recoveryPointLimit = Number(options.recoveryPointLimit || 20);
         this.startupRecoveryReport = [];
-        this.lastMigrationBackupPath = null;
     }
 
     async init() {
@@ -61,7 +60,7 @@ export class SQLiteWorkflowStore {
             await this.run(`PRAGMA temp_store = MEMORY`);
             await this.run(`PRAGMA busy_timeout = 5000`);
 
-            await this.applySchemaMigrations();
+            await this.initializeSchema();
 
             // 启动时先隔离损坏记录；有有效恢复点时自动恢复为更高 revision。
             await this.recoverCorruptedWorkflows({ skipInit: true });
@@ -103,197 +102,50 @@ export class SQLiteWorkflowStore {
         }));
     }
 
-    async getSchemaVersion(options = {}) {
-        if (!options.skipInit) await this.init();
-        const row = await this.get(`PRAGMA user_version`);
-        return Number(row?.user_version || 0);
-    }
-
-    getLastMigrationBackupPath() {
-        return this.lastMigrationBackupPath;
-    }
-
-    async createMigrationBackup(currentVersion) {
-        const schemaRow = await this.get(
-            `SELECT COUNT(1) AS c FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'`
-        );
-        if (Number(schemaRow?.c || 0) === 0) return null;
-
-        const backupDirectory = path.join(this.libraryDir, '.migration-backups');
-        fs.mkdirSync(backupDirectory, { recursive: true });
-        const timestamp = new Date().toISOString().replaceAll(':', '-');
-        const backupPath = path.join(
-            backupDirectory,
-            `workflows-v${currentVersion}-${timestamp}-${crypto.randomUUID()}.db`
-        );
-        const escapedBackupPath = backupPath.replaceAll("'", "''");
-        await this.run(`VACUUM INTO '${escapedBackupPath}'`);
-        this.lastMigrationBackupPath = backupPath;
-        return backupPath;
-    }
-
-    async applySchemaMigrations() {
-        let currentVersion = await this.getSchemaVersion({ skipInit: true });
-        if (currentVersion > SQLITE_WORKFLOW_SCHEMA_VERSION) {
-            const error = new Error(
-                `DATABASE_SCHEMA_TOO_NEW:${currentVersion}>${SQLITE_WORKFLOW_SCHEMA_VERSION}`
-            );
-            error.code = 'DATABASE_SCHEMA_TOO_NEW';
-            throw error;
-        }
-
-        if (currentVersion < SQLITE_WORKFLOW_SCHEMA_VERSION) {
-            await this.createMigrationBackup(currentVersion);
-        }
-
-        while (currentVersion < SQLITE_WORKFLOW_SCHEMA_VERSION) {
-            const targetVersion = currentVersion + 1;
-            await this.run(`BEGIN IMMEDIATE`);
-            try {
-                await this.applySchemaMigration(targetVersion);
-                await this.run(`PRAGMA user_version = ${targetVersion}`);
-                await this.run(`COMMIT`);
-                currentVersion = targetVersion;
-            } catch (error) {
-                try {
-                    await this.run(`ROLLBACK`);
-                } catch (rollbackError) {
-                    error.rollbackError = rollbackError;
-                }
-                error.schemaMigrationTarget = targetVersion;
-                throw error;
-            }
-        }
-
-        // 缓存实际列集合，供读写兼容逻辑使用。
-        await this.ensureWorkflowSchema();
-        await this.ensureFolderSchema();
-    }
-
-    async applySchemaMigration(version) {
-        if (version === 1) {
-            await this.run(`
-                CREATE TABLE IF NOT EXISTS workflows (
-                    id TEXT PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    revision INTEGER NOT NULL DEFAULT 0,
-                    status TEXT NOT NULL DEFAULT 'work',
-                    folder_id TEXT,
-                    cover_url TEXT,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL,
-                    node_count INTEGER NOT NULL DEFAULT 0,
-                    payload_json TEXT NOT NULL
-                )
-            `);
-            await this.run(`
-                CREATE TABLE IF NOT EXISTS folders (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    parent_id TEXT,
-                    project_count INTEGER NOT NULL DEFAULT 0,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-            `);
-            await this.ensureWorkflowSchema();
-            await this.ensureFolderSchema();
-            await this.run(`CREATE INDEX IF NOT EXISTS idx_workflows_status_updated ON workflows(status, updated_at DESC)`);
-            await this.run(`CREATE INDEX IF NOT EXISTS idx_workflows_folder ON workflows(folder_id)`);
-            await this.run(`CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id)`);
-            await this.run(`CREATE INDEX IF NOT EXISTS idx_folders_updated ON folders(updated_at DESC)`);
-            return;
-        }
-
-        if (version === 2) {
-            await this.run(`
-                CREATE TABLE IF NOT EXISTS workflow_recovery_points (
-                    id TEXT PRIMARY KEY,
-                    workflow_id TEXT NOT NULL,
-                    revision INTEGER NOT NULL,
-                    reason TEXT NOT NULL,
-                    created_at TEXT NOT NULL,
-                    payload_json TEXT NOT NULL
-                )
-            `);
-            await this.run(`CREATE INDEX IF NOT EXISTS idx_recovery_workflow_created ON workflow_recovery_points(workflow_id, created_at DESC)`);
-            return;
-        }
-
-        if (version === 3) {
-            await this.run(`
-                CREATE TABLE IF NOT EXISTS workflow_quarantine (
-                    id TEXT PRIMARY KEY,
-                    workflow_id TEXT NOT NULL,
-                    detected_at TEXT NOT NULL,
-                    reason TEXT NOT NULL,
-                    action TEXT NOT NULL,
-                    recovery_point_id TEXT,
-                    raw_record_json TEXT NOT NULL
-                )
-            `);
-            await this.run(`CREATE INDEX IF NOT EXISTS idx_quarantine_workflow_detected ON workflow_quarantine(workflow_id, detected_at DESC)`);
-            return;
-        }
-
-        if (version === 4) {
-            await this.ensureWorkflowSchema();
-            if (this.workflowColumns.has('data_json')) {
-                await this.run(`
-                    UPDATE workflows
-                    SET payload_json = data_json
-                    WHERE data_json IS NOT NULL
-                      AND TRIM(data_json) NOT IN ('', '{}')
-                      AND (payload_json IS NULL OR TRIM(payload_json) IN ('', '{}'))
-                `);
-            }
-            return;
-        }
-
-        throw new Error(`UNKNOWN_SCHEMA_MIGRATION:${version}`);
-    }
-
-    async ensureWorkflowSchema() {
-        const rows = await this.all(`PRAGMA table_info(workflows)`);
-        const columnSet = new Set((rows || []).map((row) => row.name));
-        this.workflowColumns = new Set(columnSet);
-
-        const requiredColumns = [
-            { name: 'revision', definition: `INTEGER NOT NULL DEFAULT 0` },
-            { name: 'status', definition: `TEXT NOT NULL DEFAULT 'work'` },
-            { name: 'folder_id', definition: `TEXT` },
-            { name: 'cover_url', definition: `TEXT` },
-            { name: 'created_at', definition: `TEXT NOT NULL DEFAULT ''` },
-            { name: 'updated_at', definition: `TEXT NOT NULL DEFAULT ''` },
-            { name: 'node_count', definition: `INTEGER NOT NULL DEFAULT 0` },
-            { name: 'payload_json', definition: `TEXT NOT NULL DEFAULT '{}'` }
-        ];
-
-        for (const column of requiredColumns) {
-            if (columnSet.has(column.name)) continue;
-            await this.run(`ALTER TABLE workflows ADD COLUMN ${column.name} ${column.definition}`);
-            this.workflowColumns.add(column.name);
-        }
-    }
-
-    async ensureFolderSchema() {
-        const rows = await this.all(`PRAGMA table_info(folders)`);
-        const columnSet = new Set((rows || []).map((row) => row.name));
-        this.folderColumns = new Set(columnSet);
-
-        const requiredColumns = [
-            { name: 'name', definition: `TEXT NOT NULL DEFAULT '未命名文件夹'` },
-            { name: 'parent_id', definition: `TEXT` },
-            { name: 'project_count', definition: `INTEGER NOT NULL DEFAULT 0` },
-            { name: 'created_at', definition: `TEXT NOT NULL DEFAULT ''` },
-            { name: 'updated_at', definition: `TEXT NOT NULL DEFAULT ''` }
-        ];
-
-        for (const column of requiredColumns) {
-            if (columnSet.has(column.name)) continue;
-            await this.run(`ALTER TABLE folders ADD COLUMN ${column.name} ${column.definition}`);
-            this.folderColumns.add(column.name);
-        }
+    async initializeSchema() {
+        await this.run(`CREATE TABLE IF NOT EXISTS workflows (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            revision INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'work',
+            folder_id TEXT,
+            cover_url TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            node_count INTEGER NOT NULL DEFAULT 0,
+            payload_json TEXT NOT NULL
+        )`);
+        await this.run(`CREATE TABLE IF NOT EXISTS folders (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            parent_id TEXT,
+            project_count INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )`);
+        await this.run(`CREATE TABLE IF NOT EXISTS workflow_recovery_points (
+            id TEXT PRIMARY KEY,
+            workflow_id TEXT NOT NULL,
+            revision INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL
+        )`);
+        await this.run(`CREATE TABLE IF NOT EXISTS workflow_quarantine (
+            id TEXT PRIMARY KEY,
+            workflow_id TEXT NOT NULL,
+            detected_at TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            action TEXT NOT NULL,
+            recovery_point_id TEXT,
+            raw_record_json TEXT NOT NULL
+        )`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_workflows_status_updated ON workflows(status, updated_at DESC)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_workflows_folder ON workflows(folder_id)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_folders_parent ON folders(parent_id)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_folders_updated ON folders(updated_at DESC)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_recovery_workflow_created ON workflow_recovery_points(workflow_id, created_at DESC)`);
+        await this.run(`CREATE INDEX IF NOT EXISTS idx_quarantine_workflow_detected ON workflow_quarantine(workflow_id, detected_at DESC)`);
     }
 
     run(sql, params = []) {
@@ -342,7 +194,7 @@ export class SQLiteWorkflowStore {
 
     toWorkflow(row) {
         if (!row) return null;
-        const rawPayload = row.payload_json || row.data_json || '{}';
+        const rawPayload = row.payload_json;
         const payload = safeParseJson(rawPayload, {});
         return {
             ...payload,
@@ -370,21 +222,26 @@ export class SQLiteWorkflowStore {
         const existing = await this.get(`SELECT * FROM workflows WHERE id = ?`, [workflow.id]);
         const existingRevision = Number(existing?.revision || 0);
         const incomingRevision = Number(workflow.revision || 0);
+        if (!Number.isSafeInteger(incomingRevision) || incomingRevision < 0) {
+            throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目版本号无效。', {
+                context: { moduleId: 'storage.sqlite', operation: 'save', projectId: workflow.id }
+            });
+        }
 
         // 乐观并发控制：防止旧版本覆盖
-        if (existing && incomingRevision < existingRevision) {
-            const error = new Error('REVISION_CONFLICT');
-            error.code = 'REVISION_CONFLICT';
-            error.currentRevision = existingRevision;
-            throw error;
+        if (existing && incomingRevision !== existingRevision) {
+            throw new ProjectError(PROJECT_ERRORS.revisionConflict, 'REVISION_CONFLICT', {
+                status: 409,
+                context: { moduleId: 'storage.sqlite', operation: 'save', projectId: workflow.id, currentRevision: existingRevision }
+            });
         }
 
         const now = new Date().toISOString();
         const revision = existingRevision + 1;
         const createdAt = existing?.created_at || workflow.createdAt || now;
         const status = workflow.status || existing?.status || 'work';
-        const folderId = workflow.folderId ?? existing?.folder_id ?? null;
-        const coverUrl = workflow.coverUrl ?? existing?.cover_url ?? null;
+        const folderId = Object.hasOwn(workflow, 'folderId') ? workflow.folderId : existing?.folder_id ?? null;
+        const coverUrl = Object.hasOwn(workflow, 'coverUrl') ? workflow.coverUrl : existing?.cover_url ?? null;
 
         let nodes = Array.isArray(workflow.nodes) ? workflow.nodes : [];
         if (typeof options.sanitizeNodes === 'function') {
@@ -407,65 +264,21 @@ export class SQLiteWorkflowStore {
 
         const nodeCount = nodes.length;
         const payloadText = JSON.stringify(payload);
-        const hasDataJsonColumn = this.workflowColumns.has('data_json');
-
-        const insertSql = hasDataJsonColumn
-            ? `INSERT INTO workflows (id, title, revision, status, folder_id, cover_url, created_at, updated_at, node_count, payload_json, data_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(id) DO UPDATE SET
-                 title=excluded.title,
-                 revision=excluded.revision,
-                 status=excluded.status,
-                 folder_id=excluded.folder_id,
-                 cover_url=excluded.cover_url,
-                 created_at=excluded.created_at,
-                 updated_at=excluded.updated_at,
-                 node_count=excluded.node_count,
-                 payload_json=excluded.payload_json,
-                 data_json=excluded.data_json`
-            : `INSERT INTO workflows (id, title, revision, status, folder_id, cover_url, created_at, updated_at, node_count, payload_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(id) DO UPDATE SET
-                 title=excluded.title,
-                 revision=excluded.revision,
-                 status=excluded.status,
-                 folder_id=excluded.folder_id,
-                 cover_url=excluded.cover_url,
-                 created_at=excluded.created_at,
-                 updated_at=excluded.updated_at,
-                 node_count=excluded.node_count,
-                 payload_json=excluded.payload_json`;
-
-        const insertParams = hasDataJsonColumn
-            ? [
-                workflow.id,
-                payload.title || 'Untitled',
-                revision,
-                status,
-                folderId,
-                coverUrl,
-                createdAt,
-                now,
-                nodeCount,
-                payloadText,
-                payloadText
-            ]
-            : [
-                workflow.id,
-                payload.title || 'Untitled',
-                revision,
-                status,
-                folderId,
-                coverUrl,
-                createdAt,
-                now,
-                nodeCount,
-                payloadText
-            ];
-
         await this.run(
-            insertSql,
-            insertParams
+            `INSERT INTO workflows (id, title, revision, status, folder_id, cover_url, created_at, updated_at, node_count, payload_json)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               title=excluded.title,
+               revision=excluded.revision,
+               status=excluded.status,
+               folder_id=excluded.folder_id,
+               cover_url=excluded.cover_url,
+               created_at=excluded.created_at,
+               updated_at=excluded.updated_at,
+               node_count=excluded.node_count,
+               payload_json=excluded.payload_json`,
+            [workflow.id, payload.title || 'Untitled', revision, status, folderId,
+                coverUrl, createdAt, now, nodeCount, payloadText]
         );
 
         return { id: workflow.id, revision };
@@ -524,7 +337,7 @@ export class SQLiteWorkflowStore {
         const workflowRows = await this.all(`SELECT * FROM workflows`);
 
         for (const row of workflowRows) {
-            const payload = parseWorkflowPayload(row.payload_json || row.data_json || '');
+            const payload = parseWorkflowPayload(row.payload_json);
             if (payload) continue;
 
             const recoveryRows = await this.all(
@@ -653,9 +466,10 @@ export class SQLiteWorkflowStore {
 
         const archivedWorkflow = safeParseJson(row.payload_json, null);
         if (!archivedWorkflow || typeof archivedWorkflow !== 'object') {
-            const error = new Error('RECOVERY_POINT_CORRUPTED');
-            error.code = 'RECOVERY_POINT_CORRUPTED';
-            throw error;
+            throw new ProjectError(PROJECT_ERRORS.recoveryCorrupted, 'RECOVERY_POINT_CORRUPTED', {
+                status: 422,
+                context: { moduleId: 'storage.sqlite', operation: 'restore', projectId: workflowId, recoveryPointId }
+            });
         }
 
         const currentWorkflow = await this.getWorkflowById(workflowId);
@@ -688,46 +502,13 @@ export class SQLiteWorkflowStore {
         if (!Array.isArray(next.groups)) next.groups = [];
         if (!next.status) next.status = 'work';
         const payloadText = JSON.stringify(next);
-        const hasDataJsonColumn = this.workflowColumns.has('data_json');
-
-        const updateSql = hasDataJsonColumn
-            ? `UPDATE workflows
-               SET title = ?, revision = ?, status = ?, folder_id = ?, cover_url = ?, created_at = ?, updated_at = ?, node_count = ?, payload_json = ?, data_json = ?
-               WHERE id = ?`
-            : `UPDATE workflows
-               SET title = ?, revision = ?, status = ?, folder_id = ?, cover_url = ?, created_at = ?, updated_at = ?, node_count = ?, payload_json = ?
-               WHERE id = ?`;
-
-        const updateParams = hasDataJsonColumn
-            ? [
-                next.title || 'Untitled',
-                Number(next.revision || 0),
-                next.status,
-                next.folderId ?? null,
-                next.coverUrl ?? null,
-                next.createdAt,
-                next.updatedAt,
-                next.nodes.length,
-                payloadText,
-                payloadText,
-                id
-            ]
-            : [
-                next.title || 'Untitled',
-                Number(next.revision || 0),
-                next.status,
-                next.folderId ?? null,
-                next.coverUrl ?? null,
-                next.createdAt,
-                next.updatedAt,
-                next.nodes.length,
-                payloadText,
-                id
-            ];
-
         await this.run(
-            updateSql,
-            updateParams
+            `UPDATE workflows
+             SET title = ?, revision = ?, status = ?, folder_id = ?, cover_url = ?, created_at = ?, updated_at = ?, node_count = ?, payload_json = ?
+             WHERE id = ?`,
+            [next.title || 'Untitled', Number(next.revision || 0), next.status,
+                next.folderId ?? null, next.coverUrl ?? null, next.createdAt,
+                next.updatedAt, next.nodes.length, payloadText, id]
         );
 
         return next;
@@ -852,4 +633,3 @@ export class SQLiteWorkflowStore {
 
 }
 
-export const workflowStore = new SQLiteWorkflowStore();

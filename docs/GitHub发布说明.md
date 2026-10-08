@@ -16,23 +16,23 @@
 ## 发布版本
 
 ```sh
-npm version patch --no-git-tag-version
-git add package.json package-lock.json
-git commit -m "chore: bump release version"
-git tag v1.5.7
+git add -A
+git add -f VERSION CHANGELOG.md
+git commit -m "chore: release 1.5.8"
+git tag v1.5.8
 git push origin main
-git push origin v1.5.7
+git push origin v1.5.8
 ```
 
-标签按实际版本填写。失败工作流可重跑；已发布版本不能覆盖，应递增版本。
+先整理 CHANGELOG 的 Unreleased 为新版本记录，并同步 VERSION、package.json 和 package-lock.json；标签按实际版本填写。失败工作流可重跑；已发布版本不能覆盖，应递增版本。
 
 ## 安装文件与更新服务
 
 | 平台 | 安装文件 | 更新文件 |
 | --- | --- | --- |
 | Windows x64 | Nako-版本-windows-x64-setup.exe | latest.yml、blockmap、ZIP、SHA256SUMS |
-| Mac ARM64 | Nako-版本-mac-arm64.dmg | ZIP、appcast-mac-arm64.xml、SHA256SUMS |
-| Mac x64 | Nako-版本-mac-x64.dmg | ZIP、appcast-mac-x64.xml、SHA256SUMS |
+| Mac ARM64 | Nako-版本-mac-arm64.dmg | ZIP、签名 .delta、appcast-mac-arm64.xml、SHA256SUMS |
+| Mac x64 | Nako-版本-mac-x64.dmg | ZIP、签名 .delta、appcast-mac-x64.xml、SHA256SUMS |
 
 Mac 使用 electron-sparkle-updater 0.5.2，要求 macOS 12+，不再生成 Squirrel 的 YAML 和 blockmap。
 Actions 每个 Mac 构件中清单原名为 appcast.xml；Release 中按架构重命名，避免覆盖。
@@ -44,12 +44,12 @@ Actions 每个 Mac 构件中清单原名为 appcast.xml；Release 中按架构�
 
 ```text
 nako/windows-x64/    Windows 安装包、blockmap、latest.yml
-nako/mac-arm64/      ARM64 DMG、ZIP、appcast.xml
-nako/mac-x64/        x64 DMG、ZIP、appcast.xml
+nako/mac-arm64/      ARM64 DMG、ZIP、所有 .delta、appcast.xml
+nako/mac-x64/        x64 DMG、ZIP、所有 .delta、appcast.xml
 ```
 
 从 Release 下载时，将 appcast-mac-arm64.xml 和 appcast-mac-x64.xml 分别命名为对应目录的 appcast.xml。
-先上传安装包，再上传清单。appcast 本身有 EdDSA 签名，禁止修改内容；修改后必须重新签名。
+先上传安装包和全部 .delta，再上传清单。appcast 本身有 EdDSA 签名，禁止修改内容；修改后必须重新签名。
 私有 GitHub Release 的默认下载地址不能直接作为普通客户端更新源。
 
 ## Mac 更新与迁移
@@ -57,7 +57,7 @@ nako/mac-x64/        x64 DMG、ZIP、appcast.xml
 客户端保持启动检查、每六小时检查、确认后下载、保存画布后确认安装的行为。
 普通检查只读取并验证签名 appcast，用户确认后才启动 Sparkle 原生下载。
 只有原生解压和验证完成才显示可安装。安装前允许应用真正退出；安装超时或失败会尝试恢复本机后端。
-首版采用完整 ZIP 更新，暂不启用增量链。
+从 1.5.8 起启用单段差分更新：Actions 使用私有仓库最近两个已发布、同架构的 Sparkle ZIP 作为基线，验证旧清单/ZIP 签名后生成新版本差分包。生成工具只为当前版本输出清单，不重新发布旧 ZIP；每个新 .delta 的 EdDSA 签名和 SHA-256 校验通过后随 Release 发布。客户端选择较小且适用的差分包，无法应用或校验失败时由 Sparkle 回退完整 ZIP；始终保留完整包。SUDeltaChainHistory=0 仅关闭多段差分链，不关闭单段差分，1.5.6/1.5.7 的现有客户端也可使用直接差分。
 
 **1.5.5 及更早的 Mac 用户需要手动安装一次 1.5.6 或更新的 Sparkle 版本。**
 服务器清单无法替换旧客户端内的 Squirrel。应用应安装到 Applications，勿直接从只读 DMG 运行。

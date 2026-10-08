@@ -2,6 +2,7 @@ import { copyFile, lstat, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getWorkspacePaths } from '../../../project/api/server/workspace/workspacePaths.js';
 import { resolveLocalPath } from '../../../asset-media/api/server/utils/imageHelpers.js';
+import { ProviderError } from '../../../contracts/providerErrors.js';
 const INPUT_LIMITS = Object.freeze({
   image: 25 * 1024 * 1024,
   video: 512 * 1024 * 1024,
@@ -11,13 +12,10 @@ const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.mpeg', '.mpg']);
 const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.m4a', '.aac']);
 
-class DreaminaCliProviderError extends Error {
+class DreaminaCliProviderError extends ProviderError {
   constructor(code, message, { status = 500, retryable = false } = {}) {
-    super(message);
+    super(message, { code, providerId: 'dreamina', operation: 'materialize-input', status, retryable });
     this.name = 'DreaminaCliProviderError';
-    this.code = code;
-    this.status = status;
-    this.retryable = retryable;
     this.expose = true;
   }
 }

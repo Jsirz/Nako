@@ -7,10 +7,15 @@ import { RunningHubWorkflowClient } from '../../workflows/shared/runninghubClien
 import { createRunningHubWebAppProjection, RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID } from '../../../modules/workflow-runtime/api/server/workflowRuntime/runningHubWebApp.js';
 import { normalizeRunningHubOutputs } from '../../workflows/shared/runninghubExecutor.js';
 import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { ProviderError, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
 import { GenerationTaskError } from '../../../modules/generation-core/api/server/generation/generationExecution.js';
+const { taskError, wrapError } = providerErrorsFor('seedvr2');
 
 const MAX_BYTES = 30 * 1024 * 1024;
-const fail = (message, code = 'SEEDVR2_INVALID_INPUT', status = 400) => new GenerationTaskError({ message, code, status, retryable: false });
+const fail = (message, code = 'SEEDVR2_INVALID_INPUT', status = 400) => new GenerationTaskError({
+  message, code, status, retryable: false,
+  context: { moduleId: 'generation-providers', providerId: 'seedvr2', operation: status === 400 ? 'validate-input' : 'observe' },
+});
 
 // Use the same published-field projection as cloud workflow import. No private
 // ComfyUI graph, internal node numbers or guessed size/seed overrides are needed.
@@ -119,7 +124,7 @@ export function createSeedVr2Provider({ clientFactory = (options) => new Running
       const ctx = context(params, config), reference = task.remoteTasks?.[0];
       if (!reference || !matchesRemoteTask(reference, ctx)) return { status: 'unknown' };
       const client = clientFor(ctx), result = await client.getWebAppTaskOutputs(reference.taskId, { signal });
-      if (result.state === 'failed') return { status: 'failed', error: new Error('SeedVR2 原任务失败') };
+      if (result.state === 'failed') return { status: 'failed', error: taskError('SeedVR2 原任务失败') };
       if (result.state !== 'success') return { status: 'pending' };
       return { status: 'success', results: await downloadResults(client, result.outputs, signal) };
     },
@@ -128,7 +133,8 @@ export function createSeedVr2Provider({ clientFactory = (options) => new Running
         throw fail('请从图片工具栏确认单张 AI 高清放大。');
       const ctx = context(params, config), client = clientFor(ctx), signal = config.generationSignal || params.signal;
       const input = await readInput(params).catch((error) => {
-        if (error instanceof GenerationTaskError) throw error;
+        if (error instanceof GenerationTaskError) throw wrapError(error, 'read-input');
+        if (error instanceof ProviderError) throw wrapError(error, 'read-input');
         throw fail('图片无法读取或格式无效，请重新选择当前项目的图片。');
       });
       // Resolve the current published application fields before any upload/submission.
@@ -151,7 +157,7 @@ export function createSeedVr2Provider({ clientFactory = (options) => new Running
       while (now() < deadline) {
         signal?.throwIfAborted();
         const result = await client.getWebAppTaskOutputs(task.taskId, { signal });
-        if (result.state === 'failed') throw Object.assign(new Error('SeedVR2 原任务失败'), { providerTaskFailed: true });
+        if (result.state === 'failed') throw Object.assign(taskError('SeedVR2 原任务失败'), { providerTaskFailed: true });
         if (result.state === 'success') return downloadResults(client, result.outputs, signal);
         await wait(signal);
       }

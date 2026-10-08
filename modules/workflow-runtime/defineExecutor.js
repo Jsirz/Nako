@@ -18,12 +18,36 @@ export function defineExecutorPlugin({ id, load, loadClient, exportName, credent
     canDeactivate: () => activeExecutions === 0,
     async activate(context) {
       const module = await load();
+      const credentialResolver = (reference) => {
+        const secrets = context.credentials.get(credentialId) || {};
+        return reference === 'runninghub-cn'
+          ? secrets.RUNNINGHUB_API_KEY
+          : reference === 'runninghub-global'
+            ? secrets.RUNNINGHUB_GLOBAL_API_KEY
+            : null;
+      };
       if (loadClient) {
         const Client = await loadClient();
         context.onDispose(
-          context.services.get('workflow.executors').registerClient(id, (options) => {
+          context.services.get('workflow.executors').registerClient(id, (options = {}) => {
             if (context.signal.aborted) throw new PluginError(ERRORS.inactive, `Workflow client unloaded: ${id}`);
-            const client = new Client(options);
+            if (Object.hasOwn(options, 'apiKey'))
+              throw new PluginError(ERRORS.permission, 'Workflow clients accept credentialRef, not apiKey', {
+                status: 400, context: { moduleId: `workflow.${id}` },
+              });
+            const { credentialRef, ...clientOptions } = options;
+            if (credentialId) {
+              if (!['runninghub-cn', 'runninghub-global'].includes(credentialRef))
+                throw new PluginError(ERRORS.invalidConfiguration, 'RunningHub 凭据引用无效。', {
+                  status: 400, context: { moduleId: `workflow.${id}` },
+                });
+              clientOptions.apiKey = credentialResolver(credentialRef);
+              if (!String(clientOptions.apiKey || '').trim())
+                throw new PluginError(ERRORS.credentialMissing, '请先填写并保存当前站点的 RunningHub API Key。', {
+                  status: 409, context: { moduleId: `workflow.${id}`, credentialRef },
+                });
+            }
+            const client = new Client(clientOptions);
             const methods = WORKFLOW_CLIENT_METHODS;
             return Object.freeze(
               Object.fromEntries(
@@ -44,14 +68,6 @@ export function defineExecutorPlugin({ id, load, loadClient, exportName, credent
       }
       const factory = (options) => {
         if (context.signal.aborted) throw new PluginError(ERRORS.inactive, `Executor unloaded: ${id}`);
-        const credentialResolver = (reference) => {
-          const secrets = context.credentials.get(credentialId);
-          return reference === 'runninghub-cn'
-            ? secrets.RUNNINGHUB_API_KEY
-            : reference === 'runninghub-global'
-              ? secrets.RUNNINGHUB_GLOBAL_API_KEY
-              : null;
-        };
         const implementation = new module[exportName]({
           ...options,
           ...(credentialId ? { credentialResolver } : {}),

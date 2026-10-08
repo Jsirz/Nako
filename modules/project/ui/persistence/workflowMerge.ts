@@ -1,9 +1,12 @@
-export type WorkflowRecord = Record<string, unknown>;
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
+import type { WorkflowRecord } from '../../../contracts/projectWorkflow';
+export type { WorkflowRecord } from '../../../contracts/projectWorkflow';
 
-export class WorkflowConflictError extends Error {
-  readonly code = 'REVISION_CONFLICT';
+export class WorkflowConflictError extends ProjectError {
   constructor(readonly field: string) {
-    super('另一窗口也修改了相同内容，当前编辑仍保留，但尚未保存。');
+    super(PROJECT_ERRORS.revisionConflict, '另一窗口也修改了相同内容，当前编辑仍保留，但尚未保存。', {
+      status: 409, context: { operation: 'mergeWorkflow', field }
+    });
   }
 }
 

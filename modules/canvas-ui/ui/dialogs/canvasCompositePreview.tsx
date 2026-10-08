@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
@@ -22,6 +23,7 @@ type Runtime = Pick<
 >;
 interface Payload {
   nodeId: string;
+  readOnly?: boolean;
   layers: { nodeId: string; url: string; title?: string }[];
   layout?: Record<string, Partial<LayerTransform>>;
   onSave(
@@ -49,9 +51,16 @@ const numberClass =
 const clamp = (value: number, low: number, high: number) => Math.max(low, Math.min(high, value));
 export function CanvasCompositePreview(
   React: Runtime,
-  { payload, onClose, saveLabel = '保存' }: Props,
+  props: Props,
   icons: Icons,
 ) {
+  const state = useCompositePreviewState(React, props);
+  const actions = compositePreviewActions(props, state);
+  if (!props.payload) return null;
+  return renderCompositePreview(React, { ...props, payload: props.payload }, icons, state, actions);
+}
+
+function useCompositePreviewState(React: Runtime, { payload, onClose }: Props) {
   const root = React.useRef<HTMLDivElement>(null),
     viewport = React.useRef<HTMLDivElement>(null),
     canvas = React.useRef<HTMLCanvasElement>(null);
@@ -196,9 +205,17 @@ export function CanvasCompositePreview(
   }, [fit]);
   React.useEffect(() => {
     const context = canvas.current?.getContext('2d');
-    if (context) drawComposite(context, layers, history.current.scene, selected);
-  }, [layers, revision, selected, width, height]);
-  if (!payload) return null;
+    if (context) drawComposite(context, layers, history.current.scene, payload?.readOnly ? null : selected);
+  }, [layers, revision, selected, width, height, payload]);
+  return { root, viewport, canvas, layers, loading, loadError, saveError, setSaveError,
+    saving, setSaving, selected, setSelected, refresh, rotationDraft, setRotationDraft,
+    scaleDraft, setScaleDraft, history, view, viewRef, close, epoch, saveLock, drag,
+    width, height, updateView, fit, zoom };
+}
+
+function compositePreviewActions({ payload }: Props, state: ReturnType<typeof useCompositePreviewState>) {
+  const { history, selected, refresh, setRotationDraft, setScaleDraft, setSelected, saveLock,
+    layers, loading, loadError, setSaving, setSaveError, epoch, width, height, close, drag } = state;
   const scene = history.current.scene,
     transform = selected ? scene.layout[selected] : null;
   const render = () => refresh((value) => value + 1);
@@ -207,12 +224,14 @@ export function CanvasCompositePreview(
     render();
   };
   const undo = () => {
+    if (payload?.readOnly) return;
     history.current.undo();
     setRotationDraft(null);
     setScaleDraft(null);
     render();
   };
   const redo = () => {
+    if (payload?.readOnly) return;
     history.current.redo();
     setRotationDraft(null);
     setScaleDraft(null);
@@ -225,7 +244,7 @@ export function CanvasCompositePreview(
     setScaleDraft(null);
   };
   const changeLayer = (next: LayerTransform) => {
-    if (!selected || saveLock.current) return;
+    if (payload?.readOnly || !selected || saveLock.current) return;
     history.current.update({
       ...history.current.scene,
       layout: { ...history.current.scene.layout, [selected]: next },
@@ -242,7 +261,7 @@ export function CanvasCompositePreview(
     if (layer && current) changeLayer(scaleCompositeLayer(layer, current, value));
   };
   const reorder = (id: string, delta: number) => {
-    if (saveLock.current) return;
+    if (payload?.readOnly || saveLock.current) return;
     history.current.end();
     const next = cloneScene(history.current.scene),
       index = next.order.indexOf(id),
@@ -254,7 +273,7 @@ export function CanvasCompositePreview(
     render();
   };
   const save = async () => {
-    if (saveLock.current || loading || loadError || !layers.length) return;
+    if (!payload || payload.readOnly || saveLock.current || loading || loadError || !layers.length) return;
     saveLock.current = true;
     setSaving(true);
     setSaveError('');
@@ -266,7 +285,7 @@ export function CanvasCompositePreview(
       output.width = width;
       output.height = height;
       const context = output.getContext('2d');
-      if (!context) throw new Error('无法创建合成图片');
+      if (!context) throw canvasError('无法创建合成图片', 'composite.save-canvas');
       drawComposite(context, layers, captured);
       const data = output.toDataURL('image/png');
       await payload.onSave(payload.nodeId, data, serializedCompositeLayout(captured));
@@ -288,11 +307,17 @@ export function CanvasCompositePreview(
     if (event.currentTarget.hasPointerCapture(event.pointerId))
       event.currentTarget.releasePointerCapture(event.pointerId);
   };
-  const IconLayers = icons.layers,
-    IconUp = icons.up,
-    IconDown = icons.down,
-    IconSave = icons.save,
-    IconClose = icons.close;
+  return { scene, transform, render, end, undo, redo, select, changeLayer, rotate, scaleLayer, reorder, save, releasePointer };
+}
+
+type CompositeState = ReturnType<typeof useCompositePreviewState>;
+type CompositeActions = ReturnType<typeof compositePreviewActions>;
+type OpenCompositeProps = Props & { payload: Payload };
+
+function renderCompositePreview(React: Runtime, props: OpenCompositeProps, icons: Icons, state: CompositeState, actions: CompositeActions) {
+  const { payload } = props;
+  const { root, saveLock } = state;
+  const { undo, redo } = actions;
   return (
     <div
       ref={root}
@@ -308,7 +333,7 @@ export function CanvasCompositePreview(
         const editing =
           event.target instanceof Element &&
           event.target.closest('input,textarea,select,[contenteditable="true"]');
-        if (!editing && !saveLock.current && (event.ctrlKey || event.metaKey)) {
+        if (!payload?.readOnly && !editing && !saveLock.current && (event.ctrlKey || event.metaKey)) {
           if (event.key.toLowerCase() === 'z') {
             event.preventDefault();
             if (event.shiftKey) redo();
@@ -323,7 +348,17 @@ export function CanvasCompositePreview(
         if (event.button === 1) event.preventDefault();
       }}
     >
-      <div
+      {renderCompositeLayers(React, props, icons, state, actions)}
+      {renderCompositeWorkspace(React, props, icons, state, actions)}
+    </div>
+  );
+}
+
+function renderCompositeLayers(React: Runtime, { payload }: OpenCompositeProps, icons: Icons, state: CompositeState, actions: CompositeActions) {
+  const { layers, selected, saving } = state;
+  const { scene, select, reorder } = actions;
+  const IconLayers = icons.layers, IconUp = icons.up, IconDown = icons.down;
+  return <div
         className="w-[300px] bg-[var(--nk-surface-raised)] border-r border-[var(--nk-border)] flex flex-col p-6 overflow-hidden"
         style={{ flexShrink: 0, width: 'min(300px, 30vw)', padding: 'clamp(10px, 2vw, 24px)' }}
       >
@@ -365,7 +400,7 @@ export function CanvasCompositePreview(
                     {value.rotation !== 0 ? ` ${Math.round(value.rotation)}°` : ''}
                   </span>
                   <div className="flex items-center gap-0.5">
-                    <button
+                    {!payload.readOnly && <button
                       title="上移一层"
                       aria-label="上移一层"
                       disabled={index === 0 || saving}
@@ -376,8 +411,8 @@ export function CanvasCompositePreview(
                       }}
                     >
                       <IconUp size={12} />
-                    </button>
-                    <button
+                    </button>}
+                    {!payload.readOnly && <button
                       title="下移一层"
                       aria-label="下移一层"
                       disabled={index === scene.order.length - 1 || saving}
@@ -388,7 +423,7 @@ export function CanvasCompositePreview(
                       }}
                     >
                       <IconDown size={12} />
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>
@@ -396,6 +431,15 @@ export function CanvasCompositePreview(
           })}
         </div>
       </div>
+  ;
+}
+
+function renderCompositeWorkspace(React: Runtime, props: OpenCompositeProps, icons: Icons, state: CompositeState, actions: CompositeActions) {
+  const { payload, onClose, saveLabel = '保存' } = props;
+  const { saving, loading, loadError, layers, saveError, view, zoom, fit } = state;
+  const { save } = actions;
+  const IconClose = icons.close, IconSave = icons.save;
+  return (
       <div className="flex-1 relative flex flex-col overflow-hidden" style={{ minWidth: 0 }}>
         <button
           onClick={onClose}
@@ -405,7 +449,7 @@ export function CanvasCompositePreview(
         >
           <IconClose size={22} />
         </button>
-        <button
+        {!payload.readOnly && <button
           type="button"
           disabled={saving || loading || !!loadError || !layers.length}
           onClick={() => void save()}
@@ -413,8 +457,29 @@ export function CanvasCompositePreview(
         >
           <IconSave size={16} />
           {saving ? '保存中…' : saveLabel}
-        </button>
-        {selected && transform && (
+        </button>}
+        {renderCompositeToolbar(React, props, state, actions)}
+        {renderCompositeViewport(React, props, state, actions)}
+        {(loading || loadError || saveError) && (
+          <div role={loadError || saveError ? 'alert' : 'status'}
+            className="absolute bottom-24 left-1/2 -translate-x-1/2 text-[var(--nk-text)] bg-[var(--nk-surface)] rounded-lg px-4 py-2">
+            {saveError || loadError || '正在读取图层…'}
+          </div>
+        )}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[var(--nk-surface)] backdrop-blur-md rounded-full px-4 py-2.5 z-50 border border-[var(--nk-border)] shadow-2xl">
+          <button title="缩小" aria-label="缩小" className={controlButton} onClick={() => zoom(1 / 1.15)}>−</button>
+          <span className="text-[var(--nk-text)] text-[13px] font-bold min-w-[54px] text-center font-mono">{Math.round(view.scale * 100)}%</span>
+          <button title="放大" aria-label="放大" className={controlButton} onClick={() => zoom(1.15)}>+</button>
+          <button className={controlButton} title="重置视图" onClick={fit}>重置</button>
+        </div>
+      </div>
+  );
+}
+
+function renderCompositeToolbar(React: Runtime, { payload }: OpenCompositeProps, state: CompositeState, actions: CompositeActions) {
+  const { selected, saving, history, rotationDraft, setRotationDraft, scaleDraft, setScaleDraft } = state;
+  const { transform, undo, redo, rotate, scaleLayer, end, changeLayer } = actions;
+  return !payload.readOnly && selected && transform && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 w-max max-w-[calc(100%-88px)]">
             <div
               className="flex min-h-11 items-center gap-1 px-2 py-1.5 rounded-full bg-[var(--nk-surface-raised)] backdrop-blur shadow-lg border border-[var(--nk-border)]"
@@ -528,8 +593,13 @@ export function CanvasCompositePreview(
               </button>
             </div>
           </div>
-        )}
-        <div
+        );
+}
+
+function renderCompositeViewport(React: Runtime, { payload }: OpenCompositeProps, state: CompositeState, actions: CompositeActions) {
+  const { viewport, saveLock, root, viewRef, drag, history, layers, selected, updateView, width, height, view, canvas } = state;
+  const { select, render, releasePointer } = actions;
+  return <div
           ref={viewport}
           data-nako-composite-viewport="true"
           className="flex-1 relative overflow-hidden bg-transparent"
@@ -539,7 +609,7 @@ export function CanvasCompositePreview(
             root.current?.focus({ preventScroll: true });
             const current = viewRef.current,
               bounds = event.currentTarget.getBoundingClientRect();
-            if (event.button === 1)
+            if (payload.readOnly || event.button === 1)
               drag.current = {
                 id: event.pointerId,
                 mode: 'pan',
@@ -668,39 +738,5 @@ export function CanvasCompositePreview(
             />
           </div>
         </div>
-        {(loading || loadError || saveError) && (
-          <div
-            role={loadError || saveError ? 'alert' : 'status'}
-            className="absolute bottom-24 left-1/2 -translate-x-1/2 text-[var(--nk-text)] bg-[var(--nk-surface)] rounded-lg px-4 py-2"
-          >
-            {saveError || loadError || '正在读取图层…'}
-          </div>
-        )}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[var(--nk-surface)] backdrop-blur-md rounded-full px-4 py-2.5 z-50 border border-[var(--nk-border)] shadow-2xl">
-          <button
-            title="缩小"
-            aria-label="缩小"
-            className={controlButton}
-            onClick={() => zoom(1 / 1.15)}
-          >
-            −
-          </button>
-          <span className="text-[var(--nk-text)] text-[13px] font-bold min-w-[54px] text-center font-mono">
-            {Math.round(view.scale * 100)}%
-          </span>
-          <button
-            title="放大"
-            aria-label="放大"
-            className={controlButton}
-            onClick={() => zoom(1.15)}
-          >
-            +
-          </button>
-          <button className={controlButton} title="重置视图" onClick={fit}>
-            重置
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  ;
 }

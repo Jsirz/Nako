@@ -1,3 +1,5 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { publishWorkflowOutputs, workflowPublicationResult } from './workflowOutputPublication.js';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -294,7 +296,7 @@ export async function localizeWorkflowOutputs({
   optimizeMp4 = optimizeMp4ForStreaming,
   probeMediaMetadata = createMediaMetadataProbe(),
   wait,
-  logger = console,
+  logger = createModuleLogger('workflow-runtime'),
 }) {
   const safeProjectId = safeSegment(projectId, '项目标识');
   const safeRunId = safeSegment(runId, '运行标识');
@@ -422,6 +424,7 @@ export async function localizeWorkflowOutputs({
             throw new WorkflowOutputError('视频已生成，但转换为画布可播放格式失败，请检查本机媒体组件。原文件未在工作流端被修改。', 'OUTPUT_PLAYBACK_CONVERSION_FAILED');
           }
           logger.warn('Workflow MP4 fast-start optimization skipped', {
+            operation: 'optimizeMp4',
             code: error?.code || 'OUTPUT_STREAM_OPTIMIZE_FAILED',
           });
         }
@@ -442,60 +445,12 @@ export async function localizeWorkflowOutputs({
       await writeManifestAtomic(manifestPath, manifest);
     }
 
-    if (staged.length === 0 && outputs.length === 0) {
-      throw new WorkflowOutputError(
-        '没有可保存的工作流结果。请使用保存节点并开启保存输出。',
-        'OUTPUT_NOT_FOUND',
-      );
-    }
-
-    for (const item of staged) {
-      await rename(item.temporaryPath, item.finalPath);
-      publishedPaths.push(item.finalPath);
-      item.manifestItem.publishedFile = true;
-      manifest.updatedAt = new Date().toISOString();
-      await writeManifestAtomic(manifestPath, manifest);
-      const metadata = {
-        id: item.assetId,
-        filename: item.finalFilename,
-        nodeId: item.candidate.nodeId,
-        model,
-        type: item.config.directory,
-        sourceRunId: safeRunId,
-        sha256: item.integrity.sha256,
-        bytes: item.integrity.bytes,
-        source,
-        createdAt: new Date().toISOString(),
-      };
-      await writeFile(item.metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, { flag: 'wx' });
-      publishedPaths.push(item.metadataPath);
-      item.manifestItem.publishedMetadata = true;
-      manifest.updatedAt = new Date().toISOString();
-      await writeManifestAtomic(manifestPath, manifest);
-      outputs.push({
-        nodeId: item.candidate.nodeId,
-        classType: item.candidate.classType,
-        ...(source === 'local-comfyui-workflow' ? { comfyOutput: { type: 'output', saved: true } } : {}),
-        outputKey: item.candidate.outputKey,
-        outputIndex: item.candidate.outputIndex,
-        mediaKind: item.candidate.mediaKind,
-        assetId: item.assetId,
-        url: `/library/media/${encodeURIComponent(safeProjectId)}/${item.config.directory}/${encodeURIComponent(item.finalFilename)}`,
-        sha256: item.integrity.sha256,
-        bytes: item.integrity.bytes,
-      });
-    }
-    manifest.state = 'published';
-    manifest.updatedAt = new Date().toISOString();
-    await writeManifestAtomic(manifestPath, manifest);
-    return {
-      outputs,
-      rollback: async () => {
-        await Promise.all(publishedPaths.map((filePath) => rm(filePath, { force: true })));
-        await rm(runDirectory, { recursive: true, force: true });
-      },
-      commit: () => rm(runDirectory, { recursive: true, force: true }),
-    };
+    await publishWorkflowOutputs({
+      staged, outputs, manifest, publishedPaths, model, source,
+      projectId: safeProjectId, runId: safeRunId,
+      writeManifest: () => writeManifestAtomic(manifestPath, manifest),
+    });
+    return workflowPublicationResult(outputs, publishedPaths, runDirectory);
   } catch (error) {
     await Promise.all([
       ...temporaryPaths.map((filePath) => rm(filePath, { force: true })),
@@ -511,7 +466,7 @@ export async function recoverWorkflowOutputStaging({
   stagingDirectory,
   libraryDirectory,
   runStore,
-  logger = console,
+  logger = createModuleLogger('workflow-runtime'),
 }) {
   const { root: stagingRoot, realRoot } = await preparePrivateRecoveryRoot(stagingDirectory);
   const entries = await readdir(stagingRoot, { withFileTypes: true });
@@ -557,6 +512,7 @@ export async function recoverWorkflowOutputStaging({
           .catch(() => undefined);
       }
       logger.error('Workflow output staging recovery failed', {
+        operation: 'recoverWorkflowOutputStaging',
         entry: entry.name,
         code: error?.code || 'OUTPUT_STAGING_RECOVERY_FAILED',
       });

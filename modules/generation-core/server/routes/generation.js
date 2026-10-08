@@ -5,6 +5,9 @@
  * Supports Gemini, Veo, Kling AI, Hailuo AI, and OpenAI GPT Image providers.
  */
 
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
+const logger = createModuleLogger('generation-core');
 import express from 'express';
 import { getUrlPrefix } from '../../../project/api/server/workspace/workspacePaths.js';
 import { PROVIDERS, resolveFinalExecutionContext } from '../generation/providerDispatch.js';
@@ -20,7 +23,7 @@ import { createGenerationRecoveryService } from '../generation/generationRecover
  * 开发与打包运行使用同一入口，解析细节见本模块 config/modelCatalog.js。
  */
 function sendGenerationError(res, error, logLabel) {
-  console.error(logLabel, error);
+  logger.error(logLabel, { error, operation: 'generate' });
   if (res.headersSent) return;
   const details = error?.status && error?.code ? error : classifyGenerationError(error);
   res.status(details.status || 500).json({
@@ -44,7 +47,9 @@ export function createGenerationRouter({
   recoverTask = createGenerationRecoveryService({ generationCoordinator, mediaService }),
 }) {
   if (!generationCoordinator) {
-    throw new Error('Generation router requires the shared generation coordinator');
+    throw new PluginError(ERRORS.serviceMissing, 'Generation router requires the shared generation coordinator', {
+      context: { moduleId: 'generation-core', operation: 'createGenerationRouter', service: 'generation.coordinator' },
+    });
   }
   const router = express.Router();
   const {
@@ -129,7 +134,7 @@ export function createGenerationRouter({
       const saved = await downloadAndSaveAsset(url, projectId || 'default', type || 'images');
       res.json(saved);
     } catch (error) {
-      console.error('Localization Error:', error);
+      logger.error('Asset localization failed', { error, projectId, type, operation: 'localize-asset' });
       res.status(500).json({ error: error.message });
     }
   });

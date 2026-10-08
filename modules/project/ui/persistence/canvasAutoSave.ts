@@ -1,3 +1,5 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
+const logger = createModuleLogger('project.autoSave');
 import { browserServices } from '../../../kernel/browser';
 export type AutoSaveReason = 'interval' | 'hidden' | 'pagehide' | 'edit';
 export type AutoSaveResult =
@@ -103,7 +105,7 @@ export function createCanvasAutoSaveController(
         return 'saved';
       } catch (error) {
         if (counters) counters.failures += 1;
-        console.error(`[Auto-Save] Failed on ${reason}:`, error);
+        logger.error('自动保存失败。', { reason, error });
         return 'failed';
       } finally {
         inFlight = false;

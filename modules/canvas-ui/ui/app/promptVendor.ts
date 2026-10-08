@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import * as React from 'react';
 import { Editor } from '@tiptap/core';
 import { useEditor, ReactNodeViewRenderer, EditorContent, ReactRenderer } from '@tiptap/react';
@@ -12,7 +13,7 @@ type Vendor = Parameters<typeof CanvasPromptEditor>[2];
 type Views = Pick<Vendor, 'PromptTagView' | 'MentionView' | 'PresetList' | 'MentionList'>;
 
 function editorInstance(value: unknown): Editor {
-  if (!(value instanceof Editor)) throw new Error('提示词编辑器实例不属于当前画布。');
+  if (!(value instanceof Editor)) throw canvasError('提示词编辑器实例不属于当前画布。', 'prompt.editor-instance');
   return value;
 }
 

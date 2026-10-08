@@ -1,3 +1,6 @@
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
+const logger = createModuleLogger('project.preferences');
 /**
  * Interface preferences live in the account's backend document (ADR-0035), not in the browser
  * storage of whichever shell hosts the canvas. The store hydrates once before the canvas starts,
@@ -19,9 +22,11 @@ const BROWSER_KEYS = new Set([
 ]);
 const BROWSER_KEY_PREFIXES = ['nako.node-dimensions.v1:', 'nako.confirmation.suppressed.v1.'];
 
-class PreferenceWriteError extends Error {
-  constructor(readonly status: number) {
-    super(`Preference write failed with HTTP ${status}`);
+class PreferenceWriteError extends ProjectError {
+  constructor(status: number) {
+    super(PROJECT_ERRORS.request, `Preference write failed with HTTP ${status}`, {
+      status, context: { operation: 'writePreferences', endpoint: ENDPOINT }
+    });
   }
 }
 
@@ -93,7 +98,7 @@ export function createPreferenceStore({
         // A rejected shape never succeeds on retry; everything else (offline, a restarting backend) can.
         const status = error instanceof PreferenceWriteError ? error.status : 0;
         if (status === 400 || status === 413) {
-          console.warn('界面偏好未能保存。', error);
+          logger.warn('界面偏好未能保存。', { error, status });
           return;
         }
         for (const [key, value] of Object.entries(set))

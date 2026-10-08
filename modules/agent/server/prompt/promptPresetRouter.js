@@ -1,3 +1,5 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 import express from 'express';
 
 const EMPTY_PRESETS = Object.freeze({ text: [], image: [], video: [], audio: [] });
@@ -9,12 +11,10 @@ const PREVIEW_TYPES = Object.freeze({
   'video/mp4': { extension: 'mp4', maximumBytes: 25 * 1024 * 1024 },
 });
 
-class PromptPresetError extends Error {
+class PromptPresetError extends AgentOperationError {
   constructor(message, status = 400, code = 'INVALID_PROMPT_PRESET') {
-    super(message);
+    super(message, { operation: 'prompt-preset-request' }, code, status);
     this.name = 'PromptPresetError';
-    this.status = status;
-    this.code = code;
   }
 }
 
@@ -99,7 +99,7 @@ function sendError(response, error, logger) {
   });
 }
 
-export function createPromptPresetRouter({ store, logger = console }) {
+export function createPromptPresetRouter({ store, logger = createModuleLogger('module.prompt') }) {
   const router = express.Router();
   const { mutate, readConfig, readCreativeLibrary } = store;
   async function sendConfig(response) {

@@ -8,7 +8,7 @@ import { useTexture, OrbitControls, Sphere } from '@react-three/drei';
 import { Vector2, NoToneMapping, SRGBColorSpace, BackSide } from 'three';
 import * as Dialogs from '../dialogs/canvasDialogs';
 import { CanvasImageStudio } from '../dialogs/canvasImageStudio';
-import * as Workflow from '../../../local-runtime/api/ui/local/canvasWorkflowGenerator';
+import { localRuntimeUi } from '../../../kernel/browser';
 import * as BrandIcons from './modelBrandIcons';
 import { bind, bindRef } from './presentation';
 import {
@@ -291,7 +291,9 @@ export const CompareNode = bind(Dialogs.CanvasCompareNode)(() => [
 export const CompositeNode = bind(Dialogs.CanvasCompositeNode)(() => [
   { Frame: NodeFrame, Header: NodeHeader, Empty: Icons.Layers },
 ]);
-export const WorkflowGenerator = bind(Workflow.CanvasWorkflowGenerator)(() => [NodeFrame]);
+export function WorkflowGenerator(props: Record<string, unknown>) {
+  return localRuntimeUi().renderWorkflowNode(React, props, NodeFrame) as React.ReactNode;
+}
 export const MiniMaxNode = bind(Dialogs.CanvasMiniMaxNode)(() => [
   { Frame: NodeFrame, PromptEditor: PromptEditor },
 ]);

@@ -1,27 +1,20 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
+const logger = createModuleLogger('module.agent');
 import express from 'express';
-import { loadModelCatalog } from '../../../generation-core/api/server/config/modelCatalog.js';
 import { classifyGenerationError } from '../../../generation-core/api/server/generation/generationErrors.js';
-import {
-  listGenerationProviders,
-  getGenerationProvider,
-} from '../../../generation-core/api/providerRegistry.js';
 import { searchCanvasNodes } from './tools/canvasTools.js';
 import { DEFAULT_OFFICIAL_SKILL_SLUG } from './officialSkillRegistry.js';
 import { productionProfileForSkill } from '../../../contracts/officialProductionProfiles.js';
 import { createCanvasControlBridge } from '../harness/operationBridge.js';
 import { createRunLifetime } from '../harness/runLifetime.js';
-import { TEXT_PROVIDERS } from '../harness/modelConfig.js';
-
+import { AgentTextGenerationError } from '../../../contracts/agentTextGeneration.js';
 const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
-const REQUIRED_SECRETS_BY_PROVIDER = () =>
-  new Map(listGenerationProviders().map((contract) => [contract.name, contract.requiredSecrets]));
 
-class AgentRequestError extends Error {
+class AgentRequestError extends AgentOperationError {
   constructor(message, status = 400, code = 'INVALID_AGENT_REQUEST') {
-    super(message);
+    super(message, { operation: 'agent-request' }, code, status);
     this.name = 'AgentRequestError';
-    this.status = status;
-    this.code = code;
   }
 }
 
@@ -105,41 +98,12 @@ function normalizeTurn(body) {
   };
 }
 
-function resolveAgentModel(modelId, catalog = loadModelCatalog()) {
-  const requested = String(modelId || '').trim();
-  const model = Object.values(catalog).find(
-    (candidate) =>
-      TEXT_PROVIDERS.has(candidate?.provider) &&
-      getGenerationProvider(candidate.provider) &&
-      (candidate?.name === requested ||
-        candidate?.endpoint?.['multimodal-chat']?.model === requested),
-  );
-  if (!model) {
-    throw new AgentRequestError(
-      '当前 Nako Agent 不支持该文本模型',
-      400,
-      'AGENT_MODEL_UNSUPPORTED',
-    );
-  }
-  return model;
-}
-
-async function requireCredentials(getCredentials, model) {
-  const credentials = (await getCredentials()) || {};
-  const requiredSecrets = REQUIRED_SECRETS_BY_PROVIDER().get(model.provider) || [];
-  // Host credentials are non-enumerable getters. Read only the selected
-  // provider's declared keys; spreading the object silently drops secrets.
-  const missing = requiredSecrets.filter((secret) => !String(credentials[secret] ?? '').trim());
-  if (missing.length) {
-    throw new AgentRequestError(`请先配置 ${missing.join('、')}`, 503, 'AI_CONFIGURATION_REQUIRED');
-  }
-}
-
 function serializeError(error) {
   if (
     (error?.status === 400 && /^DEFAULT_MODEL_/.test(error.code || '')) ||
     error instanceof AgentRequestError ||
     [
+      'AgentTextGenerationError',
       'AgentRequestError',
       'AgentCanvasError',
       'AgentSessionStoreError',
@@ -167,7 +131,7 @@ function serializeError(error) {
 function sendJsonError(response, error) {
   const serialized = serializeError(error);
   if (serialized.status >= 500) {
-    console.error('[Agent] Request failed:', serialized.body.code);
+    logger.error('Agent request failed', { code: serialized.body.code, status: serialized.status });
   }
   response.status(serialized.status).json(serialized.body);
 }
@@ -188,7 +152,6 @@ export function createAgentRouter({
   mediaService,
   sessionStore,
   libraryDirectory,
-  getCredentials = () => ({}),
   createDramaConversation,
   skillLibrary,
   onHarness, dispatchNode,
@@ -202,7 +165,6 @@ export function createAgentRouter({
   const harness = createPiAgentHarness({
     sessions,
     textTransport,
-    getCredentials,
     mediaService,
     libraryDirectory,
   });
@@ -233,6 +195,18 @@ export function createAgentRouter({
     return view;
   };
   const wireDrama = (state) => ({ ...state, session: wireSession(state.session) });
+  const skillSelection = createSkillSelection({ store, skillLibrary });
+  const shared = { router, base, json, locked, sessions, store, sessionStore, activeSessions,
+    harness, lifetime, textTransport, defaultModels, canvasBridge, drama, applicationContext,
+    mediaService, libraryDirectory, skillLibrary, dispatchNode, wireSession, wireDrama, ...skillSelection };
+  registerSessionRoutes(shared);
+  registerDramaRoutes(shared);
+  registerRunRoute(shared);
+  registerToolRoutes(shared);
+  return router;
+}
+
+function createSkillSelection({ store, skillLibrary }) {
   function requireSessionProject(session, projectId) {
     const boundProjects = [
       session?.skillProjectId,
@@ -354,6 +328,12 @@ export function createAgentRouter({
     });
   }
 
+  return { requireSessionProject, findSkill, assertSkillVersion, selectSkill };
+}
+
+function registerSessionRoutes({ router, base, json, locked, sessions, store, sessionStore,
+  activeSessions, harness, lifetime, textTransport, defaultModels, canvasBridge, wireSession,
+  selectSkill, requireSessionProject }) {
   async function select(req, id, fixedSlug) {
     const projectId = requireProjectId(req.body.projectId);
     await sessions.ensure(id, projectId);
@@ -404,7 +384,7 @@ export function createAgentRouter({
         const projectId = requireProjectId(req.body.projectId);
         const operation = lifetime.begin(id, projectId);
         try {
-          const modelConfig = resolveAgentModel(
+          const modelConfig = await textTransport.resolveModel(
             defaultModels ? await defaultModels.resolve('text', req.body.model) : req.body.model,
           );
           return await harness.compact({
@@ -439,6 +419,10 @@ export function createAgentRouter({
     requireSessionProject(await store.get(id), projectId);
     return canvasBridge.claim(id, projectId);
   }));
+}
+
+function registerDramaRoutes({ router, base, json, locked, wireDrama, drama, store,
+  requireSessionProject, findSkill, assertSkillVersion, applicationContext, canvasBridge }) {
   router.get(
     base + '/sessions/:id/drama',
     json(locked(async (req, id) => wireDrama(await drama.snapshot(id, req.query.projectId)))),
@@ -465,6 +449,11 @@ export function createAgentRouter({
     base + '/operations/:requestId/receipt',
     json((req) => canvasBridge.complete(req.params.requestId, req.body)),
   );
+}
+
+function registerRunRoute({ router, base, activeSessions, lifetime, textTransport, defaultModels,
+  sessions, store, requireSessionProject, findSkill, assertSkillVersion, skillLibrary, drama,
+  mediaService, libraryDirectory, canvasBridge, dispatchNode, harness }) {
   router.post(base + '/runs', async (req, res) => {
     let id,
       canvasRun,
@@ -486,10 +475,9 @@ export function createAgentRouter({
       lockOwned = true;
       const projectId = requireProjectId(req.body.projectId);
       runLifetime = lifetime.begin(id, projectId);
-      const modelConfig = resolveAgentModel(
+      const modelConfig = await textTransport.resolveModel(
         defaultModels ? await defaultModels.resolve('text', turn.model) : turn.model,
       );
-      await requireCredentials(() => getCredentials(modelConfig.provider), modelConfig);
       await sessions.ensure(id, projectId);
       let session = await store.get(id);
       requireSessionProject(session, projectId);
@@ -623,6 +611,9 @@ export function createAgentRouter({
       if (lockOwned) activeSessions.delete(id);
     }
   });
+}
+
+function registerToolRoutes({ router, base, json, mediaService }) {
   router.post(
     base + '/tools/inspect-media',
     json((req) => mediaService.inspect({ ...req.body })),
@@ -637,5 +628,4 @@ export function createAgentRouter({
       }),
     ),
   );
-  return router;
 }

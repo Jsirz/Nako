@@ -2082,14 +2082,14 @@
       }
     }
   },
-  "GPT-5.6 Sol · Work-Fisher": {
-    "name": "GPT-5.6 Sol · Work-Fisher",
+  "GPT-6 Sol · Work-Fisher": {
+    "name": "GPT-6 Sol · Work-Fisher",
     "timeEstimate": "1min",
     "provider": "WorkFisherTextProvider",
     "useProxy": false,
     "maxConcurrent": 0,
     "source": "work_fisher",
-    "canonicalModel": "GPT-5.6 Sol",
+    "canonicalModel": "GPT-6 Sol",
     "tier": "standard",
     "variantLabel": null,
     "brand": "GPT",
@@ -2129,18 +2129,18 @@
     "endpoint": {
       "multimodal-chat": {
         "url": "https://api.work-fisher.com/v1/chat/completions",
-        "model": "workfisher/g5.6-sol"
+        "model": "workfisher/g6-sol"
       }
     }
   },
-  "GPT-5.6 Terra · Work-Fisher": {
-    "name": "GPT-5.6 Terra · Work-Fisher",
+  "GPT-6 Luna · Work-Fisher": {
+    "name": "GPT-6 Luna · Work-Fisher",
     "timeEstimate": "1min",
     "provider": "WorkFisherTextProvider",
     "useProxy": false,
     "maxConcurrent": 0,
     "source": "work_fisher",
-    "canonicalModel": "GPT-5.6 Terra",
+    "canonicalModel": "GPT-6 Luna",
     "tier": "standard",
     "variantLabel": null,
     "brand": "GPT",
@@ -2180,58 +2180,7 @@
     "endpoint": {
       "multimodal-chat": {
         "url": "https://api.work-fisher.com/v1/chat/completions",
-        "model": "workfisher/g5.6-terra"
-      }
-    }
-  },
-  "GPT-5.6 Luna · Work-Fisher": {
-    "name": "GPT-5.6 Luna · Work-Fisher",
-    "timeEstimate": "1min",
-    "provider": "WorkFisherTextProvider",
-    "useProxy": false,
-    "maxConcurrent": 0,
-    "source": "work_fisher",
-    "canonicalModel": "GPT-5.6 Luna",
-    "tier": "standard",
-    "variantLabel": null,
-    "brand": "GPT",
-    "premium": false,
-    "cost": 0,
-    "costByMode": null,
-    "rhPriceRules": null,
-    "estimatedCostByMode": null,
-    "priceNoteByMode": null,
-    "priceTextByMode": null,
-    "priceFormula": null,
-    "tokenPricePerMillion": null,
-    "tokenVideoPricePerMillion": null,
-    "resolutionSurcharge": null,
-    "modelIdOverride": false,
-    "languageModes": [
-      {
-        "label": "多模态对话",
-        "value": "multimodal-chat",
-        "allowedInputs": {
-          "text": 1,
-          "image": 1
-        }
-      }
-    ],
-    "supportedReferenceTypes": [
-      "text",
-      "image"
-    ],
-    "supportedImageFormats": [
-      "jpeg",
-      "png",
-      "webp"
-    ],
-    "maxImageSizeMb": 20,
-    "advancedParams": [],
-    "endpoint": {
-      "multimodal-chat": {
-        "url": "https://api.work-fisher.com/v1/chat/completions",
-        "model": "workfisher/g5.6-luna"
+        "model": "workfisher/g6-luna"
       }
     }
   },

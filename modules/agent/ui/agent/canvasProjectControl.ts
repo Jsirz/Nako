@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { createDashboardClient } from '../../../project/api/ui/navigation/projectDashboardData';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult, type ProjectCommand } from '../../../contracts/canvasControlProtocol.js';
 
@@ -67,7 +68,7 @@ export function createCanvasProjectControl(execute: CanvasActionHandler, getRunt
         return { ok: true, revision: current.revision, projectState: 'ready-to-open', projects: catalog([target!]), afterTurn: async () => {
           if (claimed) return;
           claimed = true;
-          if (!active(navigationRequest) || !await runtime.save() || !active(navigationRequest)) throw Error('项目切换未完成，请核对保存状态。');
+          if (!active(navigationRequest) || !await runtime.save() || !active(navigationRequest)) throw new AgentOperationError('项目切换未完成，请核对保存状态。', { operation: 'open-project', projectId: request.projectId });
           await runtime.open(command.projectId);
         } };
       }
@@ -99,11 +100,11 @@ export function createCanvasProjectControl(execute: CanvasActionHandler, getRunt
           response = await fetcher('/api/workflows', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
             body: JSON.stringify({ id: crypto.randomUUID(), title: command.title, folderId: command.folderId ?? null, revision: 0, nodes: [], groups: [], viewport: { x: 0, y: 0, zoom: 1 } }) });
         } else return { ok: false, code: 'INVALID' };
-        if (!response.ok) throw Error('Project creation unconfirmed');
+        if (!response.ok) throw new AgentOperationError('Project creation unconfirmed', { operation: 'create-project', status: response.status });
         const created = await response.json();
-        if (typeof created.id !== 'string') throw Error('Invalid project receipt');
+        if (typeof created.id !== 'string') throw new AgentOperationError('Invalid project receipt', { operation: 'create-project' });
         const actual = (await client.load(signal)).projects.find(project => project.id === created.id);
-        if (!actual) throw Error('Created project not found');
+        if (!actual) throw new AgentOperationError('Created project not found', { operation: 'create-project', projectId: created.id });
         return projectCanvasResult({ ok: true, revision: current.revision, projectState: 'created', projects: catalog([actual]) });
       }
       const after = await read(request);
@@ -124,27 +125,27 @@ export function createCanvasProjectControl(execute: CanvasActionHandler, getRunt
     entry.item.state = 'running'; publish();
     const { request, command } = entry, runtime = getRuntime();
     try {
-      if (!runtime || !active(request)) throw Error('Expired');
+      if (!runtime || !active(request)) throw new AgentOperationError('Expired', { operation: 'approve-project-operation', requestId: request.requestId });
       if (command.operation === 'import') {
-        if (!await runtime.save() || !active(request)) throw Error('Save failed');
+        if (!await runtime.save() || !active(request)) throw new AgentOperationError('Save failed', { operation: 'import-project', projectId: request.projectId });
         runtime.importFile(); entry.item.state = 'completed'; return;
       }
       if (command.operation === 'export') {
-        if (command.projectId === runtime.projectId && !await runtime.save()) throw Error('Save failed');
-        if (!active(request)) throw Error('Expired');
+        if (command.projectId === runtime.projectId && !await runtime.save()) throw new AgentOperationError('Save failed', { operation: 'export-project', projectId: request.projectId });
+        if (!active(request)) throw new AgentOperationError('Expired', { operation: 'export-project', requestId: request.requestId });
         runtime.download(command.projectId); entry.item.state = 'completed'; return;
       }
       const current = await read(request);
-      if (!current.ok || current.revision !== command.revision) throw Error('Changed');
+      if (!current.ok || current.revision !== command.revision) throw new AgentOperationError('Changed', { operation: 'approve-project-operation', requestId: request.requestId });
       if (command.operation === 'delete') {
         if (command.projectId === runtime.projectId) {
-          if (!await runtime.save() || !active(request)) throw Error('Save failed');
+          if (!await runtime.save() || !active(request)) throw new AgentOperationError('Save failed', { operation: 'delete-project', projectId: request.projectId });
           await runtime.exit();
         }
         await client.deleteProject(command.projectId);
         entry.item.state = 'completed';
       } else if (command.operation === 'deleteFolder') {
-        if (!await runtime.save() || !active(request)) throw Error('Save failed');
+        if (!await runtime.save() || !active(request)) throw new AgentOperationError('Save failed', { operation: 'delete-project-folder', projectId: request.projectId });
         await client.deleteFolder(command.folderId); entry.item.state = 'completed';
         if (active(request)) {
           const actual = (await client.load()).projects.find(project => project.id === runtime.projectId);

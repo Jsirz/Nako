@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 export const SECRET_MASK = '********';
 
 import { USER_PROVIDER_SECRET_KEYS } from '../../../contracts/providerSecrets.js';
@@ -147,7 +148,7 @@ export function parseEnvironment(content) {
 export function safeValue(value) {
   const normalized = String(value ?? '').trim();
   if (normalized.length > 100_000 || /[\r\n\0]/.test(normalized)) {
-    throw new Error('Configuration value is invalid');
+    throw new PluginError(ERRORS.invalidConfiguration, 'Configuration value is invalid', { status: 400, context: { moduleId: 'generation-core', operation: 'saveConfig' } });
   }
   return normalized;
 }

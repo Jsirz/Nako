@@ -273,6 +273,15 @@ export function deriveVariableAssetGroupCandidates({
     orderedIds.forEach((candidateId) => consumedCandidateIds.add(candidateId));
   }
 
+  const additionalCandidates = deriveSyntheticVideoCandidates(executionPlan, nodeDefinitions, buckets);
+  return [...candidates.flatMap((candidate) => {
+    const replacement = replacements.get(candidate.id);
+    if (replacement) return [replacement];
+    return consumedCandidateIds.has(candidate.id) ? [] : [candidate];
+  }), ...additionalCandidates];
+}
+
+function deriveSyntheticVideoCandidates(executionPlan, nodeDefinitions, buckets) {
   const additionalCandidates = [];
   const videoTemplate = syntheticVideoTemplate(nodeDefinitions);
   if (videoTemplate) {
@@ -348,9 +357,5 @@ export function deriveVariableAssetGroupCandidates({
     }
   }
 
-  return [...candidates.flatMap((candidate) => {
-    const replacement = replacements.get(candidate.id);
-    if (replacement) return [replacement];
-    return consumedCandidateIds.has(candidate.id) ? [] : [candidate];
-  }), ...additionalCandidates];
+  return additionalCandidates;
 }

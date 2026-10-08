@@ -1,3 +1,4 @@
+import { createTextGenerationService } from '../plugins/platform/text-transport/service.js';
 import { createDramaConversationService } from '../modules/agent/server/agent/drama/dramaConversation.js';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, readdir } from 'node:fs/promises';
@@ -70,24 +71,27 @@ function fixture(responses) {
     return typeof next === 'function' ? next(input) : next;
   });
   const getCredentials = vi.fn(() => ({ ECLOUD_API_KEY: 'test-secret-not-real' }));
+  const textTransport = createTextGenerationService({
+    credentials: { get: getCredentials }, modelCatalog: loadModelCatalog, fetcher,
+  });
   const harness = createPiAgentHarness({
-    sessions,
-    textTransport: { fetcher },
-    getCredentials,
-    mediaService: { imageContent: async () => [] },
+    sessions, textTransport, mediaService: { imageContent: async () => [] },
   });
   const input = {
     sessionId: 'session-1',
     projectId: 'project-1',
     operationId: 'run-1',
     message: '查看画布',
-    modelConfig: model,
+    modelConfig: { id: model.endpoint['multimodal-chat'].model, name: model.name,
+      provider: model.provider, reference: { name: model.name, provider: model.provider },
+      contextWindow: model.contextWindow, languageModes: model.languageModes },
   };
   return {
     harness,
     input,
     fetcher,
     getCredentials,
+    textTransport,
     requests,
     events,
     emit: (event) => events.push(event),
@@ -187,7 +191,7 @@ describe('pi Harness durable execution', () => {
     });
     expect(dispatch).toHaveBeenCalledTimes(1);
     expect(f.fetcher).toHaveBeenCalledTimes(2);
-    expect(f.getCredentials).toHaveBeenCalledWith('EcloudTextProvider');
+    expect(f.getCredentials).toHaveBeenCalledWith('provider.ecloud');
     expect(f.requests[0]).toMatchObject({
       model: 'zhipu/glm-5.3-flash',
       thinking: { type: 'enabled', clear_thinking: false },
@@ -447,8 +451,7 @@ async function httpFixture(f) {
       createDramaConversation: (sessionStore) => createDramaConversationService({ sessionStore }),
       defaultModels: f.defaultModels,
       sessionStore: repository,
-      textTransport: { fetcher: f.fetcher },
-      getCredentials: f.getCredentials,
+      textTransport: f.textTransport,
       mediaService: { imageContent: async () => [], fitVisualReferences: async (input) => input },
       onHarness: (h) => {
         f.httpHarness = h;
@@ -489,7 +492,7 @@ it('resolves an omitted Agent model through the shared service before credential
     expect(result.response).toBe('default model answer');
     expect(f.defaultModels.resolve).toHaveBeenCalledWith('text', '');
     expect(f.requests[0].model).toBe(model.endpoint['multimodal-chat'].model);
-    expect(f.getCredentials).toHaveBeenCalledWith(model.provider);
+    expect(f.getCredentials).toHaveBeenCalledWith('provider.ecloud');
   } finally {
     await http.close();
   }

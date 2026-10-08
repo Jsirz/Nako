@@ -108,13 +108,13 @@ function ToolButton({
 
 export const CanvasTextEditor = forwardRef<CanvasTextEditorHandle, CanvasTextEditorProps>(
   function CanvasTextEditor(props, ref) {
-    const {
-      editable,
-      autoLayout = false,
-      fullscreen = false,
-      showToolbar = false,
-      className = '',
-    } = props;
+    const state = useTextEditorState(props, ref);
+    return renderTextEditor(props, state);
+  },
+);
+
+function useTextEditorState(props: CanvasTextEditorProps, ref: React.ForwardedRef<CanvasTextEditorHandle>) {
+    const { editable } = props;
     const current = useRef(props);
     const composing = useRef(false);
     const pendingDocument = useRef<TextDocumentNode | null>(null);
@@ -249,6 +249,14 @@ export const CanvasTextEditor = forwardRef<CanvasTextEditorHandle, CanvasTextEdi
       }
     };
 
+    return { current, composing, pendingDocument, tableTrigger, tableOpen, setTableOpen,
+      rows, setRows, columns, setColumns, feedback, tableId, editor, formatting, tableAction, copy };
+}
+
+function renderTextEditor(props: CanvasTextEditorProps, state: ReturnType<typeof useTextEditorState>) {
+    const { editable, autoLayout = false, fullscreen = false, className = '' } = props;
+    const { current, composing, pendingDocument, tableTrigger, tableOpen, setTableOpen,
+      feedback, editor } = state;
     return (
       <div
         data-nk-text-editor=""
@@ -306,7 +314,25 @@ export const CanvasTextEditor = forwardRef<CanvasTextEditorHandle, CanvasTextEdi
           });
         }}
       >
-        {(showToolbar || fullscreen) && (
+        {renderTextEditorToolbar(props, state)}
+        <div className="af-text-editor-scroll overflow-y-auto">
+          <EditorContent editor={editor} />
+        </div>
+        {feedback && (
+          <div className="af-text-editor-feedback" role={feedback.error ? 'alert' : 'status'}
+            data-error={feedback.error ? 'true' : 'false'}>
+            {feedback.message}
+          </div>
+        )}
+      </div>
+    );
+}
+
+function renderTextEditorToolbar(props: CanvasTextEditorProps, state: ReturnType<typeof useTextEditorState>) {
+    const { editable, autoLayout = false, fullscreen = false, showToolbar = false } = props;
+    const { tableTrigger, tableOpen, setTableOpen, rows, setRows, columns, setColumns,
+      tableId, editor, formatting, tableAction, copy } = state;
+    return (showToolbar || fullscreen) && (
           <div
             className="af-text-editor-toolbar"
             role="toolbar"
@@ -481,20 +507,5 @@ export const CanvasTextEditor = forwardRef<CanvasTextEditorHandle, CanvasTextEdi
               </div>
             )}
           </div>
-        )}
-        <div className="af-text-editor-scroll overflow-y-auto">
-          <EditorContent editor={editor} />
-        </div>
-        {feedback && (
-          <div
-            className="af-text-editor-feedback"
-            role={feedback.error ? 'alert' : 'status'}
-            data-error={feedback.error ? 'true' : 'false'}
-          >
-            {feedback.message}
-          </div>
-        )}
-      </div>
-    );
-  },
-);
+        );
+}

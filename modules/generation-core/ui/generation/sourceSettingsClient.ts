@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 import {
   requestSettingsJson,
   type SettingsRequestOptions,
@@ -130,7 +131,9 @@ const withTimeout = <T>(
   new Promise<T>((resolve, reject) => {
     const timer = globalThis.setTimeout(() => {
       controller.abort();
-      reject(new Error(message));
+      reject(new PluginError(ERRORS.invalidConfiguration, message, {
+        context: { moduleId: 'generation-core', operation: 'readModelGroups', timeoutMs },
+      }));
     }, timeoutMs);
     promise.then(
       (value) => {
@@ -168,9 +171,10 @@ export function createSourceSettingsClient(
           });
           const body = (await response.json()) as { groups?: ModelGroup[]; error?: unknown };
           if (!response.ok)
-            throw new Error(
-              body.error ? String(body.error) : `读取模型可用性失败 (${response.status})`,
-            );
+            throw new PluginError(ERRORS.invalidConfiguration,
+              body.error ? String(body.error) : `读取模型可用性失败 (${response.status})`, {
+                status: response.status, context: { moduleId: 'generation-core', operation: 'readModelGroups', url },
+              });
           return body.groups ?? [];
         })(),
         modelRequestTimeoutMs,
@@ -244,7 +248,9 @@ export function createSourceSettingsClient(
           body: JSON.stringify(values),
         },
       );
-      if (body?.success !== true) throw new Error('未收到保存成功回执，请核对配置后重试。');
+      if (body?.success !== true) throw new PluginError(ERRORS.invalidConfiguration, '未收到保存成功回执，请核对配置后重试。', {
+        context: { moduleId: 'generation-core', operation: 'saveKeys' },
+      });
       clearModelGroups();
     },
     async getLibTvCliStatus(options: SettingsRequestOptions = {}): Promise<LibTvCliStatus> {

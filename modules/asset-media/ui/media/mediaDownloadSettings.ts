@@ -72,7 +72,7 @@ export function mountMediaDownloadSettings(
     element('strong', '每次下载时询问保存位置', 'block text-sm font-medium text-[var(--nk-text)]'),
     element(
       'small',
-      '开启后显示 Windows 保存对话框；取消不会报错。',
+      '开启后显示系统保存对话框；取消不会报错。',
       'mt-1 block text-xs text-[var(--nk-text-muted)]',
     ),
   );
@@ -106,7 +106,7 @@ export function mountMediaDownloadSettings(
     message.textContent = settings.directoryAvailable
       ? settings.customDirectory
         ? '使用已选择的固定目录。'
-        : '使用 Windows 默认下载目录。'
+        : '使用系统默认下载目录。'
       : '当前目录不可用，请重新选择。';
   };
   const run = async (operation: () => Promise<MediaDownloadSettings | { status: 'cancelled' }>) => {

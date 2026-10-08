@@ -1,9 +1,11 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
 import {
   applyStableMediaMode,
   isStableMediaManagedSource,
   scanStableMediaTargets,
   type StableMediaTarget,
 } from './stableMediaDomAdapter';
+const logger = createModuleLogger('asset-media');
 
 export interface StableMediaRenderer {
   /** 原生 DOM 媒体会自动跟随父级 transform；共享画布渲染器才需要视口事件重同步。 */
@@ -74,7 +76,8 @@ export function startStableMediaEnhancement({
     try {
       drawn = new Set((await renderer.sync(pixiTargets)) ?? []);
     } catch (reason) {
-      console.error('[Nako Stable Media] Pixi preview failed; using native previews.', reason);
+      logger.error('Stable media preview failed', { operation: 'syncPreview', reason: reason instanceof Error ? reason.message : String(reason) });
+      for (const target of pixiTargets) applyStableMediaMode(target, 'native-preview');
       return;
     }
     if (destroyed) return;

@@ -1,4 +1,7 @@
-import { browserServices, browserHost } from '../../../kernel/browser';
+import { GENERATION_ERROR_CODES } from '../../../contracts/generationErrors.js';
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
+import { browserHost } from '../../../kernel/browser';
+import { installGenerationScheduler } from './generationScheduler';
 import type { NodeGenerationClient } from '../../../contracts/nodeExecution.js';
 type Result = Record<string, unknown>;
 async function responseBody(response: Response): Promise<Result> {
@@ -10,11 +13,11 @@ async function submit(
   request: Record<string, unknown>,
 ): Promise<Result> {
   return browserHost.services.get<NodeGenerationClient>('nodes.client').generate(kind,
-    browserServices.__NAKO_GENERATION_SCHEDULER__?.decorateRequest(request) ?? request);
+    installGenerationScheduler().decorateRequest(request));
 }
 const unconfirmed = () =>
-  Object.assign(new Error('结果尚未确认，正在核对原任务。'), {
-    code: 'GENERATION_OBSERVATION_INTERRUPTED',
+  new PluginError(GENERATION_ERROR_CODES.observationInterrupted, '结果尚未确认，正在核对原任务。', {
+    context: { moduleId: 'generation-core', operation: 'observeResponse' },
   });
 /** A response is observed once. Neither transport loss nor malformed JSON replays a submission. */
 async function generateMedia(
@@ -53,7 +56,9 @@ export async function getGenerationConcurrency(
   );
   const result = await responseBody(response);
   if (!response.ok || typeof result.blocked !== 'boolean')
-    throw new Error(typeof result.error === 'string' ? result.error : '并发状态查询失败');
+    throw new PluginError(ERRORS.generationState, typeof result.error === 'string' ? result.error : '并发状态查询失败', {
+      status: response.status, context: { moduleId: 'generation-core', operation: 'getConcurrency', modelName, mode },
+    });
   return {
     blocked: result.blocked,
     modelId: typeof result.modelId === 'string' ? result.modelId : undefined,

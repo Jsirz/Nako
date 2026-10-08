@@ -1,5 +1,6 @@
 import { expect, it, vi } from 'vitest';
-import { readToolChat } from '../modules/agent/server/agent/modelChatTransport.js';
+import { readToolChat } from '../plugins/platform/text-transport/modelChatTransport.js';
+import { createTextGenerationService } from '../plugins/platform/text-transport/service.js';
 import { createModelAdapter } from '../modules/agent/server/harness/modelAdapter.js';
 import { generationProviders } from '../modules/generation-core/providerRegistry.js';
 import { loadModelCatalog } from '../modules/generation-core/api/server/config/modelCatalog.js';
@@ -47,14 +48,14 @@ it.each([
   ['changing ID', [[call('first', '{')], [call('second', '}')]]],
   ['changing name', [[call('first', '{')], [{ ...call('first', '}'), function: { name: 'media_control', arguments: '}' } }]]],
 ])('rejects %s without inventing or rewriting an identifier', async (_name, deltas) => {
-  await expect(readToolChat(stream(deltas))).rejects.toMatchObject({ code: 'AGENT_CANVAS_INCOMPLETE' });
+  await expect(readToolChat(stream(deltas))).rejects.toMatchObject({ context: { reason: 'AGENT_CANVAS_INCOMPLETE' } });
 });
 
 it('still rejects streams without a successful tool-call finish', async () => {
-  await expect(readToolChat(stream([[call('call_abc', '{')]], null))).rejects.toMatchObject({ code: 'AGENT_CANVAS_INCOMPLETE' });
+  await expect(readToolChat(stream([[call('call_abc', '{')]], null))).rejects.toMatchObject({ context: { reason: 'AGENT_CANVAS_INCOMPLETE' } });
 });
 
-it.each(['workfisher/g6-astra', 'workfisher/g5.6-sol', 'workfisher/g5.6-terra', 'workfisher/g5.6-luna'])(
+it.each(['workfisher/g6-astra', 'workfisher/g6-sol', 'workfisher/g6-luna'])(
   'round-trips the exact ID through the pi adapter and next request for %s', async modelId => {
     const release = generationProviders.register({ name: 'WorkFisherTextProvider', kinds: ['text'],
       execution: 'immediate', requiredSecrets: ['WORK_FISHER_API_KEY'] }, {});
@@ -67,8 +68,10 @@ it.each(['workfisher/g6-astra', 'workfisher/g5.6-sol', 'workfisher/g5.6-terra', 
           ? stream([[call(id, '{"action":')], [call(id, '"read"}')]])
           : Response.json({ choices: [{ message: { content: 'done' }, finish_reason: 'stop' }] });
       });
-      const adapter = createModelAdapter({ modelConfig, textTransport: { fetcher },
-        getCredentials: () => ({ WORK_FISHER_API_KEY: 'test-only' }) });
+      const textGeneration = createTextGenerationService({ modelCatalog: loadModelCatalog,
+        fetcher, credentials: { get: () => ({ WORK_FISHER_API_KEY: 'test-only' }) } });
+      const model = await textGeneration.resolveModel(modelConfig.name);
+      const adapter = createModelAdapter({ modelConfig: model, textGeneration });
       const assistant = await adapter.streamFn(adapter.model, { messages: [] }).result();
       expect(adapter.error).toBeUndefined();
       expect(assistant.content).toEqual([{ type: 'toolCall', id, name: 'canvas_control', arguments: { action: 'read' } }]);

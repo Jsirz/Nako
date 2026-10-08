@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { classifyMedia, uploadMediaFile } from '../../../asset-media/api/ui/media/canvasMediaTransport';
 import type * as React from 'react';
 import { isAgentDocument } from '../../../contracts/shared/agentDocumentFormats.js';
@@ -77,7 +78,7 @@ export function useCanvasAgentReferences(
       const addedDocuments: AgentDocument[] = [];
       for (const file of accepted) {
         if (isAgentDocument(file.name)) { addedDocuments.push(await readAgentDocument(file, controller.signal)); continue; }
-        if (/\.doc$/i.test(file.name)) throw new Error('旧版 Word DOC 请先另存为 DOCX 后上传。');
+        if (/\.doc$/i.test(file.name)) throw new AgentOperationError('旧版 Word DOC 请先另存为 DOCX 后上传。', { operation: 'read-agent-references', reason: 'unsupported-doc' });
         const type = classifyMedia(file);
         const media = type === 'image' ? await readAgentImage(file, controller.signal) : { url: await uploadMediaFile(file, projectId, undefined, controller.signal) };
         added.push({ nodeId: `local-${crypto.randomUUID()}`, type, ...media });

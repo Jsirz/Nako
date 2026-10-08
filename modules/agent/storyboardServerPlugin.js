@@ -1,3 +1,4 @@
+import { AgentOperationError, AGENT_ERROR_CODES } from '../contracts/agentErrors.js';
 import express from 'express';
 import { defineApplicationPlugin } from '../kernel/application.js';
 import { loadModelCatalog } from '../generation-core/api/server/config/modelCatalog.js';
@@ -15,8 +16,6 @@ export default defineApplicationPlugin({
   activate(context) {
     const app = express.Router();
     const generationRuntime = context.services.get('generation.runtime');
-    const getAgentCredentials = (name) =>
-      context.services.get('generation.textTransport').credentials(name);
     app.use(
       '/api/storyboard',
       createStoryboardRouter({
@@ -25,7 +24,6 @@ export default defineApplicationPlugin({
           createDramaModelGenerator({
             textTransport: context.services.get('generation.textTransport'),
             defaultModels: context.services.get('generation.defaults'),
-            getCredentials: getAgentCredentials,
             readImages: context.services.get('media.agent').imageContent,
           })({
             model: process.env.STORYBOARD_TEXT_MODEL,
@@ -49,14 +47,12 @@ export default defineApplicationPlugin({
               (m.name === requested ||
                 Object.values(m.endpoint || {}).some((e) => e.model === requested)),
           );
-          if (!model) throw Object.assign(new Error('分镜图像模型不可用'), { status: 400 });
+          if (!model) throw new AgentOperationError('分镜图像模型不可用', { operation: 'storyboard-generate-image', projectId }, AGENT_ERROR_CODES.unavailable);
           if (!/^[\w-]{1,128}$/.test(operationId))
-            throw Object.assign(new Error('分镜操作标识无效'), { status: 400 });
+            throw new AgentOperationError('分镜操作标识无效', { operation: 'storyboard-generate-image', projectId }, AGENT_ERROR_CODES.invalidRequest);
           if (generationRuntime.coordinator.getTask('storyboard-' + operationId))
-            throw Object.assign(new Error('分镜操作已登记，请查询原任务；不会重复生成'), {
-              status: 409,
-              code: 'AGENT_OPERATION_EXISTS',
-            });
+            throw new AgentOperationError('分镜操作已登记，请查询原任务；不会重复生成',
+              { operation: 'storyboard-generate-image', projectId, operationId }, 'AGENT_OPERATION_EXISTS', 409);
           return generationRuntime.generateImage({
             imageModel: model.name,
             nodeId: 'storyboard-' + operationId,

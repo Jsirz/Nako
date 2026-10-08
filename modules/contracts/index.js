@@ -6,26 +6,21 @@ export const SERVICES = Object.freeze({
   mediaProcessor: 'media.processor', generation: 'generation.service', workflow: 'workflow.service',
   credentials: 'identity.credentials', localRuntime: 'local.runtime',
 });
-export const ERRORS = Object.freeze({
-  invalidManifest: 'PLUGIN_INVALID_MANIFEST', incompatible: 'PLUGIN_API_INCOMPATIBLE',
-  duplicate: 'PLUGIN_DUPLICATE', missing: 'PLUGIN_NOT_FOUND', dependency: 'PLUGIN_DEPENDENCY',
-  serviceMissing: 'SERVICE_NOT_FOUND', serviceDuplicate: 'SERVICE_DUPLICATE',
-  permission: 'PLUGIN_PERMISSION_DENIED', busy: 'PLUGIN_BUSY', inactive: 'PLUGIN_INACTIVE',
-  invalidMedia: 'INVALID_MEDIA_ASSET',
-  invalidModel: 'INVALID_MODEL_CONFIGURATION',
-  providerRequest: 'PROVIDER_REQUEST_FAILED',
-  workFisherRequest: 'WORK_FISHER_REQUEST_FAILED',
-  credentialMissing: 'PROVIDER_CREDENTIAL_MISSING',
-  invalidProjectArchive: 'INVALID_PROJECT_ARCHIVE',
-  projectTransfer: 'PROJECT_TRANSFER_FAILED',
-  desktopUpdate: 'DESKTOP_UPDATE_FAILED',
-  agentOperationSync: 'AGENT_OPERATION_SYNC_FAILED',
-  nodePackage: 'NODE_PACKAGE_ERROR',
-});
+export { ERRORS, PluginError } from './errors.js';
 export * from './agentProtocol.js';
 export * from './agentSession.js';
 export * from './pluginValidation.js';
 export * from './nodeSdk.js';
-export class PluginError extends Error {
-  constructor(code, message) { super(message); this.name = 'PluginError'; this.code = code; }
-}
+export * from './generationAdmission.js';
+export * from './agentTextGeneration.js';
+export * from './generationService.js';
+export * from './mediaDelivery.js';
+export * from './identityErrors.js';
+export * from './desktopErrors.js';
+export * from './providerErrors.js';
+export * from './generationErrors.js';
+export * from './localRuntimeErrors.js';
+export * from './agentErrors.js';
+export * from './canvasErrors.js';
+export * from './projectErrors.js';
+export * from './storageErrors.js';

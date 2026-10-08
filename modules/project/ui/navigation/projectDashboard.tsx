@@ -46,7 +46,7 @@ interface Target {
   id: string;
   type: 'project' | 'folder';
 }
-export function ProjectDashboard(
+function useDashboardState(
   React: DashboardRuntime,
   props: ProjectDashboardProps,
   components: Components,
@@ -204,6 +204,30 @@ export function ProjectDashboard(
     isRenaming: renaming?.id === id && renaming.type === type,
     onRenameComplete: () => setRenaming(null),
   });
+  return {
+    React, onOpenProject, onNewProject, DashboardHeader, FolderCard, ProjectCard,
+    ContextMenu, HomeIcon, CloseIcon, FolderIcon, LoadingIcon, projects, folders,
+    loading, busy, error, refresh, folderId, setFolderId, setShowAllProjects,
+    search, setSearch, contextMenu, setContextMenu, setRenaming, moveProjectId,
+    setMoveProjectId, deleteTarget, setDeleteTarget, cleanupPreview, setCleanupPreview,
+    cleaningProjectId, breadcrumbs, visibleFolders, visibleProjects, createFolder,
+    deleteProject, deleteFolder, moveProject, cleanupProject, moveSourceFolder,
+    Modal, home, previewShowcase, cardProps,
+  };
+}
+
+type DashboardState = ReturnType<typeof useDashboardState>;
+export function ProjectDashboard(React: DashboardRuntime, props: ProjectDashboardProps, components: Components) {
+  const state = useDashboardState(React, props, components);
+  return <DashboardScreen state={state} />;
+}
+
+function DashboardScreen({ state }: { state: DashboardState }) {
+  const { React, onNewProject, onOpenProject, DashboardHeader, ProjectCard, FolderCard,
+    visibleProjects, visibleFolders, projects, loading, cardProps, folderId, busy,
+    home, breadcrumbs, search, setSearch, folders, setFolderId, setShowAllProjects,
+    createFolder, moveProjectId, deleteTarget, cleanupPreview, cleaningProjectId,
+    error, refresh, previewShowcase } = state;
   const collection = (
     <DashboardCollection
       projects={visibleProjects}
@@ -273,6 +297,19 @@ export function ProjectDashboard(
           />
         ) : collection}
       </main>
+      <DashboardProjectDialogs state={state} />
+      <DashboardCleanupDialogs state={state} />
+    </div>
+  );
+}
+
+function DashboardProjectDialogs({ state }: { state: DashboardState }) {
+  const { React, contextMenu, ContextMenu, setContextMenu, onOpenProject, setFolderId,
+    setRenaming, projects, folders, setDeleteTarget, setMoveProjectId, cleanupProject,
+    moveProjectId, Modal, busy, error, refresh, CloseIcon, moveSourceFolder,
+    moveProject, HomeIcon, FolderIcon, deleteTarget, deleteProject, deleteFolder } = state;
+  return (
+    <>
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -402,6 +439,15 @@ export function ProjectDashboard(
           })}
         </Modal>
       )}
+    </>
+  );
+}
+
+function DashboardCleanupDialogs({ state }: { state: DashboardState }) {
+  const { React, cleanupPreview, Modal, busy, setCleanupPreview, error, refresh,
+    CloseIcon, cleanupProject, cleaningProjectId, LoadingIcon } = state;
+  return (
+    <>
       {cleanupPreview && (
         <Modal
           label="确认清理冗余素材"
@@ -489,6 +535,6 @@ export function ProjectDashboard(
           {DashboardCleanupStatus(React, LoadingIcon)}
         </Modal>
       )}
-    </div>
+    </>
   );
 }

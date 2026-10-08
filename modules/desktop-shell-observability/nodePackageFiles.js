@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { NODE_ERROR, nodeError } from '../contracts/nodeExecution.js';
+import { NODE_ERROR } from '../contracts/nodeExecution.js';
+import { desktopNodeError as nodeError } from '../contracts/desktopErrors.js';
 
 export async function readNodePackageFile(directory, name, maximum = 1024 * 1024) {
   if (typeof name !== 'string' || path.isAbsolute(name)) throw nodeError(NODE_ERROR.INVALID, '节点文件路径无效');

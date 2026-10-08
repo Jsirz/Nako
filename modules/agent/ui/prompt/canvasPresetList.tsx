@@ -125,7 +125,28 @@ export function CanvasPresetList(
     setCreating(false);
     if (!props.editor?.isDestroyed) props.editor?.commands.focus();
   };
-  const panel = creating ? (
+  const panel = renderPresetListPanel(React, { props, creating, category, categories, closeForm,
+    setRemoved, setCategory, setSelected, setCreating, rootRef, items, selected, select, remove,
+    mutation, text, title, copy }, { CreateForm, PresetCard, AddIcon, CopyIcon });
+  return renderPresetMenu(React, mutation.error, panel);
+}
+
+type ListPanelState = {
+  props: PresetListProps; creating: boolean; category: string; categories: string[];
+  closeForm(): void; setRemoved: ReactTypes.Dispatch<ReactTypes.SetStateAction<string[]>>;
+  setCategory: ReactTypes.Dispatch<ReactTypes.SetStateAction<string>>;
+  setSelected: ReactTypes.Dispatch<ReactTypes.SetStateAction<number>>;
+  setCreating: ReactTypes.Dispatch<ReactTypes.SetStateAction<boolean>>;
+  rootRef: ReactTypes.RefObject<HTMLDivElement | null>; items: PresetListProps['items'];
+  selected: number; select(index: number): void; remove(index: number): Promise<boolean>;
+  mutation: ReturnType<typeof usePromptMutation>; text: string; title: string;
+  copy(event: ReactTypes.SyntheticEvent): Promise<void>;
+};
+function renderPresetListPanel(React: PromptRuntime, {
+  props, creating, category, categories, closeForm, setRemoved, setCategory, setSelected,
+  setCreating, rootRef, items, selected, select, remove, mutation, text, title, copy,
+}: ListPanelState, { CreateForm, PresetCard, AddIcon, CopyIcon }: Components) {
+  return creating ? (
     <div
       style={{
         width: 'min(768px, calc(100vw - 24px))',
@@ -247,6 +268,9 @@ export function CanvasPresetList(
       </div>
     </div>
   );
+}
+
+function renderPresetMenu(React: PromptRuntime, error: string, panel: ReactTypes.ReactNode) {
   return (
     <div
       data-nako-preset-menu="true"
@@ -256,7 +280,7 @@ export function CanvasPresetList(
       onCut={(event) => event.stopPropagation()}
       onPaste={(event) => event.stopPropagation()}
     >
-      {mutation.error && (
+      {error && (
         <div
           role="alert"
           style={{
@@ -271,7 +295,7 @@ export function CanvasPresetList(
             padding: 8,
           }}
         >
-          {mutation.error}
+          {error}
         </div>
       )}
       {panel}

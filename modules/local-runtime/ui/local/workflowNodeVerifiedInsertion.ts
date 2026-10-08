@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import type {
   WorkflowCanvasInputSlot,
   WorkflowCanvasNodesAdapter,
@@ -142,9 +143,9 @@ function instantiateVerifiedRun(
   const { adapter } = context;
 
   if (verified.run.status !== 'success' || !verified.run.receipt) {
-    throw new Error('只有成功并已保存输出的测试记录才能直接生成完整画布节点。');
+    throw localRuntimeError('只有成功并已保存输出的测试记录才能直接生成完整画布节点。', 'instantiateVerifiedRun');
   }
-  if (!verified.projectId) throw new Error('成功测试记录缺少项目标识。');
+  if (!verified.projectId) throw localRuntimeError('成功测试记录缺少项目标识。', 'instantiateVerifiedRun');
   const anchorX = finiteNumber(position.x, 160, -1_000_000, 1_000_000);
   const anchorY = finiteNumber(position.y, 140, -1_000_000, 1_000_000);
   const slots = expandWorkflowStorageSlots(blueprint as unknown as CanvasNode);

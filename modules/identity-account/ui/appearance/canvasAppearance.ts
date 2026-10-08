@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS, identityError } from '../../../contracts/identityErrors.js';
 import { useSyncExternalStore } from 'react';
 import { preferenceStorage, type PreferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
 import { applyCanvasTheme, themeTokenCss, type CanvasTheme } from './themeTokens';
@@ -126,10 +127,10 @@ export function createCanvasAppearanceStore({
       error?: unknown;
     } | null;
     if (!response.ok)
-      throw new Error(typeof body?.error === 'string' ? body.error : '背景未能保存，请稍后重试。');
-    if (!body || !Object.hasOwn(body, 'image')) throw new Error('背景服务返回内容无效。');
+      throw identityError(IDENTITY_ERRORS.backgroundRequest, typeof body?.error === 'string' ? body.error : '背景未能保存，请稍后重试。', 'background.response', response.status);
+    if (!body || !Object.hasOwn(body, 'image')) throw identityError(IDENTITY_ERRORS.backgroundResponse, '背景服务返回内容无效。', 'background.response', 502);
     const image = parseBackgroundImage(body.image);
-    if (body.image !== null && image === null) throw new Error('背景服务返回内容无效。');
+    if (body.image !== null && image === null) throw identityError(IDENTITY_ERRORS.backgroundResponse, '背景服务返回内容无效。', 'background.response', 502);
     return image;
   }
   return {
@@ -178,7 +179,7 @@ export function createCanvasAppearanceStore({
             signal: AbortSignal.timeout(60000),
           }),
         );
-        if (!image) throw new Error('背景图片未能保存。');
+        if (!image) throw identityError(IDENTITY_ERRORS.backgroundResponse, '背景图片未能保存。', 'background.upload', 502);
         update({ background: { enabled: true } });
         publish({ image });
       } catch (error) {

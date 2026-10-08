@@ -7,6 +7,9 @@
   "dependencies": {
     "ui.workflow-runtime": "^1.0.0"
   },
+  "services": {
+    "provides": ["ui.media.settings", "ui.media.recovery"]
+  },
   "capabilities": [
     "ui.asset-media"
   ]

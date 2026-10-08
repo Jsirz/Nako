@@ -64,14 +64,14 @@ export function createDramaPlanStore({ libraryDirectory } = {}) {
     const file = await filename(id, projectId);
     try {
       const stat = await lstat(file);
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2_500_000) throw new Error('invalid record');
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 2_500_000) throw new DramaPlanError('制作计划记录类型或大小无效', 'DRAMA_PLAN_STORE_CORRUPT', 500);
       const record = JSON.parse(await readFile(file, 'utf8'));
       if (record.schemaVersion !== 1 || record.id !== id || record.projectId !== projectId
           || !['pending', 'complete', 'failed'].includes(record.state)
-          || typeof record.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(record.fingerprint)) throw new Error('invalid record');
+          || typeof record.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(record.fingerprint)) throw new DramaPlanError('制作计划记录格式无效', 'DRAMA_PLAN_STORE_CORRUPT', 500);
       if (record.state === 'complete') {
         record.plan = validateDramaPlan(record.plan);
-        if (record.plan.id !== id || record.plan.projectId !== projectId) throw new Error('invalid scope');
+        if (record.plan.id !== id || record.plan.projectId !== projectId) throw new DramaPlanError('制作计划记录作用域无效', 'DRAMA_PLAN_STORE_CORRUPT', 500);
       }
       return record;
     } catch (error) {

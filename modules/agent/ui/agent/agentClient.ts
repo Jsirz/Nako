@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import type { AgentActivity, AgentCardReference } from '../../../contracts/agentActivity.js';
 import { isAgentEvent, type AgentEvent, type AgentMediaReference } from '../../../contracts/agentProtocol.js';
@@ -94,14 +95,14 @@ export type DramaConversationAction = {
   confirmAssets?: boolean;
 };
 export type AgentStreamResult = { response: string; topic?: string; messageCount: number };
-export class AgentClientError extends Error {
+export class AgentClientError extends AgentOperationError {
   constructor(
     message: string,
     public code: string,
     public status: number,
     public retryable: boolean,
   ) {
-    super(message);
+    super(message, { operation: 'agent-client-request' }, code, status);
     this.name = 'AgentClientError';
   }
 }
@@ -181,7 +182,7 @@ function parseEventBlock(block: string) {
   if (!data.length) return null;
   try {
     const value: unknown = JSON.parse(data.join('\n'));
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error();
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AgentOperationError('Agent 流式响应格式无效', { operation: 'parse-agent-event' });
     return { event, data: value as Record<string, unknown> };
   } catch {
     throw new AgentClientError('Agent 流式响应格式无效', 'AGENT_STREAM_INVALID', 502, false);
@@ -217,6 +218,17 @@ export function createAgentClient(fetcher: typeof fetch = globalThis.fetch) {
       options,
       timeout,
     );
+  return {
+    ...createSessionClient(fetcher, json, post),
+    ...createDramaConversationClient(json, post, dramaRoute),
+    ...createStreamClient(fetcher),
+  };
+}
+
+type JsonRequest = <T>(url: string, init?: RequestInit, options?: Options, timeout?: number) => Promise<T>;
+type PostRequest = <T>(url: string, body: unknown, options?: Options, timeout?: number) => Promise<T>;
+
+function createSessionClient(fetcher: typeof fetch, json: JsonRequest, post: PostRequest) {
   return {
     resumeOperations: (sessionId: string, projectId: string, options: Options = {}) =>
       resumeAgentOperations(fetcher, sessionId, projectId, options),
@@ -269,6 +281,12 @@ export function createAgentClient(fetcher: typeof fetch = globalThis.fetch) {
     stop(sessionId: string): Promise<{ success: boolean }> {
       return post(`/api/agent/v2/sessions/${encodeURIComponent(sessionId)}/stop`, {});
     },
+    ...createSessionHistoryClient(json),
+  };
+}
+
+function createDramaConversationClient(json: JsonRequest, post: PostRequest, dramaRoute: (id: string) => string) {
+  return {
     selectSkill(
       sessionId: string,
       projectId: string,
@@ -319,6 +337,11 @@ export function createAgentClient(fetcher: typeof fetch = globalThis.fetch) {
         options,
       );
     },
+  };
+}
+
+function createStreamClient(fetcher: typeof fetch) {
+  return {
     streamMessage(
       input: AgentMessageInput,
       onToken: (token: string) => void = () => undefined,
@@ -512,6 +535,11 @@ export function createAgentClient(fetcher: typeof fetch = globalThis.fetch) {
         }
       });
     },
+  };
+}
+
+function createSessionHistoryClient(json: JsonRequest) {
+  return {
     listSessions(
       options: Options = {},
       projectId?: string,

@@ -1,4 +1,5 @@
 // Shared by the browser executor and Agent Harness tools. No I/O here.
+import { protocolError } from './errors.js';
 import { validProjectControl, projectProjectResult, projectControlSchema } from './canvasProjectProtocol.js';
 import { validTaskControl, projectTaskResult } from './canvasTaskProtocol.js';
 import { validMediaControl, projectMediaResult, mediaControlSchema } from './canvasMediaProtocol.js';
@@ -101,9 +102,9 @@ export function validCanvasControl(value) {
 
 // Responses are reconstructed, never forward arbitrary node fields, paths or settings.
 export function projectCanvasResult(value) {
-  if (!object(value) || typeof value.ok !== 'boolean') throw new Error('Invalid canvas result');
+  if (!object(value) || typeof value.ok !== 'boolean') throw protocolError('canvasControl', 'Invalid canvas result');
   if (!value.ok) return { ok: false, code: ['CONFLICT', 'UNAVAILABLE', 'INVALID', 'NOT_FOUND', 'UNCONFIRMED'].includes(value.code) ? value.code : 'INVALID' };
-  if (!text(value.revision, 128)) throw new Error('Invalid revision');
+  if (!text(value.revision, 128)) throw protocolError('canvasControl', 'Invalid revision');
   const result = { ok: true, revision: value.revision };
   projectProjectResult(value, result);
   projectTaskResult(value, result);
@@ -111,25 +112,25 @@ export function projectCanvasResult(value) {
   projectBudgetResult(value, result);
   projectWorkflowResult(value, result);
   if (value.operationId !== undefined) {
-    if (!text(value.operationId, 128)) throw new Error('Invalid operation');
+    if (!text(value.operationId, 128)) throw protocolError('canvasControl', 'Invalid operation');
     result.operationId = value.operationId;
   }
   if (value.generationPlanId !== undefined) {
-    if (!text(value.generationPlanId, 128)) throw new Error('Invalid generation plan');
+    if (!text(value.generationPlanId, 128)) throw protocolError('canvasControl', 'Invalid generation plan');
     result.generationPlanId = value.generationPlanId;
     result.generationState = value.generationState === 'running' ? 'running' : 'awaiting-approval';
   }
   if (value.models !== undefined) {
-    if (!Array.isArray(value.models) || value.models.length > 200) throw new Error('Invalid models');
+    if (!Array.isArray(value.models) || value.models.length > 200) throw protocolError('canvasControl', 'Invalid models');
     result.models = value.models.map(model => {
-      if (!text(model?.name) || !text(model.source) || typeof model.parameters !== 'string') throw new Error('Invalid model');
+      if (!text(model?.name) || !text(model.source) || typeof model.parameters !== 'string') throw protocolError('canvasControl', 'Invalid model');
       return { name: model.name, source: model.source, parameters: model.parameters };
     });
   }
   if (value.nodes !== undefined) {
-    if (!Array.isArray(value.nodes)) throw new Error('Canvas too large');
+    if (!Array.isArray(value.nodes)) throw protocolError('canvasControl', 'Canvas too large');
     result.nodes = value.nodes.map(node => {
-      if (!text(node?.id) || !text(node.type, 100) || !coordinate(node.x) || !coordinate(node.y)) throw new Error('Invalid node');
+      if (!text(node?.id) || !text(node.type, 100) || !coordinate(node.x) || !coordinate(node.y)) throw protocolError('canvasControl', 'Invalid node');
       return { id: node.id, type: node.type, x: node.x, y: node.y,
         ...(text(node.pluginId, 128) ? { pluginId: node.pluginId } : {}),
         ...(text(node.nodeVersion, 32) ? { nodeVersion: node.nodeVersion } : {}),
@@ -146,9 +147,9 @@ export function projectCanvasResult(value) {
     });
   }
   if (value.nodeDefinitions !== undefined) {
-    if (!Array.isArray(value.nodeDefinitions) || value.nodeDefinitions.length > 500) throw new Error('Invalid node definitions');
+    if (!Array.isArray(value.nodeDefinitions) || value.nodeDefinitions.length > 500) throw protocolError('canvasControl', 'Invalid node definitions');
     result.nodeDefinitions = value.nodeDefinitions.map(node => {
-      if (!text(node?.type, 128) || !text(node?.packageId, 128) || !text(node?.title, 200)) throw new Error('Invalid node definition');
+      if (!text(node?.type, 128) || !text(node?.packageId, 128) || !text(node?.title, 200)) throw protocolError('canvasControl', 'Invalid node definition');
       return {
         packageId: node.packageId, type: node.type, version: text(node.version, 32) ? node.version : '0.0.0',
         title: node.title, description: typeof node.description === 'string' ? node.description.slice(0, 1000) : '',
@@ -162,31 +163,31 @@ export function projectCanvasResult(value) {
   }
   if (value.nodeResult !== undefined) {
     const encoded = JSON.stringify(value.nodeResult);
-    if (encoded.length > 1024 * 1024) throw new Error('Node result too large');
+    if (encoded.length > 1024 * 1024) throw protocolError('canvasControl', 'Node result too large');
     result.nodeResult = projectNodeValue(value.nodeResult);
   }
   if (text(value.nodeRunId, 128)) result.nodeRunId = value.nodeRunId;
   if (text(value.nodeState, 64)) result.nodeState = value.nodeState;
   if (value.groups !== undefined) {
-    if (!Array.isArray(value.groups)) throw new Error('Invalid groups');
+    if (!Array.isArray(value.groups)) throw protocolError('canvasControl', 'Invalid groups');
     result.groups = value.groups.map(group => {
-      if (!text(group?.id) || !Array.isArray(group.nodeIds) || !group.nodeIds.every(id => text(id))) throw new Error('Invalid group');
+      if (!text(group?.id) || !Array.isArray(group.nodeIds) || !group.nodeIds.every(id => text(id))) throw protocolError('canvasControl', 'Invalid group');
       return { id: group.id, label: typeof group.label === 'string' ? group.label.slice(0, 500) : '', nodeIds: group.nodeIds };
     });
   }
   if (value.selectedNodeIds !== undefined) {
-    if (!Array.isArray(value.selectedNodeIds) || !value.selectedNodeIds.every(id => text(id))) throw new Error('Invalid selection');
+    if (!Array.isArray(value.selectedNodeIds) || !value.selectedNodeIds.every(id => text(id))) throw protocolError('canvasControl', 'Invalid selection');
     result.selectedNodeIds = value.selectedNodeIds;
   }
   if (value.created !== undefined) {
     if (!Array.isArray(value.created) || value.created.length > 100
-      || value.created.some(item => !text(item?.ref, 128) || !text(item?.id))) throw new Error('Invalid created nodes');
+      || value.created.some(item => !text(item?.ref, 128) || !text(item?.id))) throw protocolError('canvasControl', 'Invalid created nodes');
     result.created = value.created.map(({ ref, id }) => ({ ref, id }));
   }
   if (value.assets !== undefined) {
-    if (!Array.isArray(value.assets) || value.assets.length > 50 || value.assets.some(asset => !text(asset?.id, 128) || typeof asset.name !== 'string' || !['images', 'videos', 'audios'].includes(asset.type))) throw new Error('Invalid assets');
+    if (!Array.isArray(value.assets) || value.assets.length > 50 || value.assets.some(asset => !text(asset?.id, 128) || typeof asset.name !== 'string' || !['images', 'videos', 'audios'].includes(asset.type))) throw protocolError('canvasControl', 'Invalid assets');
     result.assets = value.assets.map(asset => ({ id: asset.id, name: asset.name.slice(0, 500), type: asset.type }));
-    if (value.nextOffset !== null && (!Number.isInteger(value.nextOffset) || value.nextOffset < 0 || value.nextOffset > 100000)) throw new Error('Invalid pagination');
+    if (value.nextOffset !== null && (!Number.isInteger(value.nextOffset) || value.nextOffset < 0 || value.nextOffset > 100000)) throw protocolError('canvasControl', 'Invalid pagination');
     result.nextOffset = value.nextOffset;
   }
   return result;

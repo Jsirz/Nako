@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
 import { browserServices } from '../../../kernel/browser';
 import type {
@@ -126,7 +127,7 @@ export function createWorkflowCard(
           title: record.definition.name,
         });
         const adapter = browserServices.__NAKO_WORKFLOW_NODES__;
-        if (!adapter) throw new Error('画布节点适配器尚未加载，请刷新后重试。');
+        if (!adapter) throw localRuntimeError('画布节点适配器尚未加载，请刷新后重试。', 'addWorkflowCardToCanvas');
         let insertion;
         if (record.verifiedRun && record.verifiedProjectId && record.verifiedValues) {
           insertion = await adapter.addToCanvas(blueprint, {

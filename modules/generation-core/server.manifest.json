@@ -18,7 +18,8 @@
       "local.runtime",
       "generation.taskStore",
       "media.generation",
-      "preferences.repository"
+      "preferences.repository",
+      "identity.providerCredentials"
     ],
     "provides": [
       "generation.runtime",

@@ -1,13 +1,12 @@
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { annotateProviderError } from '../../../modules/desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
+import { providerError, wrapProviderError } from '../../../modules/contracts/providerErrors.js';
 export const defaultFetcher = (...args) => BaseProvider.fetch(...args);
 export const failure = (message, extra = {}) =>
-  Object.assign(new PluginError(ERRORS.workFisherRequest, message), {
-    status: 502,
-    expose: true,
-    retryable: false,
-    ...extra,
+  providerError(message, {
+    providerId: 'work-fisher', operation: 'request', code: ERRORS.workFisherRequest,
+    status: 502, expose: true, retryable: false, ...extra,
   });
 export const boundedSignal = (signal, ms) =>
   signal ? AbortSignal.any([signal, AbortSignal.timeout(ms)]) : AbortSignal.timeout(ms);
@@ -76,9 +75,9 @@ export function createClient(fetcher = defaultFetcher) {
         cause.publicTaskId ??= response?.headers.get('x-task-id') || undefined;
         cause.submissionUncertain ??=
           post && (!response || response.ok || response.status === 408 || response.status >= 500);
-        throw annotateProviderError(cause, { stage: post ? (form ? 'upload' : 'submit') : 'poll', response });
+        throw annotateProviderError(wrapProviderError(cause, { providerId: 'work-fisher', operation: post ? (form ? 'upload' : 'submit') : 'poll' }), { stage: post ? (form ? 'upload' : 'submit') : 'poll', response });
       }
-      if (signal?.aborted && !post) throw signal.reason;
+      if (signal?.aborted && !post) throw wrapProviderError(signal.reason, { providerId: 'work-fisher', operation: 'poll' });
       throw annotateProviderError(failure('Work-Fisher 网络中断或响应超时，请查询原任务后再决定是否重试。', {
         retryable: true,
         submissionUncertain: post,

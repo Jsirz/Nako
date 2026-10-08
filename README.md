@@ -1,6 +1,6 @@
 # Nako 插件化画布
 
-Nako 将画布、项目、媒体、生成、工作流、Agent、本地工作区和桌面功能按模块管理，通过声明式插件目录启动。运行和构建只使用本仓库的 `apps/`、`modules/`、`plugins/` .
+Nako 将画布、项目、媒体、生成、工作流、Agent、本地工作区和桌面功能按模块管理，通过声明式插件目录启动。开发规范见 [AGENTS.md](AGENTS.md)，模块职责、接口、数据与源码目录见 [架构文档](docs/architecture/README.md)。
 ## 启动
 
 Windows x64，Node.js **24.20.0**：
@@ -46,7 +46,7 @@ npm.cmd run smoke:media
 | `plugins` | Provider、工作流、存储、媒体、平台适配器及来源模型定义 |
 | `config/*-plugins.json` | 后端适配器、业务、浏览器、桌面、模型五类插件目录 |
 
-默认后端 **36 个激活插件、52 项服务**（包括宿主），前端 **11 个插件**；桌面为 1 个本地工作区插件加 1 个平台宿主。14 个 Provider 插件承载 26 个处理器；87 项模型定义分布在 12 份来源贡献中，构建时生成聚合目录。
+实际插件、服务和模型组成以 `config/*-plugins.json` 及运行时目录为准；模型数据按来源贡献，聚合文件由脚本生成。规范整理记录和未修差异见 [规范差异](docs/architecture/conformance.md)。
 
 ## 配置
 
@@ -66,7 +66,7 @@ Seedance 2.0 使用移动引擎 HTTPS REST 接口，支持文生、首帧、首�
 { "disabled": ["ui.agent", "module.agent"], "options": {} }
 ```
 
-可以禁用 `provider.openai` 等模型来源。前项目官方账号、反馈、管理后台、上报、更新、中转和宣传功能已从实现中删除，见 [移除清单](docs/Nako线上功能清单.md)。Nako 自有更新源由发行者单独配置。必需依赖不能单独关闭：宿主会明确报错，不会偷偷重新启用。
+可以禁用 `provider.openai` 等模型来源。前项目官方账号、反馈、管理后台、上报和中转入口已删除；Nako 自有更新源由发行者配置。必需依赖不能单独关闭，宿主会明确报错。联网边界由 `check:local-only` 核查。
 
 本地工作区为当前 Electron 宿主的必需服务，由 `config/desktop-plugins.json` 装配，不使用上述禁用列表。UI、业务与存储插件使用重启生命周期；空闲 Provider 支持通过 `/api/plugins/:id/disable`、`enable` 在本次进程中启停，运行时修改不会写回配置。
 
@@ -93,9 +93,9 @@ npm.cmd run check
 
 执行架构检查、本地联网边界检查、类型检查、单元/集成测试、两个前端构建、完整后端和禁用 Agent 的后端冒烟。测试不调用真实付费模型。
 
-- [功能分析与重构对照](docs/功能分析与重构对照.md)
+- [架构与模块文档](docs/architecture/README.md)
 - [插件开发说明](docs/插件开发说明.md)
-- [验证记录](docs/验证记录.md)
+- [开发与验证入口](docs/architecture/tooling.md)
 
 模块通过公开 API 复用纯函数和组件，通过服务注册表获取有生命周期的实现。插件之间允许声明依赖，并非每个模块均可单独运行或作为独立 npm 包发布。当前是可信本地代码的进程内插件体系，不包含插件市场或任意第三方代码的安全沙箱。
 
@@ -109,7 +109,7 @@ Agent 已改用 pi-agent-core 0.85.1，使用 `/api/agent/v2` 事件协议和独
 
 输入区也提供会话思考开关和强度选择，设置随项目助手草稿保存。只发送当前模型支持的参数：移动云 GLM-5.3-Flash 要求开启思考，可选低／高／最高强度；Qwen 可开关思考，强度由模型决定；豆包按其支持的档位映射开关与强度。
 
-架构、协议、数据结构、插件关闭方式和验证边界见 [Agent Harness 重构说明](docs/Agent-Harness重构说明.md)。
+Agent 协议、运行与恢复语义见 [Agent Harness](docs/architecture/agent-harness.md)。历史更新与验收流水已归档到 [历史记录](docs/history/README.md)，不代表当前工作区已执行相同验证。
 
 ## 桌面安装包
 

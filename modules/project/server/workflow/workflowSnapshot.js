@@ -1,14 +1,14 @@
-import fs from 'node:fs';
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import path from 'node:path';
 
-export function createWorkflowSnapshotWriter({ mediaDirectory }) {
+export function createWorkflowSnapshotWriter({ mediaDirectory, files }) {
     if (!mediaDirectory) {
-        throw new Error('createWorkflowSnapshotWriter requires mediaDirectory');
+        throw new ProjectError(PROJECT_ERRORS.configuration, 'createWorkflowSnapshotWriter requires mediaDirectory', { context: { operation: 'createSnapshotWriter' } });
     }
 
     return function writeWorkflowSnapshot(workflow) {
         if (!workflow?.id) {
-            throw new Error('Missing workflow id when writing project JSON snapshot');
+            throw new ProjectError(PROJECT_ERRORS.invalidDocument, 'Missing workflow id when writing project JSON snapshot', { context: { operation: 'writeSnapshot' } });
         }
 
         const now = new Date().toISOString();
@@ -28,8 +28,6 @@ export function createWorkflowSnapshotWriter({ mediaDirectory }) {
             source: 'nako-project-save'
         };
         const snapshotPath = path.join(mediaDirectory, `${workflow.id}.json`);
-        fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-        fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
-        return snapshotPath;
+        return files.writeSnapshot(snapshotPath, snapshot);
     };
 }

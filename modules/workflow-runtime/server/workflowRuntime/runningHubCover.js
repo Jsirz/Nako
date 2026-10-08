@@ -1,3 +1,4 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -22,7 +23,7 @@ export async function downloadRunningHubCover(info, libraryDirectory, fetchRemot
     const chunks = []; let bytes = 0;
     for await (const chunk of response.body) {
       bytes += chunk.length;
-      if (bytes > 8 * 1024 * 1024) throw new Error('cover too large');
+      if (bytes > 8 * 1024 * 1024) throw workflowRuntimeError('cover too large', 'downloadRunningHubCover', 'OUTPUT_SIZE_LIMIT', 413);
       chunks.push(chunk);
     }
     const cover = await sharp(Buffer.concat(chunks), { limitInputPixels: 32000000 }).rotate().resize({ width: 768, height: 1024, fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
@@ -39,7 +40,11 @@ export async function readRunningHubPageCover(baseUrl, webAppId, fetchPage = fet
     const { response } = await fetchPage(`${baseUrl}/ai-detail/${webAppId}`, { timeoutMs: 10000, maxRedirects: 0 });
     if (!response.ok) return null;
     let html = ''; let bytes = 0;
-    for await (const chunk of response.body) { bytes += chunk.length; if (bytes > 4 * 1024 * 1024) throw new Error('page too large'); html += Buffer.from(chunk).toString('utf8'); }
+    for await (const chunk of response.body) {
+      bytes += chunk.length;
+      if (bytes > 4 * 1024 * 1024) throw workflowRuntimeError('page too large', 'readRunningHubPageCover', 'OUTPUT_SIZE_LIMIT', 413);
+      html += Buffer.from(chunk).toString('utf8');
+    }
     const match = /class="[^"]*cover-stage[^"]*"[^>]*>[\s\S]{0,1500}?<(?:img|video)[^>]*(?:src|poster)="([^"]+)"/i.exec(html);
     return match?.[1]?.replace(/&amp;/g, '&') || null;
   } catch { return null; }

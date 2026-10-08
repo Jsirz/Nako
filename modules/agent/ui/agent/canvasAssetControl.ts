@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
 import { assetNode } from '../../../canvas-ui/api/ui/canvas/canvasAssetInsertion';
 import type { createCanvasControlExecutor } from './canvasControlExecutor';
@@ -11,8 +12,8 @@ export function createCanvasAssetControl(execute: ReturnType<typeof createCanvas
     const response = await fetcher(url, { signal, ...(body === undefined ? {} : {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }) });
-    if (!response.ok) throw new Error('Asset request failed');
-    if (!response.body) throw new Error('Missing asset response');
+    if (!response.ok) throw new AgentOperationError('Asset request failed', { operation: 'read-canvas-asset', status: response.status });
+    if (!response.body) throw new AgentOperationError('Missing asset response', { operation: 'read-canvas-asset' });
     const reader = response.body.getReader(), decoder = new TextDecoder();
     let content = '', bytes = 0;
     try {
@@ -20,7 +21,7 @@ export function createCanvasAssetControl(execute: ReturnType<typeof createCanvas
         const part = await reader.read();
         if (part.done) break;
         bytes += part.value.byteLength;
-        if (bytes > 8 * 1024 * 1024 || signal.aborted) throw new Error('Asset response interrupted or too large');
+        if (bytes > 8 * 1024 * 1024 || signal.aborted) throw new AgentOperationError('Asset response interrupted or too large', { operation: 'read-canvas-asset', bytes });
         content += decoder.decode(part.value, { stream: true });
       }
       content += decoder.decode();

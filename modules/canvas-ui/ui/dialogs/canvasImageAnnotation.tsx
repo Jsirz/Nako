@@ -1,7 +1,9 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { createPortal } from 'react-dom';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
+import { renderAnnotationBrushSettings, renderAnnotationTools } from './renderAnnotationTools';
 import { resizeLimit } from './imageResizeGeometry';
 import {
   renderAnnotations,
@@ -37,9 +39,15 @@ interface Timeline {
 
 export function CanvasImageAnnotation(
   React: Runtime,
-  { node, projectId, onSave, onClose, initialMask = false, saveLabel = '保存' }: Props,
-  { Close, Save, Spinner }: Icons,
+  props: Props,
+  icons: Icons,
 ) {
+  const state = useAnnotationState(React, props);
+  const actions = annotationActions(props, state);
+  return renderAnnotation(React, props, icons, state, actions);
+}
+
+function useAnnotationState(React: Runtime, { node, projectId, onClose, initialMask = false }: Props) {
   const stageRef = React.useRef<HTMLDivElement>(null);
   const rootRef = React.useRef<HTMLDivElement>(null),
     canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -192,6 +200,19 @@ export function CanvasImageAnnotation(
       redraw();
     }
   }, [display, history, redraw]);
+  return { stageRef, rootRef, canvasRef, imageRef, sessionRef, savingRef, activeRef, pointerRef,
+    historyRef, closeRef, tool, setTool, color, setColor, brushSize, setBrushSize, opacity, setOpacity,
+    mask, setMask, saving, setSaving, loaded, error, setError, history, setHistory, strokes,
+    redoStrokes, display, viewport, setViewport, panning, setPanning, drawing, setDrawing,
+    cursor, setCursor, cursorVisible, setCursorVisible, id, redraw, fit };
+}
+
+type AnnotationState = ReturnType<typeof useAnnotationState>;
+
+function annotationActions({ onSave }: Props, state: AnnotationState) {
+  const { historyRef, setHistory, savingRef, pointerRef, setViewport, loaded, stageRef, fit,
+    imageRef, display, viewport, tool, color, brushSize, opacity, activeRef, setDrawing, redraw,
+    setPanning, setCursorVisible, setCursor } = state;
   const commit = (next: AnnotationStroke[]) => {
     const old = historyRef.current;
     historyRef.current = {
@@ -337,42 +358,7 @@ export function CanvasImageAnnotation(
     if (stroke) commit([...historyRef.current.present, stroke]);
     else redraw();
   };
-  const save = async () => {
-    const image = imageRef.current;
-    if (!image || !id || savingRef.current || pointerRef.current) return;
-    const session = sessionRef.current;
-    savingRef.current = true;
-    setSaving(true);
-    setError('');
-    try {
-      const dimensions = {
-        width: image.naturalWidth,
-        height: image.naturalHeight,
-      };
-      const canvas = document.createElement('canvas'),
-        overlay = document.createElement('canvas');
-      canvas.width = overlay.width = dimensions.width;
-      canvas.height = overlay.height = dimensions.height;
-      renderAnnotations(overlay, historyRef.current.present, dimensions);
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('无法创建标注图片');
-      context.drawImage(image, 0, 0);
-      context.globalCompositeOperation = mask ? 'destination-out' : 'source-over';
-      context.drawImage(overlay, 0, 0);
-      const data = canvas.toDataURL('image/png');
-      if (!data.startsWith('data:image/png')) throw new Error('图片超出当前设备的处理范围。');
-      await onSave(id, data, dimensions);
-      if (sessionRef.current === session) closeRef.current();
-    } catch (cause) {
-      if (sessionRef.current === session)
-        setError(cause instanceof Error ? cause.message : '标注保存失败，请重试。');
-    } finally {
-      if (sessionRef.current === session) {
-        savingRef.current = false;
-        setSaving(false);
-      }
-    }
-  };
+  const save = () => saveAnnotationImage(onSave, state);
   const keyDown = (event: ReactTypes.KeyboardEvent) => {
     event.stopPropagation();
     if (!(event.ctrlKey || event.metaKey) || event.nativeEvent.isComposing) return;
@@ -388,6 +374,16 @@ export function CanvasImageAnnotation(
       else undo();
     }
   };
+  return { undo, redo, clear, wheel, zoomIn, zoomOut, resetView, pointerDown, pointerMove, pointerUp, save, keyDown };
+}
+
+type AnnotationActions = ReturnType<typeof annotationActions>;
+
+function renderAnnotation(React: Runtime, props: Props, icons: Icons, state: AnnotationState, actions: AnnotationActions) {
+  const { Close } = icons;
+  const { node, onClose } = props;
+  const { rootRef, error } = state;
+  const { keyDown } = actions;
   return node
     ? createPortal(
         <div
@@ -410,7 +406,24 @@ export function CanvasImageAnnotation(
               {error}
             </div>
           )}
-          <div
+          {renderAnnotationToolbar(React, props, icons, state, actions)}
+          <button onClick={onClose} title={'取消'} aria-label={'取消'}
+            className={'absolute top-4 right-6 flex h-11 w-11 shrink-0 items-center justify-center bg-[var(--nk-hover)] hover:bg-[var(--nk-hover)] rounded-full text-[var(--nk-text)] transition-colors z-[60]'}>
+            <Close size={22} />
+          </button>
+          {renderAnnotationStage(React, props, icons, state, actions)}
+          {renderAnnotationZoom(React, state, actions)}
+        </div>,
+        document.body,
+      )
+    : null;
+}
+
+function renderAnnotationToolbar(React: Runtime, { saveLabel = '保存' }: Props, { Save, Spinner }: Icons, state: AnnotationState, actions: AnnotationActions) {
+  const { saving, mask, setMask, tool, setTool, brushSize, setBrushSize, color, setColor, opacity, setOpacity,
+    history, redoStrokes, strokes, loaded, drawing } = state;
+  const { undo, redo, clear, save } = actions;
+  return <div
             className={'relative z-50 flex shrink-0 items-center justify-center gap-2 w-full pr-14'}
           >
             <fieldset
@@ -439,233 +452,9 @@ export function CanvasImageAnnotation(
                 </button>
               </div>
               <div className={'shrink-0 bg-[var(--nk-surface-raised)] w-[1px] h-6 mx-1'} />
-              <div
-                role={'group'}
-                className={'flex items-center gap-1 p-1 rounded-full bg-[var(--nk-input)]'}
-              >
-                <button
-                  onClick={() => setTool('brush')}
-                  title={'画笔工具'}
-                  className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 ${tool === 'brush' ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)]'}`}
-                >
-                  <svg
-                    xmlns={'http://www.w3.org/2000/svg'}
-                    width={'18'}
-                    height={'18'}
-                    viewBox={'0 0 24 24'}
-                    fill={'none'}
-                    stroke={'currentColor'}
-                    strokeWidth={'2'}
-                    strokeLinecap={'round'}
-                    strokeLinejoin={'round'}
-                  >
-                    <path d={'M3 21v-4a4 4 0 1 1 4 4h-4'} />
-                    <path d={'M21 3a16 16 0 0 0 -12.8 10.2'} />
-                    <path d={'M21 3a16 16 0 0 1 -10.2 12.8'} />
-                    <path d={'M10.6 9a9 9 0 0 1 4.4 4.4'} />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setTool('rectangle')}
-                  title={'矩形工具'}
-                  className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 ${tool === 'rectangle' ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)]'}`}
-                >
-                  <svg
-                    xmlns={'http://www.w3.org/2000/svg'}
-                    width={'18'}
-                    height={'18'}
-                    viewBox={'0 0 24 24'}
-                    fill={'none'}
-                    stroke={'currentColor'}
-                    strokeWidth={'2'}
-                    strokeLinecap={'round'}
-                    strokeLinejoin={'round'}
-                  >
-                    <path
-                      d={
-                        'M3 5m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z'
-                      }
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setTool('circle')}
-                  title={'圆形工具'}
-                  className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 ${tool === 'circle' ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)]'}`}
-                >
-                  <svg
-                    xmlns={'http://www.w3.org/2000/svg'}
-                    width={'18'}
-                    height={'18'}
-                    viewBox={'0 0 24 24'}
-                    fill={'none'}
-                    stroke={'currentColor'}
-                    strokeWidth={'2'}
-                    strokeLinecap={'round'}
-                    strokeLinejoin={'round'}
-                  >
-                    <circle cx={'12'} cy={'12'} r={'9'} />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setTool('arrow')}
-                  title={'箭头工具'}
-                  className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 ${tool === 'arrow' ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)]'}`}
-                >
-                  <svg
-                    xmlns={'http://www.w3.org/2000/svg'}
-                    width={'18'}
-                    height={'18'}
-                    viewBox={'0 0 24 24'}
-                    fill={'none'}
-                    stroke={'currentColor'}
-                    strokeWidth={'2'}
-                    strokeLinecap={'round'}
-                    strokeLinejoin={'round'}
-                  >
-                    <path d={'M5 12l14 0'} />
-                    <path d={'M13 18l6 -6'} />
-                    <path d={'M13 6l6 6'} />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setTool('line')}
-                  title={'直线工具'}
-                  className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 ${tool === 'line' ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)]'}`}
-                >
-                  <svg
-                    xmlns={'http://www.w3.org/2000/svg'}
-                    width={'18'}
-                    height={'18'}
-                    viewBox={'0 0 24 24'}
-                    fill={'none'}
-                    stroke={'currentColor'}
-                    strokeWidth={'2'}
-                    strokeLinecap={'round'}
-                    strokeLinejoin={'round'}
-                  >
-                    <path d={'M5 12l14 0'} />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setTool('eraser')}
-                  title={'橡皮擦'}
-                  className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-all duration-300 ${tool === 'eraser' ? 'bg-[var(--nk-hover)] text-[var(--nk-text)]' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)]'}`}
-                >
-                  <svg
-                    xmlns={'http://www.w3.org/2000/svg'}
-                    width={'18'}
-                    height={'18'}
-                    viewBox={'0 0 24 24'}
-                    fill={'none'}
-                    stroke={'currentColor'}
-                    strokeWidth={'2'}
-                    strokeLinecap={'round'}
-                    strokeLinejoin={'round'}
-                  >
-                    <path
-                      d={
-                        'M19 20h-10.5l-4.21 -4.3a1 1 0 0 1 0 -1.41l10 -10a1 1 0 0 1 1.41 0l5 5a1 1 0 0 1 0 1.41l-9.2 9.3'
-                      }
-                    />
-                    <path d={'M18 13.3l-6.3 -6.3'} />
-                  </svg>
-                </button>
-              </div>
+              {renderAnnotationTools(React, tool, setTool)}
               <div className={'shrink-0 bg-[var(--nk-surface-raised)] w-[1px] h-6 mx-1'} />
-              <div className={'flex items-center gap-3 px-2'}>
-                <div
-                  className={
-                    'flex items-center justify-center w-10 h-10 shrink-0 bg-[var(--nk-input)] rounded-lg'
-                  }
-                >
-                  <div
-                    className={'rounded-full shadow-inner transition-all duration-75'}
-                    style={{
-                      width: `${Math.min(32, Math.max(2, brushSize / 1.5))}px`,
-                      height: `${Math.min(32, Math.max(2, brushSize / 1.5))}px`,
-                      backgroundColor: color,
-                      opacity: opacity,
-                      boxShadow: '0 0 0 1px rgba(255,255,255,0.2)',
-                    }}
-                  />
-                </div>
-                <div className={'flex items-center gap-2'}>
-                  <input
-                    type={'color'}
-                    value={color}
-                    title={'选择颜色'}
-                    onChange={(event) => setColor(event.target.value)}
-                    className={
-                      'size-5 aspect-square rounded-full border-none cursor-pointer bg-transparent'
-                    }
-                  />
-                  <div className={'flex items-center gap-2 h-8 w-[136px]'}>
-                    <input
-                      type={'range'}
-                      min={'5'}
-                      max={'60'}
-                      value={brushSize}
-                      title={`粗细: ${brushSize}px`}
-                      onChange={(event) => setBrushSize(parseInt(event.target.value))}
-                      className={
-                        'w-full h-1 bg-[var(--nk-surface-raised)] rounded-lg appearance-none cursor-pointer accent-[var(--nk-focus)]'
-                      }
-                    />
-                    <input
-                      type={'number'}
-                      min={'5'}
-                      max={'60'}
-                      step={'1'}
-                      value={brushSize}
-                      title={`粗细: ${brushSize}px`}
-                      onChange={(event) => {
-                        const value = parseInt(event.target.value, 10);
-                        if (!Number.isNaN(value)) setBrushSize(Math.max(5, Math.min(60, value)));
-                      }}
-                      className={
-                        'w-[46px] h-7 px-1.5 rounded-md bg-[var(--nk-input)] border border-[var(--nk-border-control)] text-[10px] text-[var(--nk-text)] outline-none focus:border-[var(--nk-info)] text-center tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                      }
-                    />
-                  </div>
-                </div>
-                <div className={'shrink-0 bg-[var(--nk-surface-raised)] w-[1px] h-6'} />
-                <div className={'flex items-center gap-2'}>
-                  <span className={'text-[10px] text-[var(--nk-text-muted)] font-bold w-4'}>
-                    {'OP'}
-                  </span>
-                  <div className={'flex items-center gap-2 h-8 w-[132px]'}>
-                    <input
-                      type={'range'}
-                      min={'0.1'}
-                      max={'1.0'}
-                      step={'0.1'}
-                      value={opacity}
-                      title={`透明度: ${Math.round(opacity * 100)}%`}
-                      onChange={(event) => setOpacity(parseFloat(event.target.value))}
-                      className={
-                        'w-full h-1 bg-[var(--nk-surface-raised)] rounded-lg appearance-none cursor-pointer accent-[var(--nk-focus)]'
-                      }
-                    />
-                    <input
-                      type={'number'}
-                      min={'10'}
-                      max={'100'}
-                      step={'10'}
-                      value={Math.round(opacity * 100)}
-                      title={`透明度: ${Math.round(opacity * 100)}%`}
-                      onChange={(event) => {
-                        const value = parseInt(event.target.value, 10);
-                        if (!Number.isNaN(value))
-                          setOpacity(Math.max(0.1, Math.min(1, value / 100)));
-                      }}
-                      className={
-                        'w-[48px] h-7 px-1.5 rounded-md bg-[var(--nk-input)] border border-[var(--nk-border-control)] text-[10px] text-[var(--nk-text)] outline-none focus:border-[var(--nk-info)] text-center tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
+              {renderAnnotationBrushSettings(React, { brushSize, setBrushSize, color, setColor, opacity, setOpacity })}
               <div className={'shrink-0 bg-[var(--nk-surface-raised)] w-[1px] h-6 mx-1'} />
               <div className={'flex items-center gap-1'}>
                 <button
@@ -755,17 +544,14 @@ export function CanvasImageAnnotation(
               </button>
             </fieldset>
           </div>
-          <button
-            onClick={onClose}
-            title={'取消'}
-            aria-label={'取消'}
-            className={
-              'absolute top-4 right-6 flex h-11 w-11 shrink-0 items-center justify-center bg-[var(--nk-hover)] hover:bg-[var(--nk-hover)] rounded-full text-[var(--nk-text)] transition-colors z-[60]'
-            }
-          >
-            <Close size={22} />
-          </button>
-          <div
+  ;
+}
+
+function renderAnnotationStage(React: Runtime, { node }: Props, { Spinner }: Icons, state: AnnotationState, actions: AnnotationActions) {
+  const { stageRef, loaded, error, viewport, display, canvasRef, panning, drawing, setCursorVisible,
+    cursorVisible, cursor, brushSize, tool, color, opacity } = state;
+  const { wheel, pointerDown, pointerMove, pointerUp } = actions;
+  return <div
             ref={stageRef}
             className={'relative w-full flex-1 min-h-0 overflow-hidden'}
             onWheel={wheel}
@@ -786,7 +572,7 @@ export function CanvasImageAnnotation(
                 transition: 'none',
               }}
             >
-              {node.resultUrl && (
+              {node?.resultUrl && (
                 <img
                   src={node.resultUrl}
                   alt={'Annotate'}
@@ -842,6 +628,11 @@ export function CanvasImageAnnotation(
               </div>
             )}
           </div>
+  ;
+}
+
+function renderAnnotationZoom(React: Runtime, { viewport }: AnnotationState, { zoomIn, zoomOut, resetView }: AnnotationActions) {
+  return (
           <div
             className={
               'relative shrink-0 flex items-center gap-3 bg-[var(--nk-surface)] backdrop-blur-md rounded-full px-4 py-2.5 z-50 border border-[var(--nk-border)] shadow-2xl animate-in slide-in-from-bottom duration-500'
@@ -901,8 +692,39 @@ export function CanvasImageAnnotation(
               </button>
             </div>
           </div>
-        </div>,
-        document.body,
-      )
-    : null;
+  );
+}
+
+async function saveAnnotationImage(onSave: Props['onSave'], state: AnnotationState) {
+  const { imageRef, id, savingRef, pointerRef, sessionRef, setSaving, setError, historyRef, mask, closeRef } = state;
+  const image = imageRef.current;
+  if (!image || !id || savingRef.current || pointerRef.current) return;
+  const session = sessionRef.current;
+  savingRef.current = true;
+  setSaving(true);
+  setError('');
+  try {
+    const dimensions = { width: image.naturalWidth, height: image.naturalHeight };
+    const canvas = document.createElement('canvas'), overlay = document.createElement('canvas');
+    canvas.width = overlay.width = dimensions.width;
+    canvas.height = overlay.height = dimensions.height;
+    renderAnnotations(overlay, historyRef.current.present, dimensions);
+    const context = canvas.getContext('2d');
+    if (!context) throw canvasError('无法创建标注图片', 'image-annotation.save-canvas');
+    context.drawImage(image, 0, 0);
+    context.globalCompositeOperation = mask ? 'destination-out' : 'source-over';
+    context.drawImage(overlay, 0, 0);
+    const data = canvas.toDataURL('image/png');
+    if (!data.startsWith('data:image/png')) throw canvasError('图片超出当前设备的处理范围。', 'image-annotation.export');
+    await onSave(id, data, dimensions);
+    if (sessionRef.current === session) closeRef.current();
+  } catch (cause) {
+    if (sessionRef.current === session)
+      setError(cause instanceof Error ? cause.message : '标注保存失败，请重试。');
+  } finally {
+    if (sessionRef.current === session) {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
 }

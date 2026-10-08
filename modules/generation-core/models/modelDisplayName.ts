@@ -1,21 +1,15 @@
-﻿import { AUDIO_MODELS, IMAGE_MODELS, TEXT_MODELS, VIDEO_MODELS } from './catalog';
-
-// Saved model names and provider IDs remain execution identifiers. Resolve labels
-// from the current catalog so old projects and historical activity use the same UI name.
-const labels = new Map<string, string>();
-for (const model of [...TEXT_MODELS, ...IMAGE_MODELS, ...AUDIO_MODELS, ...VIDEO_MODELS]) {
-  if (!('displayName' in model) || typeof model.displayName !== 'string') continue;
-  labels.set(model.name, model.displayName);
-  for (const endpoint of Object.values(model.endpoint)) {
-    if (typeof endpoint.model === 'string') labels.set(endpoint.model, model.displayName);
-  }
-}
+import { AUDIO_MODELS, IMAGE_MODELS, TEXT_MODELS, VIDEO_MODELS } from './catalog';
 
 export function modelDisplayName(name: unknown, modelId?: unknown): string {
   const identity = typeof name === 'string' ? name.trim() : '';
   const executionId = typeof modelId === 'string' ? modelId.trim() : '';
-  const current = [...TEXT_MODELS, ...IMAGE_MODELS, ...AUDIO_MODELS, ...VIDEO_MODELS].find((entry) => entry.name === identity);
-  if (current && 'displayName' in current && typeof current.displayName === 'string') return current.displayName;
-  return labels.get(identity) || labels.get(executionId) || identity || executionId || '未知模型';
+  const models = [...TEXT_MODELS, ...IMAGE_MODELS, ...AUDIO_MODELS, ...VIDEO_MODELS];
+  const current = models.find(entry => entry.name === identity);
+  if (current?.displayName) return current.displayName;
+  const labeled = models.find(entry => entry.displayName && (
+    entry.name === executionId || Object.values(entry.endpoint).some(endpoint =>
+      endpoint.model === identity || endpoint.model === executionId,
+    )
+  ));
+  return labeled?.displayName || identity || executionId || '未知模型';
 }
-

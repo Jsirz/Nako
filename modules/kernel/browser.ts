@@ -1,7 +1,19 @@
 import { PluginHost } from './index.js';
 import type { PluginContext } from '../contracts/index.js';
+import type { LocalRuntimeUiService } from '../contracts/localRuntimeUi';
+import type { AccountUiService, GenerationUiService, MediaSettingsService, ProjectPreferencesService, PromptCompositionService } from '../contracts/browserCapabilities';
+import type { ProjectMediaRecoveryService } from '../contracts/projectWorkflow';
 
 export const browserHost = new PluginHost();
+export function localRuntimeUi(): LocalRuntimeUiService {
+  return browserHost.services.get<LocalRuntimeUiService>('ui.local-runtime');
+}
+export const generationUi = () => browserHost.services.get<GenerationUiService>('ui.generation');
+export const projectPreferences = () => browserHost.services.get<ProjectPreferencesService>('ui.project.preferences');
+export const accountUi = () => browserHost.services.get<AccountUiService>('ui.account');
+export const mediaSettings = () => browserHost.services.get<MediaSettingsService>('ui.media.settings');
+export const promptComposition = () => browserHost.services.get<PromptCompositionService>('ui.prompt.composition');
+export const mediaRecovery = () => browserHost.services.get<ProjectMediaRecoveryService>('ui.media.recovery');
 /** Existing adapter declarations remain type-only until each UI surface gets its own API file. */
 type AdapterKeys = Extract<keyof Window, `__NAKO_${string}`>;
 type BrowserServices = Pick<Window, AdapterKeys>;

@@ -1,3 +1,6 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
+const logger = createModuleLogger('generation-core');
 import { getGenerationProvider } from '../../providerRegistry.js';
 import { loadModelCatalog } from '../config/modelCatalog.js';
 import { parseTimeToMs, withTimeout } from '../../timing.js';
@@ -97,14 +100,14 @@ export const PROVIDERS = {
     const config = modelConfigFor(registry, modelName);
 
     if (!config || !config.provider) {
-      console.error(`[Generation] Unknown model: ${modelName}`);
+      logger.error('Unknown generation model', { modelName, operation: 'resolveProvider' });
       return null;
     }
 
     // 直接根据配置文件中的 provider 字符串从全局集合中查找对应的处理器对象
     const handler = getGenerationProvider(config.provider);
     if (!handler) {
-      console.error(`[Generation] No handler found for provider: ${config.provider}`);
+      logger.error('Generation provider unavailable', { providerId: config.provider, modelName, operation: 'resolveProvider' });
       return null;
     }
 
@@ -132,7 +135,9 @@ export const PROVIDERS = {
           params.mode;
         const finalCtx = resolveFinalExecutionContext(config.name, currentMode);
         if (!finalCtx) {
-          throw new Error(`无法解析模型执行上下文: ${config.name}`);
+          throw new PluginError(ERRORS.invalidModel, `无法解析模型执行上下文: ${config.name}`, {
+            context: { moduleId: 'generation-core', operation: 'resolveExecutionContext', modelName: config.name, mode: currentMode },
+          });
         }
         const finalUrl = finalCtx.rawUrl;
         const finalModelId = finalCtx.finalModelId;

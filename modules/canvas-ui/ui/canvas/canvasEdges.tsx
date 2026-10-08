@@ -270,7 +270,7 @@ export function CanvasEdges(React: Runtime, props: Props, geometry: Geometry) {
   const [hovered, setHovered] = React.useState<string | null>(null);
   const scope = React.useId().replace(/:/g, ''),
     filterId = `edge-flow-${scope}`;
-  const { nodes, viewport, selectedConnection, selectedNodeIds } = props;
+  const { nodes, viewport, selectedNodeIds } = props;
   const selected = React.useMemo(() => new Set(selectedNodeIds), [selectedNodeIds]);
   const byId = React.useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const geometryCache = React.useMemo(
@@ -306,8 +306,22 @@ export function CanvasEdges(React: Runtime, props: Props, geometry: Geometry) {
       }),
     );
   }, [nodes, byId, geometryCache, viewport.x, viewport.y, zoom, width, height]);
-  const temporary =
-    props.isDraggingConnection && props.connectionStart && props.tempConnectionEnd
+  const temporary = renderTemporaryEdges(React, props, geometry, byId, geometryCache, zoom);
+  return renderCanvasEdges(React, props, {
+    edges, temporary, selected, hovered, setHovered, scope, filterId, zoom, width, height,
+  });
+}
+
+function renderTemporaryEdges(
+  React: Runtime,
+  props: Props,
+  { getPortX, getPortY, getHeight }: Geometry,
+  byId: Map<string, EdgeNode>,
+  geometryCache: ReturnType<typeof createEdgeGeometryCache>,
+  zoom: number,
+) {
+  const { viewport } = props;
+  return props.isDraggingConnection && props.connectionStart && props.tempConnectionEnd
       ? [
           ...new Set(
             props.batchConnectionSourceNodeIds?.length
@@ -366,6 +380,25 @@ export function CanvasEdges(React: Runtime, props: Props, geometry: Geometry) {
           ];
         })
       : null;
+}
+
+function renderCanvasEdges(
+  React: Runtime,
+  props: Props,
+  { edges, temporary, selected, hovered, setHovered, scope, filterId, zoom, width, height }: {
+    edges: ReturnType<ReturnType<typeof createEdgeGeometryCache>['render']>[];
+    temporary: ReactTypes.ReactNode;
+    selected: Set<string>;
+    hovered: string | null;
+    setHovered: ReactTypes.Dispatch<ReactTypes.SetStateAction<string | null>>;
+    scope: string;
+    filterId: string;
+    zoom: number;
+    width: number;
+    height: number;
+  },
+) {
+  const { viewport, selectedConnection } = props;
   return (
     <>
       <defs>

@@ -3,6 +3,9 @@ import express from 'express';
 import { PluginHost } from '../modules/kernel/index.js';
 import registryPlugin from '../modules/workflow-runtime/registryPlugin.js';
 import comfyPlugin from '../plugins/workflows/local-comfyui/index.js';
+import runningHubWorkflowPlugin from '../plugins/workflows/runninghub-workflow/index.js';
+import runningHubWebAppPlugin from '../plugins/workflows/runninghub-webapp/index.js';
+import { ERRORS } from '../modules/contracts/index.js';
 import { generationProviders } from '../modules/generation-core/providerRegistry.js';
 import { createDramaModelGenerator } from '../modules/agent/server/agent/drama/dramaModelGenerator.js';
 import { createPromptAssistantRouter } from '../modules/agent/server/prompt/promptAssistantRouter.js';
@@ -37,6 +40,58 @@ it('uses the activated workflow client factory and revokes retained clients on s
   } finally {
     await host.stop();
   }
+});
+
+it.each([
+  ['runninghub-workflow', runningHubWorkflowPlugin],
+  ['runninghub-webapp', runningHubWebAppPlugin],
+])('resolves %s client secrets only through granted plugin credentials', async (id, plugin) => {
+  let cnKey = 'cn-fixture', globalKey = 'global-fixture';
+  const get = vi.fn(() => ({ RUNNINGHUB_API_KEY: cnKey, RUNNINGHUB_GLOBAL_API_KEY: globalKey }));
+  const host = new PluginHost({ credentialStore: { get },
+    credentialGrants: { [`workflow.${id}`]: ['provider.runninghub'] } });
+  host.register(registryPlugin).register(plugin);
+  await host.start();
+  const registry = host.services.get('workflow.executors');
+  const fetcher = vi.fn(async () => Response.json({ code: 0, data: { currency: 'CNY' } }));
+  const create = (credentialRef = 'runninghub-cn') => registry.createClient(id, {
+    baseUrl: credentialRef === 'runninghub-cn' ? 'https://www.runninghub.cn' : 'https://www.runninghub.ai', credentialRef, fetcher,
+  });
+  try {
+    const cn = create();
+    await cn.validateCredential();
+    expect(fetcher.mock.calls[0][1].headers.Authorization).toBe('Bearer cn-fixture');
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).apikey).toBe('cn-fixture');
+    expect(cn.apiKey).toBeUndefined();
+    expect(cn.credentialResolver).toBeUndefined();
+    expect(get).toHaveBeenLastCalledWith('provider.runninghub');
+    await create('runninghub-global').validateCredential();
+    expect(fetcher.mock.calls[1][1].headers.Authorization).toBe('Bearer global-fixture');
+    cnKey = 'rotated-fixture';
+    await create().validateCredential();
+    expect(fetcher.mock.calls[2][1].headers.Authorization).toBe('Bearer rotated-fixture');
+    expect(() => registry.createClient(id, { apiKey: 'caller-secret', credentialRef: 'runninghub-cn' }))
+      .toThrow(expect.objectContaining({ code: ERRORS.permission, status: 400 }));
+    expect(() => create('undeclared')).toThrow(expect.objectContaining({ code: ERRORS.invalidConfiguration, status: 400 }));
+    globalKey = '';
+    expect(() => create('runninghub-global')).toThrow(expect.objectContaining({ code: ERRORS.credentialMissing, status: 409 }));
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    await host.stop();
+    expect(() => cn.validateCredential()).toThrow(expect.objectContaining({ code: ERRORS.inactive }));
+  } finally { await host.stop(); }
+});
+
+it('does not create a cloud client when the workflow plugin lacks a credential grant', async () => {
+  const get = vi.fn(() => ({ RUNNINGHUB_API_KEY: 'must-not-be-read' }));
+  const host = new PluginHost({ credentialStore: { get } });
+  host.register(registryPlugin).register(runningHubWorkflowPlugin);
+  await host.start();
+  try {
+    expect(() => host.services.get('workflow.executors').createClient('runninghub-workflow', {
+      baseUrl: 'https://www.runninghub.cn', credentialRef: 'runninghub-cn',
+    })).toThrow(expect.objectContaining({ code: ERRORS.permission }));
+    expect(get).not.toHaveBeenCalled();
+  } finally { await host.stop(); }
 });
 
 it('resolves the active Provider on every prompt request instead of retaining the implementation', async () => {

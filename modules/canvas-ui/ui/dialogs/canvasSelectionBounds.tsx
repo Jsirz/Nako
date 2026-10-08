@@ -31,23 +31,16 @@ interface Props {
   onBatchConnectorDown?(event: ReactTypes.PointerEvent, side: 'left' | 'right'): void;
 }
 export function CanvasSelectionBounds(React: Runtime, props: Props, measure: NodeMeasurement) {
+  const rename = useSelectionRename(React, props);
+  const geometry = selectionBoundsGeometry(props, measure);
+  if (!geometry.valid) return null;
+  return renderSelectionBounds(React, props, rename, geometry);
+}
+
+function useSelectionRename(React: Runtime, props: Props) {
   const {
     documentEpoch,
-    selectedNodes,
     group,
-    viewport,
-    onGroup,
-    onUngroup,
-    onBoundingBoxPointerDown,
-    onSelectionResizeStart,
-    onToggleGridSlider,
-    onCreateCollage,
-    showGridSlider,
-    gridColumns,
-    isSelected,
-    isDragging,
-    isPanning = false,
-    onBatchConnectorDown,
   } = props;
   const [editing, setEditing] = React.useState(false),
     [draft, setDraft] = React.useState('');
@@ -104,6 +97,11 @@ export function CanvasSelectionBounds(React: Runtime, props: Props, measure: Nod
       commitTitle();
     }
   };
+  return { editing, draft, setDraft, inputRef, startRename, commitTitle, titleKeyDown };
+}
+
+function selectionBoundsGeometry(props: Props, measure: NodeMeasurement) {
+  const { selectedNodes, group, viewport, isSelected, onSelectionResizeStart } = props;
   const byId = new Map(selectedNodes.map((node) => [node.id, node]));
   const frames = selectedNodes.map((node) => {
     const parent = byId.get(node.parentIds?.[0] || ''),
@@ -143,38 +141,44 @@ export function CanvasSelectionBounds(React: Runtime, props: Props, measure: Nod
     event.preventDefault();
     onSelectionResizeStart(event, handle, frames);
   };
-  if (
-    !frames.length ||
-    (frames.length === 1 && !group) ||
-    ![left, top, width, height, controlScale].every(Number.isFinite)
-  )
-    return null;
+  const valid = frames.length > 0 && !(frames.length === 1 && !group) &&
+    [left, top, width, height, controlScale].every(Number.isFinite);
+  return { frames, left, top, width, height, isGroup, canGroup, controlScale, accent, borderColor,
+    resizeSelection, valid };
+}
+
+function renderSelectionBounds(
+  React: Runtime, props: Props, rename: ReturnType<typeof useSelectionRename>,
+  geometry: ReturnType<typeof selectionBoundsGeometry>,
+) {
+  const { group, isPanning = false, onBoundingBoxPointerDown } = props;
+  const { left, top, width, height, isGroup, borderColor } = geometry;
   return (
     <div
       data-selection-bounding-box={'true'}
       data-nako-group-id={group?.id}
       className={`absolute pointer-events-auto ${isPanning ? 'cursor-grabbing' : 'cursor-move'}`}
       style={{
-        left: left,
-        top: top,
-        width: width,
-        height: height,
+        left, top, width, height,
         border: isGroup ? `2px solid ${borderColor}` : `2px dashed ${borderColor}`,
         borderRadius: '12px',
-        backgroundColor: isGroup
-          ? isSelected
-            ? 'rgba(59, 130, 246, 0.15)'
-            : 'rgba(68, 68, 68, 0.22)'
-          : 'transparent',
+        backgroundColor: isGroup ? props.isSelected ? 'rgba(59, 130, 246, 0.15)' : 'rgba(68, 68, 68, 0.22)' : 'transparent',
         zIndex: 5,
       }}
       onPointerDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onBoundingBoxPointerDown(event);
-        }
+        if (event.target === event.currentTarget) onBoundingBoxPointerDown(event);
       }}
     >
-      {!isGroup &&
+      {renderSelectionResizeHandles(React, geometry)}
+      {renderSelectionConnectors(React, props)}
+      {renderSelectionGroupTitle(React, props, rename, geometry)}
+      {renderSelectionGroupActions(React, props, geometry)}
+    </div>
+  );
+}
+
+function renderSelectionResizeHandles(React: Runtime, { isGroup, borderColor, resizeSelection }: ReturnType<typeof selectionBoundsGeometry>) {
+  return !isGroup &&
         [
           { pos: 'top-left', cursor: 'nw-resize', top: -4, left: -4 },
           {
@@ -229,8 +233,12 @@ export function CanvasSelectionBounds(React: Runtime, props: Props, measure: Nod
             }
             key={event.pos}
           />
-        ))}
-      {isSelected && selectedNodes.length > 1 && onBatchConnectorDown && !isDragging && (
+        ));
+}
+
+function renderSelectionConnectors(React: Runtime, props: Props) {
+  const { isSelected, selectedNodes, onBatchConnectorDown, isDragging } = props;
+  return isSelected && selectedNodes.length > 1 && onBatchConnectorDown && !isDragging && (
         <React.Fragment>
           <div
             className={
@@ -301,8 +309,15 @@ export function CanvasSelectionBounds(React: Runtime, props: Props, measure: Nod
             </button>
           </div>
         </React.Fragment>
-      )}
-      {isGroup && group && (
+      );
+}
+
+function renderSelectionGroupTitle(
+  React: Runtime, { group, isSelected }: Props,
+  { editing, draft, setDraft, inputRef, startRename, commitTitle, titleKeyDown }: ReturnType<typeof useSelectionRename>,
+  { isGroup, controlScale, accent }: ReturnType<typeof selectionBoundsGeometry>,
+) {
+  return isGroup && group && (
         <div
           data-nako-group-title={'true'}
           className={'absolute pointer-events-auto'}
@@ -373,7 +388,14 @@ export function CanvasSelectionBounds(React: Runtime, props: Props, measure: Nod
             </div>
           )}
         </div>
-      )}
+      );
+}
+
+function renderSelectionGroupActions(React: Runtime, props: Props, geometry: ReturnType<typeof selectionBoundsGeometry>) {
+  const { isSelected, isDragging, onCreateCollage, onToggleGridSlider, showGridSlider,
+    gridColumns, onGroup, onUngroup } = props;
+  const { canGroup, isGroup, controlScale } = geometry;
+  return <>
       {canGroup && isSelected && !isDragging && (
         <div
           className={
@@ -493,6 +515,5 @@ export function CanvasSelectionBounds(React: Runtime, props: Props, measure: Nod
           </button>
         </div>
       )}
-    </div>
-  );
+    </>;
 }

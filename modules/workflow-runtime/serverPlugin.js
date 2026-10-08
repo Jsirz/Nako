@@ -35,12 +35,6 @@ export default defineApplicationPlugin({
       privateDirectory: RUNTIME_PATHS.PRIVATE_DIR,
       generationRuntime,
       executorRegistry: context.services.get('workflow.executors'),
-      credentialResolver: (reference) =>
-        reference === 'runninghub-cn'
-          ? process.env.RUNNINGHUB_API_KEY
-          : reference === 'runninghub-global'
-            ? process.env.RUNNINGHUB_GLOBAL_API_KEY
-            : null,
     });
     routes.contribute(context, executionWorkflowRuntime.router, { phase: 10, order: 10 });
     context.services.register('workflow.execution', executionWorkflowRuntime);

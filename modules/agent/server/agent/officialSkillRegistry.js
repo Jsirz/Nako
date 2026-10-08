@@ -1,3 +1,4 @@
+import { AgentOperationError, AGENT_ERROR_CODES } from '../../../contracts/agentErrors.js';
 import {
   OFFICIAL_DRAMA_SKILL_METADATA,
   OFFICIAL_PRODUCTION_SKILLS,
@@ -17,7 +18,7 @@ export function createOfficialSkillRegistry(entries, readInstructions) {
       || metadata.slug.startsWith('local--') || registry.has(metadata.slug)
       || typeof metadata.version !== 'string' || !metadata.version
       || typeof entry.readInstructions !== 'function') {
-      throw new TypeError('官方 SKILL 注册信息无效或重复');
+      throw new AgentOperationError('官方 SKILL 注册信息无效或重复', { operation: 'register-official-skill' }, AGENT_ERROR_CODES.invalidRequest);
     }
     registry.set(metadata.slug, {
       metadata: Object.freeze({ ...metadata, category: metadata.category || '视频制作', openness: metadata.openness === 'closed' ? 'closed' : 'open', source: 'official' }),
@@ -28,7 +29,7 @@ export function createOfficialSkillRegistry(entries, readInstructions) {
     list: () => [...registry.values()].map(({ metadata }) => ({ ...metadata })),
     readInstructions: async (slug, context) => {
       const skill = registry.get(slug);
-      if (!skill) throw new Error('官方 SKILL 尚未就绪');
+      if (!skill) throw new AgentOperationError('官方 SKILL 尚未就绪', { operation: 'read-official-skill', slug }, AGENT_ERROR_CODES.unavailable);
       return skill.readInstructions(context);
     },
   });

@@ -1,3 +1,4 @@
+import { protocolError } from './errors.js';
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const exact = (value, keys) => Object.keys(value).every(key => keys.includes(key));
 export function validBudgetControl(value) {
@@ -12,11 +13,11 @@ export function validBudgetControl(value) {
 }
 export function projectBudgetResult(value, result) {
   if (value.budgets === undefined) return;
-  if (!Array.isArray(value.budgets) || value.budgets.length > 100) throw new Error('Invalid budgets');
+  if (!Array.isArray(value.budgets) || value.budgets.length > 100) throw protocolError('canvasBudget', 'Invalid budgets');
   result.budgets = value.budgets.map(grant => {
     if (!text(grant?.id) || !['pending', 'approved', 'revoked'].includes(grant.state) || !Number.isFinite(grant.expiresAt)
       || ![grant.maxRequests, grant.maxOutputs, grant.usedRequests, grant.usedOutputs, grant.reservedMicros].every(n => Number.isSafeInteger(n) && n >= 0)
-      || grant.budgetMicros !== null && (!Number.isSafeInteger(grant.budgetMicros) || grant.budgetMicros < 0)) throw new Error('Invalid budget');
+      || grant.budgetMicros !== null && (!Number.isSafeInteger(grant.budgetMicros) || grant.budgetMicros < 0)) throw protocolError('canvasBudget', 'Invalid budget');
     return { id: grant.id, state: grant.state, expiresAt: grant.expiresAt, maxRequests: grant.maxRequests, maxOutputs: grant.maxOutputs,
       usedRequests: grant.usedRequests, usedOutputs: grant.usedOutputs, budgetMicros: grant.budgetMicros, reservedMicros: grant.reservedMicros };
   });

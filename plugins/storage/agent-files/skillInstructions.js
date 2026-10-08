@@ -1,14 +1,15 @@
+import { PluginError } from '../../../modules/contracts/index.js';
 import fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
-import { RUNTIME_PATHS } from '../../../modules/project/api/server/workspace/runtimePaths.js';
+import { BUNDLED_MODULES_DIRECTORY } from './bundledPaths.js';
 import { productionProfileForBundle } from '../../../modules/contracts/officialProductionProfiles.js';
 import { OFFICIAL_DRAMA_BUNDLE, SKILL_INSTRUCTION_LIMITS } from '../../../modules/contracts/officialDramaBundle.js';
 // Bundled resources use the configured application root shared with the model catalog.
-const officialDirectory = path.join(RUNTIME_PATHS.MODULES_DIR, 'agent', 'server', 'agent', 'builtin', 'minimax-drama-prompt');
+const officialDirectory = path.join(BUNDLED_MODULES_DIRECTORY, 'agent', 'server', 'agent', 'builtin', 'minimax-drama-prompt');
 
 function instructionError(message) {
-  return Object.assign(new Error(message), { code: 'INVALID_AGENT_SKILL_INSTRUCTIONS' });
+  return new PluginError('INVALID_AGENT_SKILL_INSTRUCTIONS', message, { context: { moduleId: 'storage.agent-files', operation: 'readSkillInstructions' } });
 }
 
 export function parseSkillInstructionManifest(text) {
@@ -115,7 +116,7 @@ export async function readOfficialDramaInstructions(bundleId = 'minimax-drama') 
   const profile = productionProfileForBundle(bundleId);
   if (!profile) throw instructionError('官方制作组合不存在');
   const assets = "";
-  if (profile.mode === 'assets') return (await readSkillInstructionFiles(path.join(RUNTIME_PATHS.MODULES_DIR, 'agent', 'server', 'agent', 'builtin', 'minimax-fight-assets'))) + '\n\n' + assets;
+  if (profile.mode === 'assets') return (await readSkillInstructionFiles(path.join(BUNDLED_MODULES_DIRECTORY, 'agent', 'server', 'agent', 'builtin', 'minimax-fight-assets'))) + '\n\n' + assets;
   const instructions = (await readSkillInstructionFiles(officialDirectory)) + '\n\n' + assets;
   return profile.id === 'minimax-drama' ? instructions : instructions.replaceAll('2094859983199498241', profile.webAppId).replaceAll('低配文戏', '高配文戏');
 }

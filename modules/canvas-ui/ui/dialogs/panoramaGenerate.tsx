@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import * as React from 'react';
 import { X, Globe } from 'lucide-react';
 import { activateModal } from '../design/modalFocus';
@@ -50,7 +51,7 @@ export function PanoramaGenerate({
             aspectRatio="2:1"
             onClick={() => {
               try {
-                if (!onGenerate) throw new Error('请先打开项目。');
+                if (!onGenerate) throw canvasError('请先打开项目。', 'panorama.generate');
                 onGenerate(node.id);
                 onClose();
               } catch (e) {

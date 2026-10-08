@@ -1,0 +1,43 @@
+import fs from 'node:fs';
+import ts from 'typescript';
+import { MAX_FUNCTION_LINES } from './fileLimits.mjs';
+
+const skip = new Set(['api', 'builtin', 'node_modules', 'dist', '.git']);
+function files(directory) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    if (skip.has(entry.name)) return [];
+    const file = `${directory}/${entry.name}`;
+    return entry.isDirectory() ? files(file) : /\.[cm]?[jt]sx?$/.test(file) && !/\.d\.ts$/.test(file) ? [file] : [];
+  });
+}
+const issues = [];
+for (const file of ['modules', 'plugins'].flatMap(files)) {
+  const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+  const line = node => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+  const report = (node, rule, detail) => issues.push({ file, line: line(node), rule, detail });
+  function visit(node) {
+    if (ts.isFunctionLike(node) && node.body) {
+      const length = source.getLineAndCharacterOfPosition(node.end).line + 2 - line(node);
+      if (length > MAX_FUNCTION_LINES) report(node, 'function-lines', `${node.name?.getText(source) || '(closure)'}: ${length} > ${MAX_FUNCTION_LINES}`);
+    }
+    if (ts.isThrowStatement(node)) {
+      const value = node.expression;
+      if ((ts.isNewExpression(value) || ts.isCallExpression(value)) && ts.isIdentifier(value.expression) && value.expression.text === 'Error') {
+        report(node, 'bare-error', '使用 contracts 的结构化错误及上下文');
+      }
+    }
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+      && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === 'console') {
+      report(node, 'direct-console', `console.${node.expression.name.text}；使用 kernel Logger`);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+}
+const counts = Object.fromEntries(['function-lines', 'bare-error', 'direct-console'].map(rule => [rule, issues.filter(issue => issue.rule === rule).length]));
+if (process.argv.includes('--json')) console.info(JSON.stringify({ counts, issues }, null, 2));
+else {
+  console.info(`Convention audit: ${JSON.stringify(counts)}. Findings are unresolved conventions, not syntax/type diagnostics.`);
+  if (process.argv.includes('--details')) for (const issue of issues) console.info(`${issue.file}:${issue.line}: ${issue.rule}: ${issue.detail}`);
+}
+if (issues.length && process.argv.includes('--strict')) process.exitCode = 1;

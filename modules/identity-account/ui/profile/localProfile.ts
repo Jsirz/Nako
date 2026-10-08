@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS, identityError, avatarCancelled } from '../../../contracts/identityErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
 
@@ -68,12 +69,12 @@ function fileToDataUrl(file: File, signal: AbortSignal): Promise<string> {
     const cancel = () => {
       cleanup();
       reader.abort();
-      reject(new DOMException('头像读取已取消', 'AbortError'));
+      reject(avatarCancelled('avatar.read'));
     };
     const timer = setTimeout(() => {
       cleanup();
       reader.abort();
-      reject(new Error('头像读取超时，请重试。'));
+      reject(identityError(IDENTITY_ERRORS.avatarTimeout, '头像读取超时，请重试。', 'avatar.read', 504));
     }, 15_000);
     signal.addEventListener('abort', cancel, { once: true });
     if (signal.aborted) {
@@ -82,7 +83,7 @@ function fileToDataUrl(file: File, signal: AbortSignal): Promise<string> {
     }
     reader.onerror = () => {
       cleanup();
-      reject(new Error('头像文件读取失败。'));
+      reject(identityError(IDENTITY_ERRORS.avatarRead, '头像文件读取失败。', 'avatar.read'));
     };
     reader.onload = () => {
       cleanup();
@@ -92,7 +93,7 @@ function fileToDataUrl(file: File, signal: AbortSignal): Promise<string> {
       reader.readAsDataURL(file);
     } catch (error) {
       cleanup();
-      reject(error);
+      reject(identityError(IDENTITY_ERRORS.avatarRead, '头像文件读取失败。', 'avatar.read', 500, error));
     }
   });
 }
@@ -109,9 +110,9 @@ export function installLocalProfile(): StableLocalProfileAdapter {
     getAvatar: readStoredAvatar,
     setAvatarDataUrl(dataUrl) {
       cancelRead();
-      if (!isAllowedAvatarDataUrl(dataUrl)) throw new Error('请选择 PNG、JPEG 或 WebP 图片。');
+      if (!isAllowedAvatarDataUrl(dataUrl)) throw identityError(IDENTITY_ERRORS.avatarInvalid, '请选择 PNG、JPEG 或 WebP 图片。', 'avatar.set', 415);
       if (new Blob([dataUrl]).size > MAX_AVATAR_BYTES * 1.4) {
-        throw new Error('头像图片不能超过 2 MB。');
+        throw identityError(IDENTITY_ERRORS.avatarTooLarge, '头像图片不能超过 2 MB。', 'avatar.set', 413);
       }
       preferenceStorage().setItem(AVATAR_STORAGE_KEY, dataUrl);
       refresh();
@@ -119,9 +120,9 @@ export function installLocalProfile(): StableLocalProfileAdapter {
     async setAvatarFile(file, options = {}) {
       cancelRead();
       if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
-        throw new Error('请选择 PNG、JPEG 或 WebP 图片。');
+        throw identityError(IDENTITY_ERRORS.avatarInvalid, '请选择 PNG、JPEG 或 WebP 图片。', 'avatar.set', 415);
       }
-      if (file.size > MAX_AVATAR_BYTES) throw new Error('头像图片不能超过 2 MB。');
+      if (file.size > MAX_AVATAR_BYTES) throw identityError(IDENTITY_ERRORS.avatarTooLarge, '头像图片不能超过 2 MB。', 'avatar.set', 413);
       const controller = new AbortController();
       pendingRead = controller;
       const cancel = () => controller.abort();
@@ -130,7 +131,7 @@ export function installLocalProfile(): StableLocalProfileAdapter {
       try {
         const dataUrl = await fileToDataUrl(file, controller.signal);
         if (controller.signal.aborted || pendingRead !== controller)
-          throw new DOMException('头像读取已取消', 'AbortError');
+          throw avatarCancelled('avatar.set');
         pendingRead = null;
         this.setAvatarDataUrl(dataUrl);
         return dataUrl;

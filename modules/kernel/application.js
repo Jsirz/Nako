@@ -1,4 +1,5 @@
 /** Declare an application contribution without importing a platform or business implementation. */
+import { definePlugin } from './plugin.js';
 export function defineApplicationPlugin({
   id,
   dependencies = [],
@@ -7,7 +8,7 @@ export function defineApplicationPlugin({
   optional = [],
   activate,
 }) {
-  return {
+  return definePlugin({
     manifest: {
       id,
       version: '1.0.0',
@@ -21,7 +22,7 @@ export function defineApplicationPlugin({
       capabilities: [id],
     },
     activate,
-  };
+  });
 }
 
 /** Ordered, revocable contributions; the platform mounts these after its security boundary. */

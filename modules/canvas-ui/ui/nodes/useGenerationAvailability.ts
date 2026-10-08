@@ -1,5 +1,5 @@
 import type * as ReactTypes from 'react';
-import { getGenerationConcurrency } from '../../../generation-core/api/ui/generation/generationClient';
+import { generationUi } from '../../../kernel/browser';
 type Runtime = Pick<typeof ReactTypes, 'useState' | 'useEffect'>;
 interface Availability {
   checking: boolean;
@@ -25,7 +25,7 @@ export function useGenerationAvailability(React: Runtime, model: string, mode: s
       const current = request;
       timeout = setTimeout(() => current.abort(), 10000);
       try {
-        const result = await getGenerationConcurrency(model, mode, current.signal);
+        const result = await generationUi().concurrency(model, mode, current.signal);
         if (!disposed)
           setState({
             key,

@@ -4,91 +4,26 @@ import { alignCanvasDrag } from './canvasAlignment';
 import type { CanvasNodeFrame,SelectionResizeHandle } from './canvasEditing';
 import './canvasWorkspace.css';
 import type { useCanvasDocumentEffects } from './useCanvasDocumentEffects';
-export function renderCanvasScene(
-  context: ReturnType<typeof useCanvasDocumentEffects> & { batchSourceNodeIds: string[] },
-) {
+type SceneContext = ReturnType<typeof useCanvasDocumentEffects> & { batchSourceNodeIds: string[] };
+
+export function renderCanvasScene(context: SceneContext) {
+  return context.React.createElement(context.Scene, {
+    ...canvasSceneStateProps(context),
+    ...canvasSceneActionProps(context),
+  });
+}
+
+function canvasSceneStateProps(context: SceneContext) {
   const {
-    React,
-    getNodeWidth,
-    getNodeHeight,
-    Scene,
-    showGridSlider,
-    setShowGridSlider,
-    gridColumns,
-    isCompact,
-    handleExpandImage,
-    handleOpenCompare,
-    handleNodeDragStart,
-    handleNodeDragEnd,
-    handleStartAnnotation,
-    handleStartCrop,
-    handleStartResize,
-    setBatchConnecting,
-    viewport,
-    canvasRef,
-    onCanvasWheel,
-    nodes,
-    setNodes,
-    selectedNodeIds,
-    setSelectedNodeIds,
-    updateNode,
-    gridLayoutNodes,
-    isDraggingConnection,
-    isPendingConnection,
-    connectionStart,
-    tempConnectionEnd,
-    connectionHoveredNodeId,
-    hoveredSide,
-    hoveredPortIndex,
-    isInvalidHover,
-    selectedConnection,
-    setSelectedConnection,
-    handleConnectorPointerDown,
-    handleNodePointerDown,
-    isDragging,
-    isPanning,
-    isResizing,
-    handleResizeStart,
-    startSelectionResize,
-    groups,
-    groupNodes,
-    ungroupNodes,
-    getCommonGroup,
-    renameGroup,
-    workflowId,
-    getWorkflowEpoch,
-    handleGenerate,
-    handleVideoSnapshot,
-    handleVideoFirstLastSnapshot,
-    handleAudioTrim,
-    handleUpscaleImage,
-    handleWriteContent,
-    handleTextToVideo,
-    handleTextToImage,
-    handleMiniMaxH3T2VAGenerate,
-    handleOpenCreateAsset,
-    handleDoubleClick,
-    handleGlobalContextMenu,
-    handleAddNext,
-    handleNodeContextMenu,
-    replaceMedia,
-    createCollage,
-    onCanvasPointerDown,
-    onCanvasPointerMove,
-    startBatchConnection,
-    onCanvasPointerUp,
-    openComposite,
-    onDragOver,
-    onDrop,
-    nodeDisplayData,
-    nodesByGroupId,
-    visibleNodeIds,
-    visibleGroups,
-    onEdgeDoubleClick,
-    onEdgeClick,
-    batchSourceNodeIds,
+    getWorkflowEpoch, nodes, viewport, selectedNodeIds, groups, visibleNodeIds, visibleGroups,
+    nodesByGroupId, nodeDisplayData, isDragging, getNodeWidth, getNodeHeight, isPanning,
+    isResizing, isDraggingConnection, isPendingConnection, connectionStart, tempConnectionEnd,
+    batchSourceNodeIds, connectionHoveredNodeId, hoveredSide, hoveredPortIndex, isInvalidHover,
+    selectedConnection, showGridSlider, gridColumns, isCompact, canvasRef, onCanvasPointerDown,
+    onCanvasPointerMove, onCanvasPointerUp, onCanvasWheel, handleDoubleClick,
+    handleGlobalContextMenu, onDragOver, onDrop, onEdgeClick, onEdgeDoubleClick,
   } = context;
-  return React.createElement(Scene, {
+  return {
     key: 'scene',
     readOnly: context.readOnly,
     documentEpoch: getWorkflowEpoch(),
@@ -137,6 +72,23 @@ export function renderCanvasScene(
     onDrop,
     onEdgeClick,
     onEdgeDoubleClick,
+  };
+}
+
+function canvasSceneActionProps(context: SceneContext) {
+  const {
+    groupNodes, nodes, setNodes, ungroupNodes, renameGroup, gridLayoutNodes, isCompact,
+    showGridSlider, gridColumns, setShowGridSlider, createCollage, setSelectedNodeIds,
+    setSelectedConnection, selectedNodeIds, handleNodePointerDown, setBatchConnecting,
+    handleConnectorPointerDown, startSelectionResize, startBatchConnection, replaceMedia,
+    handleExpandImage, handleNodeDragStart, handleNodeDragEnd, handleWriteContent,
+    handleTextToVideo, handleTextToImage, handleMiniMaxH3T2VAGenerate, handleVideoSnapshot,
+    handleVideoFirstLastSnapshot, handleAudioTrim, handleOpenCompare, openComposite,
+    handleResizeStart, updateNode, handleGenerate, handleAddNext, getCommonGroup,
+    handleOpenCreateAsset, handleStartAnnotation, handleStartCrop, handleStartResize,
+    handleUpscaleImage, workflowId, handleNodeContextMenu,
+  } = context;
+  return {
     onGroup: (ke: string[]) => groupNodes(ke, nodes, setNodes),
     onUngroup: (ke: string) => ungroupNodes(ke, nodes, setNodes),
     onRenameGroup: renameGroup,
@@ -149,6 +101,14 @@ export function renderCanvasScene(
     },
     onCreateCollage: createCollage,
     onNodePointerDown: (ke: ReactTypes.PointerEvent<HTMLDivElement>, st: string) => {
+      if (context.readOnly) {
+        if (ke.button !== 1) {
+          ke.stopPropagation();
+          setSelectedNodeIds([st]);
+          setSelectedConnection(null);
+        }
+        return;
+      }
       const Ge = browserServices.__NAKO_CANVAS_SELECTION__;
       if (Ge) {
         setSelectedNodeIds(Ge.selectNode(selectedNodeIds, st, ke));
@@ -228,5 +188,5 @@ export function renderCanvasScene(
     onResizeImage: handleStartResize,
     onUpscaleImage: handleUpscaleImage,
     projectId: workflowId || void 0,
-  });
+  };
 }

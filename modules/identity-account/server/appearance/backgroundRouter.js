@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS } from '../../../contracts/identityErrors.js';
 import express from 'express';
 import { BackgroundError, MAX_BACKGROUND_BYTES } from './backgroundImage.js';
 
@@ -8,7 +9,7 @@ export function createBackgroundRouter(store) {
     const known = error instanceof BackgroundError;
     response.status(known ? error.status : 500).json({
       error: known ? error.message : '背景读取或保存失败，请重试。',
-      code: known ? error.code : 'BACKGROUND_STORAGE_ERROR',
+      code: known ? error.code : IDENTITY_ERRORS.backgroundStorageError,
     });
   };
   const handle = action => async (request, response) => {
@@ -25,7 +26,7 @@ export function createBackgroundRouter(store) {
     response.type('image/webp').send(await store.image(request.params.id));
   }));
   router.post('/', (request, response, next) => {
-    if (uploading) return failed(response, new BackgroundError('背景正在处理中，请稍后重试。', 429, 'BACKGROUND_BUSY'));
+    if (uploading) return failed(response, new BackgroundError('背景正在处理中，请稍后重试。', 429, IDENTITY_ERRORS.backgroundBusy));
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(request.headers['content-type']?.split(';')[0].trim().toLowerCase())) {
       return failed(response, new BackgroundError('请选择 JPG、PNG 或静态 WebP 图片。', 415));
     }
@@ -41,8 +42,8 @@ export function createBackgroundRouter(store) {
   router.delete('/', handle(async (_request, response) => response.json(await store.remove())));
   router.use((error, _request, response, _next) => {
     failed(response, error.type === 'entity.too.large'
-      ? new BackgroundError('背景图片不能超过 20 MiB。', 413, 'BACKGROUND_TOO_LARGE')
-      : new BackgroundError('图片上传失败，请重新选择图片。', 400, 'BACKGROUND_UPLOAD_FAILED'));
+      ? new BackgroundError('背景图片不能超过 20 MiB。', 413, IDENTITY_ERRORS.backgroundTooLarge)
+      : new BackgroundError('图片上传失败，请重新选择图片。', 400, IDENTITY_ERRORS.backgroundUpload));
   });
   return router;
 }

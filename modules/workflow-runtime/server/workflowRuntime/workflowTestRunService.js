@@ -1,3 +1,4 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
 import crypto from 'node:crypto';
 import { sha256Json } from './workflowFormat.js';
 import { normalizeRunningHubInstanceType } from '../../../contracts/workflowProtocols.js';
@@ -167,7 +168,7 @@ export class WorkflowTestRunService {
     coordinator,
     executor,
     executors = null,
-    logger = console,
+    logger = createModuleLogger('workflow-runtime'),
     heartbeatIntervalMs = 10_000,
   }) {
     Object.assign(this, {

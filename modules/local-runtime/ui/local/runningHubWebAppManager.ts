@@ -1,3 +1,8 @@
+import { createRunningHubManagerView } from './runningHubManagerView';
+import { createRunningHubLibraryCard, renderRunningHubCategories } from './runningHubLibraryRender';
+import { appendRunningHubQuickCredentials } from './runningHubQuickCredentials';
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import type {
   RunningHubWebAppCard,
@@ -8,15 +13,11 @@ import type {
 import {
   RUNNINGHUB_PAID_CONFIRMATION_KEY,
   isConfirmationSuppressed,
-  requestAnchoredConfirmation,
   resetConfirmationPreference,
 } from '../../../canvas-ui/api/ui/design/designSystem';
 
 export const RUNNINGHUB_WEBAPP_TEST_EVENT = 'nako:test-runninghub-webapp';
 const STYLE_ID = 'nako-runninghub-webapp-manager-styles';
-const RUNNINGHUB_CN_KEY_URL = 'https://www.runninghub.cn/call-api/bill-task?tab=keys&type=consumer';
-const RUNNINGHUB_GLOBAL_KEY_URL =
-  'https://www.runninghub.ai/zh-cn/call-api/bill-task?tab=keys&type=consumer';
 type RunningHubWebAppClient = WebAppClient &
   Pick<WorkflowManagerClient, 'getEditorSnapshot' | 'createCanvasNode'>;
 
@@ -28,11 +29,11 @@ export function parseRunningHubWebAppReference(value: string): {
 } {
   const normalized = String(value || '').trim();
   if (!normalized) {
-    throw new Error('请粘贴 RunningHub 应用详情链接、AI 应用 API 手册链接，或输入应用 ID。');
+    throw localRuntimeError('请粘贴 RunningHub 应用详情链接、AI 应用 API 手册链接，或输入应用 ID。', 'parseRunningHubWebAppReference', ERRORS.invalidConfiguration);
   }
   if (!normalized.includes('://')) {
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(normalized)) {
-      throw new Error('WebApp ID 格式无效。');
+      throw localRuntimeError('WebApp ID 格式无效。', 'parseRunningHubWebAppReference', ERRORS.invalidConfiguration);
     }
     return { webAppId: normalized, credentialRef: undefined };
   }
@@ -40,22 +41,22 @@ export function parseRunningHubWebAppReference(value: string): {
   try {
     url = new URL(normalized);
   } catch {
-    throw new Error('RunningHub WebApp 链接格式无效。');
+    throw localRuntimeError('RunningHub WebApp 链接格式无效。', 'parseRunningHubWebAppReference', ERRORS.invalidConfiguration);
   }
   const host = url.hostname.toLowerCase().replace(/^www\./, '');
   if (!['runninghub.cn', 'runninghub.ai'].includes(host)) {
-    throw new Error('仅支持 RunningHub 国内站或海外站的 WebApp 页面链接。');
+    throw localRuntimeError('仅支持 RunningHub 国内站或海外站的 WebApp 页面链接。', 'parseRunningHubWebAppReference', ERRORS.invalidConfiguration);
   }
   const pathname = url.pathname.replace(/^\/[a-z]{2}(?:-[a-z]{2})?(?=\/)/iu, '');
   const detailMatch = /^\/ai-detail\/([A-Za-z0-9_-]{1,128})\/?$/.exec(pathname);
   const apiDetailMatch = /^\/call-api\/api-detail\/([A-Za-z0-9_-]{1,128})\/?$/.exec(pathname);
   const apiType = url.searchParams.get('apiType');
   if (apiDetailMatch && apiType && apiType !== '4') {
-    throw new Error('当前只支持 RunningHub AI 应用 API 手册链接。');
+    throw localRuntimeError('当前只支持 RunningHub AI 应用 API 手册链接。', 'parseRunningHubWebAppReference', ERRORS.invalidConfiguration);
   }
   const match = detailMatch || apiDetailMatch;
   if (!match) {
-    throw new Error('请粘贴 RunningHub 应用详情链接、AI 应用 API 手册链接，或直接输入应用 ID。');
+    throw localRuntimeError('请粘贴 RunningHub 应用详情链接、AI 应用 API 手册链接，或直接输入应用 ID。', 'parseRunningHubWebAppReference', ERRORS.invalidConfiguration);
   }
   return {
     webAppId: match[1],
@@ -69,30 +70,6 @@ function control(label: string, primary = false) {
   return button;
 }
 
-function configureApiTokenInput(input: HTMLInputElement, name: string) {
-  input.classList.add('nako-key-input');
-  input.type = 'text';
-  input.name = name;
-  input.autocomplete = 'off';
-  input.autocapitalize = 'none';
-  input.spellcheck = false;
-  input.setAttribute('aria-autocomplete', 'none');
-  input.setAttribute('data-form-type', 'other');
-  input.setAttribute('data-lpignore', 'true');
-  input.setAttribute('data-1p-ignore', 'true');
-  return input;
-}
-
-function externalControl(label: string, href: string, site: 'cn' | 'global') {
-  const anchor = element('a', 'rhwm-key-link nako-button is-primary nako-key-link', label);
-  anchor.href = href;
-  anchor.target = '_blank';
-  anchor.rel = 'noopener noreferrer';
-  anchor.setAttribute('data-nako-rh-get-key', site);
-  anchor.setAttribute('aria-label', `${label}（在新窗口打开）`);
-  anchor.append(document.createTextNode(' ↗'));
-  return anchor;
-}
 
 function injectStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -270,7 +247,7 @@ export function createRunningHubQuickAdd(
         const status = await client.getRunningHubCredentialStatus();
         const configured =
           credentialRef === 'runninghub-cn' ? status.cnConfigured : status.globalConfigured;
-        if (!configured) throw new Error('请先在上方保存对应站点的 API Key。');
+        if (!configured) throw localRuntimeError('请先在上方保存对应站点的 API Key。', 'createRunningHubQuickAdd', ERRORS.credentialMissing);
         const app = await client.createRunningHubWebApp({
           webAppId: parsed.webAppId,
           credentialRef,
@@ -282,14 +259,14 @@ export function createRunningHubQuickAdd(
         if (adapter) {
           const snapshot = await client.getEditorSnapshot(app.definitionId);
           if (!snapshot.deployment || !snapshot.bindingSet)
-            throw new Error('工作流已导入，但参数尚未就绪，请在工作流库中检查后添加。');
+            throw localRuntimeError('工作流已导入，但参数尚未就绪，请在工作流库中检查后添加。', 'createRunningHubQuickAdd', ERRORS.invalidConfiguration);
           const blueprint = await client.createCanvasNode(app.definitionId, {
             deploymentId: snapshot.deployment.id,
             bindingSetId: snapshot.bindingSet.id,
             title: app.title,
           });
           if (browserServices.__NAKO_WORKFLOW_NODES__ !== adapter)
-            throw new Error('工作流已导入，当前项目已切换，请从工作流库添加。');
+            throw localRuntimeError('工作流已导入，当前项目已切换，请从工作流库添加。', 'createRunningHubQuickAdd', ERRORS.inactive);
           const insertion = await adapter.addToCanvas(blueprint);
           browserServices.__NAKO_FOCUS_NODES__?.(insertion.nodeIds);
           notice.textContent = '云端工作流已添加到画布，连接素材后即可运行。';
@@ -308,139 +285,8 @@ export function createRunningHubQuickAdd(
 
   if (options.showCredentials || options.connectDomesticOnly) {
     copy.remove();
-    const credentials = element('section', 'rhwm-quick-credentials rhwm-stage is-account');
-    credentials.setAttribute('data-nako-rh-stage', 'credentials');
-    const credentialTitleId = `rhwm-credential-stage-${Math.random().toString(36).slice(2)}`;
-    credentials.setAttribute('aria-labelledby', credentialTitleId);
-    const quickNotice = element('p', 'rhwm-quick-key-status');
-    const makeKey = (
-      siteId: 'cn' | 'global',
-      label: string,
-      placeholder: string,
-      linkLabel: string,
-      href: string,
-    ) => {
-      const wrapper = element('label', 'rhwm-quick-key');
-      const head = element('span', 'rhwm-quick-key-head');
-      head.append(document.createTextNode(label), externalControl(linkLabel, href, siteId));
-      const input = configureApiTokenInput(
-        element('input', 'rhwm-input'),
-        `runninghub-${siteId}-api-token`,
-      );
-      input.placeholder = placeholder;
-      input.setAttribute('data-nako-rh-quick-key', siteId);
-      wrapper.append(head, input);
-      return { wrapper, input };
-    };
-    const cn = makeKey(
-      'cn',
-      'CN 国内站 API Key',
-      '输入 runninghub.cn API Key',
-      '获取连接',
-      RUNNINGHUB_CN_KEY_URL,
-    );
-    const global = makeKey(
-      'global',
-      'AI 海外站 API Key',
-      '输入 runninghub.ai API Key',
-      '获取连接',
-      RUNNINGHUB_GLOBAL_KEY_URL,
-    );
-    const save = control('保存并验证', true);
-    save.classList.add('is-commit');
-    let quickCredentialStatus = { cnConfigured: false, globalConfigured: false };
-    void client
-      .getRunningHubCredentialStatus()
-      .then((status) => {
-        quickCredentialStatus = status;
-        cn.input.placeholder = status.cnConfigured
-          ? '已长期保存；仅更换时输入新 Key'
-          : '输入 runninghub.cn API Key';
-        global.input.placeholder = status.globalConfigured
-          ? '已长期保存；仅更换时输入新 Key'
-          : '输入 runninghub.ai API Key';
-        quickNotice.textContent =
-          status.cnConfigured && status.globalConfigured
-            ? 'CN 与 AI 站 Key 已长期保存在当前账号，本次无需重新输入。'
-            : status.cnConfigured
-              ? 'CN Key 已长期保存在当前账号；AI 站未配置。'
-              : status.globalConfigured
-                ? 'AI 站 Key 已长期保存在当前账号；CN 未配置。'
-                : 'Key 将按当前账号长期保存在本机，重启和更新后继续使用。';
-      })
-      .catch(() => undefined);
-    save.addEventListener('click', () => {
-      void (async () => {
-        const cnValue = cn.input.value.trim();
-        const globalValue = global.input.value.trim();
-        const references: RunningHubCredentialRef[] = [];
-        if (cnValue || quickCredentialStatus.cnConfigured) references.push('runninghub-cn');
-        if (!options.connectDomesticOnly && (globalValue || quickCredentialStatus.globalConfigured))
-          references.push('runninghub-global');
-        if (!references.length) {
-          quickNotice.textContent = '请先输入至少一个 RunningHub API Key。';
-          quickNotice.className = 'rhwm-quick-key-status is-error';
-          return;
-        }
-        const previous = save.textContent || '';
-        save.disabled = true;
-        save.textContent = '验证中…';
-        try {
-          if (cnValue || globalValue) {
-            await client.saveRunningHubCredentials({
-              cnApiKey: cnValue,
-              globalApiKey: globalValue,
-            });
-            quickCredentialStatus.cnConfigured ||= Boolean(cnValue);
-            quickCredentialStatus.globalConfigured ||= Boolean(globalValue);
-            cn.input.placeholder = quickCredentialStatus.cnConfigured
-              ? '已长期保存；仅更换时输入新 Key'
-              : '输入 runninghub.cn API Key';
-            global.input.placeholder = quickCredentialStatus.globalConfigured
-              ? '已长期保存；仅更换时输入新 Key'
-              : '输入 runninghub.ai API Key';
-          }
-          cn.input.value = '';
-          global.input.value = '';
-          await Promise.all(
-            references.map((credentialRef) => client.validateRunningHubCredential(credentialRef)),
-          );
-          quickNotice.textContent = references
-            .map((credentialRef) =>
-              credentialRef === 'runninghub-cn'
-                ? '国内站 API Key 验证通过'
-                : '海外站 API Key 验证通过',
-            )
-            .join('；');
-          quickNotice.className = 'rhwm-quick-key-status is-success';
-          if (root.isConnected) await options.connectDomesticOnly?.onConnected();
-        } catch (error) {
-          quickNotice.textContent = message(error);
-          quickNotice.className = 'rhwm-quick-key-status is-error';
-        } finally {
-          save.disabled = false;
-          save.textContent = previous;
-        }
-      })();
-    });
-    credentials.append(
-      stageHeading(
-        '01',
-        '连接 RunningHub 账号',
-        '这里只填写 API Key；保存后由当前账号在本机长期使用。',
-        credentialTitleId,
-      ),
-      cn.wrapper,
-      global.wrapper,
-      save,
-      quickNotice,
-    );
-    root.append(credentials);
-    if (options.connectDomesticOnly) {
-      global.wrapper.remove();
-      save.textContent = '保存连接，返回官方推荐';
-      return root;
-    }
+    appendRunningHubQuickCredentials(root, client, options.connectDomesticOnly);
+    if (options.connectDomesticOnly) return root;
   }
 
   if (options.showCredentials) {
@@ -480,82 +326,12 @@ export function createRunningHubWebAppManager(client: RunningHubWebAppClient) {
     global: 'idle',
   };
 
-  const head = element('div', 'rhwm-head');
-  const headCopy = element('div');
-  headCopy.append(
-    element('p', 'rhwm-kicker', 'RUNNINGHUB WEBAPP / 云端应用'),
-    element('h3', 'rhwm-title', '云端工作流'),
-    element(
-      'p',
-      'rhwm-subtitle',
-      '粘贴 RunningHub 应用详情或 AI 应用 API 手册链接，也可直接输入应用 ID。云端应用作为黑盒执行，只展示 RunningHub 实际开放的输入。',
-    ),
-  );
-  head.append(headCopy);
-
-  const credentials = element('section', 'rhwm-credentials');
-  const credentialCopy = element('div', 'rhwm-section-copy');
-  credentialCopy.append(
-    element('strong', '', 'RunningHub 连接'),
-    element('span', '', '与“闭源服务”共用安全凭证，这里单独提供云端工作流入口。'),
-  );
-  const cnCard = element('div', 'rhwm-key-card');
-  const cnHead = element('div', 'rhwm-key-head');
-  const cnTitle = element('label');
-  cnTitle.htmlFor = 'nako-runninghub-cn-key';
-  const cnDot = element('i', 'rhwm-status-dot');
-  cnTitle.append(cnDot, document.createTextNode('国内站 API Key'));
-  const cnState = element('span', 'rhwm-key-state', '未配置');
-  cnHead.append(cnTitle, cnState);
-  const cnKey = configureApiTokenInput(element('input', 'rhwm-input'), 'runninghub-cn-api-token');
-  cnKey.id = 'nako-runninghub-cn-key';
-  cnKey.setAttribute('data-nako-rh-key', 'cn');
-  cnKey.placeholder = '输入 runninghub.cn API Key';
-  const cnFoot = element('div', 'rhwm-key-foot');
-  cnFoot.append(
-    element('span', 'rhwm-key-state', '国内站 · 支持个人与团队密钥'),
-    externalControl('一键获取国内站 API Key', RUNNINGHUB_CN_KEY_URL, 'cn'),
-  );
-  cnCard.append(cnHead, cnKey, cnFoot);
-  const globalCard = element('div', 'rhwm-key-card');
-  const globalHead = element('div', 'rhwm-key-head');
-  const globalTitle = element('label');
-  globalTitle.htmlFor = 'nako-runninghub-global-key';
-  const globalDot = element('i', 'rhwm-status-dot');
-  globalTitle.append(globalDot, document.createTextNode('海外站 API Key'));
-  const globalState = element('span', 'rhwm-key-state', '未配置');
-  globalHead.append(globalTitle, globalState);
-  const globalKey = configureApiTokenInput(
-    element('input', 'rhwm-input'),
-    'runninghub-global-api-token',
-  );
-  globalKey.id = 'nako-runninghub-global-key';
-  globalKey.setAttribute('data-nako-rh-key', 'global');
-  globalKey.placeholder = '输入 runninghub.ai API Key';
-  const globalFoot = element('div', 'rhwm-key-foot');
-  globalFoot.append(
-    element('span', 'rhwm-key-state', '海外站 · 独立账号与密钥'),
-    externalControl('获取海外站 API Key', RUNNINGHUB_GLOBAL_KEY_URL, 'global'),
-  );
-  globalCard.append(globalHead, globalKey, globalFoot);
-  const credentialActions = element('div', 'rhwm-credential-actions');
-  credentialActions.append(
-    element(
-      'span',
-      '',
-      '密钥按当前账号长期保存在本机；重启和更新后继续使用。验证只查询账户状态，不会产生费用。',
-    ),
-  );
-  const saveKeys = control('保存并验证', true);
-  saveKeys.classList.add('is-commit');
-  const resetPaidWarning = control('付费提醒已开启');
-  resetPaidWarning.addEventListener('click', () => {
+  const { head, credentials, cnCard, cnDot, cnState, cnKey,
+    globalCard, globalDot, globalState, globalKey, saveKeys, resetPaidWarning } = createRunningHubManagerView(() => {
     resetConfirmationPreference(RUNNINGHUB_PAID_CONFIRMATION_KEY);
     renderCredentials();
     setNotice('已恢复 RunningHub 付费任务提醒。', 'success');
   });
-  credentialActions.append(resetPaidWarning, saveKeys);
-  credentials.append(credentialCopy, cnCard, globalCard, credentialActions);
 
   const categoryBar = element('div', 'rhwm-category-bar');
   const grid = element('div', 'rhwm-grid');
@@ -634,109 +410,16 @@ export function createRunningHubWebAppManager(client: RunningHubWebAppClient) {
     resetPaidWarning.disabled = !paidWarningSuppressed;
   };
 
-  const renderCategories = () => {
-    categoryBar.replaceChildren();
-    const all = element(
-      'button',
-      `rhwm-chip${activeCategory === 'all' ? ' is-active' : ''}`,
-      `全部 ${apps.length}`,
-    );
-    all.type = 'button';
-    all.addEventListener('click', () => {
-      activeCategory = 'all';
-      render();
-    });
-    categoryBar.append(all);
-    for (const item of categories) {
-      const count = apps.filter((app) => app.categoryId === item.id).length;
-      const chip = element(
-        'button',
-        `rhwm-chip${activeCategory === item.id ? ' is-active' : ''}`,
-        `${item.name} ${count}`,
-      );
-      chip.type = 'button';
-      chip.addEventListener('click', () => {
-        activeCategory = item.id;
-        render();
-      });
-      categoryBar.append(chip);
-    }
-  };
+  const renderCategories = () => renderRunningHubCategories(categoryBar, apps, categories, activeCategory, id => {
+    activeCategory = id;
+    render();
+  });
 
-  const createCard = (app: RunningHubWebAppCard) => {
-    const card = element('article', 'rhwm-card');
-    card.setAttribute('data-nako-rh-webapp-card', app.definitionId);
-    const cover = element('div', 'rhwm-card-cover');
-    const badges = element('div', 'rhwm-card-badges');
-    badges.append(
-      element('span', 'rhwm-badge', app.site === 'global' ? 'AI' : 'CN'),
-      element(
-        'span',
-        `rhwm-badge${app.verified ? ' is-ready' : ''}`,
-        app.verified ? '已验证' : '可使用',
-      ),
-    );
-    if (app.coverUrl) {
-      const image = document.createElement('img');
-      image.src = app.coverUrl;
-      image.alt = app.title;
-      image.loading = 'lazy';
-      image.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
-      cover.append(image);
-      badges.style.cssText = 'position:relative;z-index:1';
-    }
-    cover.append(badges);
-    if (!app.coverUrl) cover.append(element('div', 'rhwm-card-mark', 'WEBAPP'));
-    const body = element('div', 'rhwm-card-body');
-    body.append(
-      element('div', 'rhwm-card-title', app.title),
-      element(
-        'div',
-        'rhwm-card-description',
-        app.description || `${app.categoryName} · RunningHub 云端应用`,
-      ),
-    );
-    const meta = element('div', 'rhwm-card-meta');
-    meta.append(
-      element('span', '', app.categoryName),
-      element('span', '', '·'),
-      element('span', '', `${app.fieldCount} 个输入`),
-      element('span', '', '·'),
-      element('span', '', app.webAppId),
-    );
-    const actions = element('div', 'rhwm-card-actions');
-    const remove = control('删除');
-    remove.classList.add('rhwm-delete');
-    remove.addEventListener('click', () => {
-      void (async () => {
-        const confirmed = await requestAnchoredConfirmation({
-          anchor: remove,
-          intent: 'destructive',
-          title: '删除云端工作流？',
-          description: `“${app.title}”将从本机列表删除；已添加到画布的节点仍保留。`,
-          confirmLabel: '删除',
-        });
-        if (!confirmed) return;
-        await busy(remove, '删除中…', async () => {
-          await client.deleteRunningHubWebApp(app.definitionId);
-          await load();
-          setNotice('云端工作流已删除。', 'success');
-        });
-      })();
-    });
-    const test = control(app.verified ? '查看字段与输出' : '设置字段', true);
-    test.addEventListener('click', () => {
-      window.dispatchEvent(
-        new CustomEvent(RUNNINGHUB_WEBAPP_TEST_EVENT, {
-          detail: { definitionId: app.definitionId, title: app.title },
-        }),
-      );
-    });
-    actions.append(remove, test);
-    body.append(meta, actions);
-    card.append(cover, body);
-    return card;
-  };
+  const createCard = (app: RunningHubWebAppCard) => createRunningHubLibraryCard(app, async () => {
+    await client.deleteRunningHubWebApp(app.definitionId);
+    await load();
+    setNotice('云端工作流已删除。', 'success');
+  }, busy);
 
   const render = () => {
     renderCredentials();
@@ -789,7 +472,7 @@ export function createRunningHubWebAppManager(client: RunningHubWebAppClient) {
     if (globalValue || (!hasNewValue && credentialStatus.globalConfigured)) {
       references.push('runninghub-global');
     }
-    if (!references.length) throw new Error('请先输入至少一个 RunningHub API Key。');
+    if (!references.length) throw localRuntimeError('请先输入至少一个 RunningHub API Key。', 'saveAndValidateCredentials', ERRORS.credentialMissing);
     const failures: unknown[] = [];
     await Promise.all(
       references.map(async (reference) => {
@@ -805,7 +488,7 @@ export function createRunningHubWebAppManager(client: RunningHubWebAppClient) {
     );
     renderCredentials();
     if (failures.length) {
-      throw new Error(`${hasNewValue ? 'API Key 已保存，但' : ''}${message(failures[0])}`);
+      throw localRuntimeError(`${hasNewValue ? 'API Key 已保存，但' : ''}${message(failures[0])}`, 'saveAndValidateCredentials', ERRORS.providerRequest, undefined, failures[0]);
     }
     const labels = references.map((reference) =>
       reference === 'runninghub-cn' ? '国内站 API Key' : '海外站 API Key',

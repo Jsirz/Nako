@@ -1,3 +1,6 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+
 interface ApiErrorBody {
   error?: string;
   code?: string;
@@ -17,10 +20,8 @@ export async function request<T>(
   });
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
-    throw Object.assign(new Error(body.error || `请求失败（HTTP ${response.status}）`), {
-      code: body.code || 'WORKFLOW_MANAGER_REQUEST_FAILED',
-      status: response.status,
-    });
+    throw localRuntimeError(body.error || `请求失败（HTTP ${response.status}）`, 'request',
+      body.code || 'WORKFLOW_MANAGER_REQUEST_FAILED', response.status);
   }
   return response.json() as Promise<T>;
 }
@@ -28,7 +29,7 @@ export async function request<T>(
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('无法读取工作流文件'));
+    reader.onerror = () => reject(localRuntimeError('无法读取工作流文件', 'fileToBase64', ERRORS.invalidConfiguration, undefined, reader.error));
     reader.onload = () => {
       const result = String(reader.result || '');
       resolve(result.slice(result.indexOf(',') + 1));

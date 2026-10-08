@@ -1,4 +1,5 @@
 /** Decode OpenAI-compatible events as they arrive, preserving split UTF-8. */
+import { ERRORS, PluginError } from './errors.js';
 export async function* chatPayloads(response, maximum = Infinity) {
   const streaming = response.headers.get('content-type')?.includes('text/event-stream');
   const decoder = new TextDecoder();
@@ -13,7 +14,7 @@ export async function* chatPayloads(response, maximum = Infinity) {
   for await (const bytes of response.body) {
     const chunk = decoder.decode(bytes, { stream: true });
     size += chunk.length;
-    if (size > maximum) throw new Error('文本模型响应超过大小限制。');
+    if (size > maximum) throw new PluginError(ERRORS.providerRequest, '文本模型响应超过大小限制。', { context: { moduleId: 'contracts', protocol: 'chatStream', operation: 'decode', maximum } });
     buffer += chunk;
     if (!streaming) continue;
     let end;

@@ -1,4 +1,5 @@
 import express from 'express';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 import path from 'node:path';
 import { createWorkflowLibraryRouter } from './workflowLibraryRouter.js';
 import { WorkflowDefinitionStore } from './workflowDefinitionStore.js';
@@ -21,7 +22,7 @@ import { recoverWorkflowOutputStaging } from './workflowOutputLocalizer.js';
 
 // The execution-workflow domain owns its adapters, private stores and recovery
 // order. Routers are exposed only after recovery completes, never partially ready.
-export async function createExecutionWorkflowRuntime({ libraryDirectory, privateDirectory, generationRuntime, executorRegistry, credentialResolver }) {
+export async function createExecutionWorkflowRuntime({ libraryDirectory, privateDirectory, generationRuntime, executorRegistry }) {
   const executionWorkflowStorageDirectory = path.join(
       privateDirectory,
       'execution-workflows'
@@ -38,13 +39,13 @@ export async function createExecutionWorkflowRuntime({ libraryDirectory, private
       libraryDirectory: libraryDirectory,
       storageDirectory: executionWorkflowStorageDirectory
   });
-  if (!executorRegistry || !credentialResolver) throw new Error('Workflow runtime requires executor and credential services');
-  const resolveRunningHubWorkflowCredential = credentialResolver;
+  if (!executorRegistry) throw new PluginError(ERRORS.serviceMissing, 'Workflow runtime requires executor services', {
+    context: { moduleId: 'workflow-runtime', service: 'workflow.executors' },
+  });
   const workflowDeploymentService = new WorkflowDeploymentService({
       definitionStore: workflowDefinitionStore,
       configurationStore: workflowConfigurationStore,
       directoryGrantStore: workflowDirectoryGrantStore,
-      credentialResolver: resolveRunningHubWorkflowCredential,
       clientFactory: options => executorRegistry.createClient('local-comfyui', options),
       runningHubClientFactory: options => executorRegistry.createClient('runninghub-workflow', options)
   });
@@ -52,7 +53,6 @@ export async function createExecutionWorkflowRuntime({ libraryDirectory, private
       definitionStore: workflowDefinitionStore,
       configurationStore: workflowConfigurationStore,
       deploymentService: workflowDeploymentService,
-      credentialResolver: resolveRunningHubWorkflowCredential,
       clientFactory: options => executorRegistry.createClient('runninghub-webapp', options)
   });
   const workflowAssetResolver = new WorkflowAssetResolver({

@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { installNodeFramework } from './nodeFramework';
 import type { NodeRunRequest } from '../../../contracts/nodeExecution.js';
 export type NodeValue = Record<string, unknown> & { id: string; type: string; pluginId?: string; parentIds?: string[]; parameters?: Record<string, unknown>; inputLinks?: Array<{ sourceNodeId: string; sourcePortId: string; targetPortId: string }> };
@@ -31,7 +32,7 @@ export function buildNodeGraph(node: NodeValue, all: NodeValue[], projectId: str
   const request: NodeRunRequest = { requestId: crypto.randomUUID(), projectId, nodes: [], edges: [], initialInputs: {}, maxModelCalls: Math.min(selected.size * 2, 100) };
   for (const item of selected.values()) {
     const definition = definitionOf(item);
-    if (!definition) throw new Error(`节点未安装：${item.type}`);
+    if (!definition) throw canvasError(`节点未安装：${item.type}`, 'node-graph.snapshot');
     let parameters = definition.pluginId === 'nako.canvas-core'
       ? { ...item, ...item.parameters, model: item.model || item[definition.type + 'Model'], value: nodeOutput(item, definition.outputs[0]?.id || '') }
       : item.parameters || {};

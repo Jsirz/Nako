@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../../contracts/agentErrors.js';
 import crypto from 'node:crypto';
 import { productionProfileForBundle } from '../../../../contracts/officialProductionProfiles.js';
 
@@ -12,12 +13,10 @@ const RESERVED_MARKUP = /<\/?(?:Subject|Picture|Audio|d)(?:\s|\d|>)/i;
 const BINARY_CONTROLS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/;
 export const DRAMA_FIXED_TAIL = '【禁止项】\n\n文字/UI/水印/Logo/角标/可读文字/真实UI\n\n【强制声明】\n\n无背景音乐,仅保留环境音与人声和音效;画面禁字幕/文字/水印/Logo;禁止可读文字(指画面字幕文字,不含人声台词)';
 
-export class DramaPlanError extends Error {
+export class DramaPlanError extends AgentOperationError {
   constructor(message, code = 'INVALID_DRAMA_PLAN', status = 400) {
-    super(message);
+    super(message, { operation: 'drama-plan' }, code, status);
     this.name = 'DramaPlanError';
-    this.code = code;
-    this.status = status;
   }
 }
 

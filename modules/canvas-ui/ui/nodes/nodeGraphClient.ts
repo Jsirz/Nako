@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { NodeRunReceipt, NodeRunRequest } from '../../../contracts/nodeExecution.js';
 export type { NodeRunReceipt, NodeRunRequest } from '../../../contracts/nodeExecution.js';
 
@@ -6,7 +7,7 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   });
   const result = await response.json();
-  if (!response.ok) throw Object.assign(new Error(result.error || '节点请求失败'), { code: result.code });
+  if (!response.ok) throw Object.assign(canvasError(result.error || '节点请求失败', 'node-graph.request'), { code: result.code });
   return result;
 }
 export const prepareNodeGraph = (input: NodeRunRequest) => request<NodeRunReceipt>('/api/node-runs', input);
@@ -35,10 +36,10 @@ export async function waitNodeRun(initial: NodeRunReceipt, onState?: (run: NodeR
 export async function executeNodeGraph(input: NodeRunRequest, approve?: (run: NodeRunReceipt) => Promise<boolean>) {
   let run = await prepareNodeGraph(input);
   if (run.status === 'awaiting_approval') {
-    if (!approve || !await approve(run)) { await cancelNodeRun(run.id); throw new Error('本次节点运行未获授权'); }
+    if (!approve || !await approve(run)) { await cancelNodeRun(run.id); throw canvasError('本次节点运行未获授权', 'node-graph.approval'); }
     run = await approveNodeRun(run);
   }
   run = await waitNodeRun(run);
-  if (run.status !== 'success') throw Object.assign(new Error(run.error || '节点运行已停止'), { code: run.code });
+  if (run.status !== 'success') throw Object.assign(canvasError(run.error || '节点运行已停止', 'node-graph.execute'), { code: run.code });
   return { ok: true, results: run.results, states: run.states, runId: run.id };
 }

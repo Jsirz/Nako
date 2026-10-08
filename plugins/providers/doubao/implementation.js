@@ -7,6 +7,8 @@ import { resolveImageToBase64 } from '../../../modules/asset-media/api/server/ut
 import { getModelDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs, submitOpenAiChatWithLogs, pollJsonTask } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, inputError, submitError, responseError } = providerErrorsFor('doubao');
 
 /**
  * 豆包图像生成处理器
@@ -16,7 +18,7 @@ export const DoubaoImageProvider = {
         const { ARK_API_KEY, LOGS_DIR } = config;
         const { nodeId, prompt, aspectRatio, resolution, imageBase64: rawImageBase64, imageModel, generateCount, web_search, url: finalUrl } = params;
 
-        if (!ARK_API_KEY) throw new Error("Ark API Key 未配置。");
+        if (!ARK_API_KEY) throw credentialError("Ark API Key 未配置。");
 
         // 统一处理图片：本地转 Base64，远程 URL 保持 URL
         const finalImages = BaseProvider.resolveInputImages(rawImageBase64);
@@ -57,7 +59,7 @@ export const DoubaoImageProvider = {
         });
 
         if (result.error || (!result.data && !result.resp_data)) {
-            throw new Error(`Ark 生成失败: ${result.error?.message || result.message || '未知错误'}`);
+            throw responseError(`Ark 生成失败: ${result.error?.message || result.message || '未知错误'}`, { upstreamCode: result.error?.code });
         }
 
         // 统一处理返回的图片数据结构
@@ -93,7 +95,7 @@ export const DoubaoTextProvider = {
     async generateText(params, config) {
         const { ARK_API_KEY, LOGS_DIR } = config;
         const { nodeId, prompt, imageBase64, videoUrl, textModel, detail, url: finalUrl } = params;
-        if (!ARK_API_KEY) throw new Error("Ark API Key 未配置。");
+        if (!ARK_API_KEY) throw credentialError("Ark API Key 未配置。");
 
         const content = [];
         // 处理多模态输入：图片
@@ -109,7 +111,7 @@ export const DoubaoTextProvider = {
             if (resolvedVideo && /^https?:\/\//i.test(resolvedVideo)) {
                 content.push({ type: "video_url", video_url: { url: resolvedVideo } });
             } else {
-                throw new Error('视频输入必须是网络 URL(http/https)。请先将视频上传到可公网访问的地址。');
+                throw inputError('视频输入必须是网络 URL(http/https)。请先将视频上传到可公网访问的地址。');
             }
         }
         // 添加文本提示词
@@ -130,7 +132,7 @@ export const DoubaoTextProvider = {
         });
 
         if (result.text) return result;
-        throw new Error(`Ark API 文本生成失败: ${JSON.stringify(result)}`);
+        throw responseError(`Ark API 文本生成失败: ${JSON.stringify(result)}`);
     }
 };
 
@@ -145,7 +147,7 @@ export const DoubaoVideoProvider = {
             duration, generate_audio, videoMode, videoModel, url: finalUrl
         } = params;
 
-        if (!ARK_API_KEY) throw new Error("Ark API Key 未配置。");
+        if (!ARK_API_KEY) throw credentialError("Ark API Key 未配置。");
 
         const { images: allImages, videos: allVideos, audios: allAudios } = BaseProvider.getAssets(params);
         const content = [];
@@ -207,7 +209,7 @@ export const DoubaoVideoProvider = {
         });
 
         const taskId = result.id || result.task_id || result.data?.id || result.resp_data?.id;
-        if (!taskId) throw new Error(`豆包视频任务提交失败: ${result.error?.message || '未返回任务 ID'}`);
+        if (!taskId) throw submitError(`豆包视频任务提交失败: ${result.error?.message || '未返回任务 ID'}`, { upstreamCode: result.error?.code });
 
         // 轮询视频生成状态
         const pollUrl = `${finalUrl}/${taskId}`;
@@ -240,7 +242,7 @@ export const DoubaoVideoProvider = {
             }
         });
 
-        if (!videoUrl) throw new Error(`视频生成失败，未获取到 URL`);
+        if (!videoUrl) throw responseError(`视频生成失败，未获取到 URL`);
         const videoBuffer = await BaseProvider.asyncDownloadToBuffer(videoUrl, params.useProxy);
         return { buffer: videoBuffer, format: 'mp4' };
     }

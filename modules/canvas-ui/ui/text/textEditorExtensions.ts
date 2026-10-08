@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { Extension, Node, type Editor, type JSONContent } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import {
@@ -162,7 +163,7 @@ export async function copyTextEditorDocument(editor: Editor): Promise<'rich' | '
     }
   }
   if (!navigator.clipboard?.writeText)
-    throw new Error('剪贴板不可用，请选中文字后按 Ctrl+C 复制。');
+    throw canvasError('剪贴板不可用，请选中文字后按 Ctrl+C 复制。', 'text-editor.copy');
   await navigator.clipboard.writeText(plain);
   return 'plain';
 }

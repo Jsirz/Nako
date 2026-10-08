@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 import type {
   DefaultModelsClient,
   DefaultModelsSnapshot,
@@ -20,7 +21,9 @@ export function createDefaultModelsClient(
       signal: AbortSignal.timeout(15000),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || '默认模型读取或保存失败。');
+    if (!response.ok) throw new PluginError(ERRORS.invalidConfiguration, data.error || '默认模型读取或保存失败。', {
+      status: response.status, context: { moduleId: 'generation-core', operation: 'defaultModelsRequest', method },
+    });
     if (
       !data.defaults ||
       !data.candidates ||
@@ -28,7 +31,9 @@ export function createDefaultModelsClient(
         (kind) => typeof data.defaults[kind] !== 'string' || !Array.isArray(data.candidates[kind]),
       )
     )
-      throw new Error('Invalid default model response');
+      throw new PluginError(ERRORS.invalidConfiguration, 'Invalid default model response', {
+        context: { moduleId: 'generation-core', operation: 'defaultModelsRequest', method },
+      });
     snapshot = data;
     listeners.forEach((listener) => listener());
     return data as DefaultModelsSnapshot;
@@ -46,9 +51,13 @@ export function createDefaultModelsClient(
     resolve(kind, requested) {
       if (requested?.trim()) return requested.trim();
       const name = get(kind);
-      if (!name) throw new Error('请先在设置中选择默认模型，或为当前操作指定模型。');
+      if (!name) throw new PluginError(ERRORS.invalidModel, '请先在设置中选择默认模型，或为当前操作指定模型。', {
+        context: { moduleId: 'generation-core', operation: 'resolveDefaultModel', kind },
+      });
       if (!snapshot?.candidates[kind].some((model) => model.name === name && model.configured))
-        throw new Error(`默认模型「${name}」未配置或已停用，请在设置中重新选择。`);
+        throw new PluginError(ERRORS.invalidModel, `默认模型「${name}」未配置或已停用，请在设置中重新选择。`, {
+          context: { moduleId: 'generation-core', operation: 'resolveDefaultModel', kind, modelName: name },
+        });
       return name;
     },
     read: () => request('GET'),

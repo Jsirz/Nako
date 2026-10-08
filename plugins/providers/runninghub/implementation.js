@@ -3,6 +3,10 @@ import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/gene
 import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
 import { validateRecoveredVideo } from '../../../modules/asset-media/api/server/media/recoveredVideo.js';
 import sharp from 'sharp';
+import { hasMeaningfulValue, formatRunningHubError, buildStandardImageBody, buildStandardVideoBody } from './standardRequestHelpers.js';
+export { formatRunningHubError, buildStandardImageBody, buildStandardVideoBody, standardVideoMode } from './standardRequestHelpers.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, configError, inputError, responseError, submitError, taskError, unknownError, wrapError } = providerErrorsFor('runninghub');
 
 const DEFAULT_BASE_URL = 'https://www.runninghub.cn';
 
@@ -37,44 +41,11 @@ function parseJsonList(value, label) {
     if (!value) return [];
     try {
         const parsed = JSON.parse(value);
-        if (!Array.isArray(parsed)) throw new Error('value is not an array');
+        if (!Array.isArray(parsed)) throw inputError('value is not an array');
         return parsed;
     } catch (error) {
-        throw new Error(`${label} must be a JSON array: ${error.message}`, { cause: error });
+        throw inputError(`${label} must be a JSON array: ${error.message}`, { cause: error });
     }
-}
-
-function hasMeaningfulValue(value) {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string') return value.trim() !== '';
-    if (Array.isArray(value)) return value.length > 0;
-    if (typeof value === 'object') return Object.keys(value).length > 0;
-    return Boolean(value);
-}
-
-/**
- * RunningHub 的标准模型 API 只认「企业级-共享」那把 Key，个人 Key 一律回 1014。
- * 原文只说「仅限企业级-共享API Key调用」，不说去哪换——补一句去处，
- * 否则用户只能怀疑是自己填错了密钥，反复重填同一把。
- */
-const RUNNINGHUB_ERROR_HINTS = Object.freeze({
-    1014: '请到 RunningHub 控制台的「密钥」页改用「企业级-共享」API Key，个人 Key 调不了标准模型。',
-});
-
-export function formatRunningHubError(result, fallback = 'RunningHub task failed.') {
-    if (!result || typeof result !== 'object') return fallback;
-    const hint = RUNNINGHUB_ERROR_HINTS[Number(result.errorCode)];
-    if (hint) return `${result.errorMessage || result.msg || ''} ${hint}`.trim();
-    const candidates = [
-        result.errorMessage,
-        result.msg,
-        result.message,
-        result.errorCode,
-        result.failedReason
-    ];
-    const meaningful = candidates.find(hasMeaningfulValue);
-    if (!hasMeaningfulValue(meaningful)) return fallback;
-    return typeof meaningful === 'string' ? meaningful : JSON.stringify(meaningful);
 }
 
 function cloneNodeInfoList(nodes) {
@@ -137,18 +108,6 @@ function extensionFromMime(mimeType, fallback = 'bin') {
     return map[mimeType] || fallback;
 }
 
-function normalizeRhartResolution(resolution) {
-    const value = String(resolution || '1K').trim().toLowerCase();
-    if (value === '512') return '1k';
-    if (['1k', '2k', '4k'].includes(value)) return value;
-    return '1k';
-}
-
-function normalizeRhartAspectRatio(aspectRatio) {
-    const value = String(aspectRatio || '1:1').trim();
-    return value && value !== 'Auto' ? value : '1:1';
-}
-
 function bufferFromDataUrl(dataUrl) {
     const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/);
     if (!match) return null;
@@ -180,7 +139,7 @@ async function assetToUploadPayload(asset, useProxy) {
 async function uploadRunningHubAsset({ baseUrl, apiKey, asset, mediaType, params }) {
     const payload = await assetToUploadPayload(asset, params.useProxy);
     if (!payload) {
-        throw new Error('RunningHub input asset could not be resolved for upload.');
+        throw inputError('RunningHub input asset could not be resolved for upload.', { operation: 'upload' });
     }
 
     const ext = extensionFromMime(payload.mimeType, mediaType === 'video' ? 'mp4' : 'png');
@@ -202,12 +161,12 @@ async function uploadRunningHubAsset({ baseUrl, apiKey, asset, mediaType, params
     BaseProvider.saveDebugLog(params.logsDir, 'RUNNINGHUB_UPLOAD_RES', params.nodeId, result, params.projectId);
 
     if (!response.ok || Number(result.code) !== 0) {
-        throw new Error(`RunningHub upload failed: ${result.message || result.msg || response.statusText}`);
+        throw responseError(`RunningHub upload failed: ${result.message || result.msg || response.statusText}`, { operation: 'upload', status: response.status, upstreamCode: result.code });
     }
 
     const fileName = result.data?.fileName;
     const downloadUrl = result.data?.download_url || result.data?.downloadUrl || result.data?.downloadURL;
-    if (!fileName && !downloadUrl) throw new Error('RunningHub upload did not return data.fileName or data.download_url.');
+    if (!fileName && !downloadUrl) throw responseError('RunningHub upload did not return data.fileName or data.download_url.', { operation: 'upload' });
     return { fileName, downloadUrl };
 }
 
@@ -226,7 +185,7 @@ async function fetchAiAppDemo({ baseUrl, apiKey, webappId, params }) {
     BaseProvider.saveDebugLog(params.logsDir, 'RUNNINGHUB_APP_DEMO_RES', params.nodeId, result, params.projectId);
 
     if (!response.ok || Number(result.code) !== 0) {
-        throw new Error(`RunningHub AI app demo fetch failed: ${result.msg || result.message || response.statusText}`);
+        throw responseError(`RunningHub AI app demo fetch failed: ${result.msg || result.message || response.statusText}`, { operation: 'fetch-app-demo', status: response.status, upstreamCode: result.code });
     }
 
     return result.data?.nodeInfoList || [];
@@ -234,7 +193,7 @@ async function fetchAiAppDemo({ baseUrl, apiKey, webappId, params }) {
 
 function buildScopedConfig(config, scope) {
     const apiKey = setting(config, 'RUNNINGHUB_API_KEY');
-    if (!apiKey) throw new Error('RunningHub API Key is not configured. Set RUNNINGHUB_API_KEY in Settings or .env.');
+    if (!apiKey) throw credentialError('RunningHub API Key is not configured. Set RUNNINGHUB_API_KEY in Settings or .env.');
 
     const baseUrl = trimSlash(setting(config, 'RUNNINGHUB_BASE_URL', DEFAULT_BASE_URL));
     const webappId = scopedSetting(config, scope, 'WEBAPP_ID');
@@ -314,7 +273,7 @@ async function applyMediaInputs(nodes, config, scope, params, mediaType, assets)
             params
         });
         if (!uploaded.fileName) {
-            throw new Error('RunningHub upload did not return data.fileName for workflow node input.');
+            throw responseError('RunningHub upload did not return data.fileName for workflow node input.', { operation: 'upload' });
         }
         upsertNodeInfo(nodes, {
             nodeId: targets[i].nodeId,
@@ -330,7 +289,7 @@ async function buildNodeInfoList({ config, scope, params, mediaKind }) {
     let nodes = cloneNodeInfoList(baseJson);
 
     if (rh.mode === 'ai-app') {
-        if (!rh.webappId) throw new Error(`RUNNINGHUB_${scope}_WEBAPP_ID is required for RunningHub AI app mode.`);
+        if (!rh.webappId) throw configError(`RUNNINGHUB_${scope}_WEBAPP_ID is required for RunningHub AI app mode.`);
         if (nodes.length === 0) {
             nodes = cloneNodeInfoList(await fetchAiAppDemo({
                 baseUrl: rh.baseUrl,
@@ -340,7 +299,7 @@ async function buildNodeInfoList({ config, scope, params, mediaKind }) {
             }));
         }
     } else if (!rh.workflowId) {
-        throw new Error(`RUNNINGHUB_${scope}_WORKFLOW_ID is required for RunningHub workflow mode.`);
+        throw configError(`RUNNINGHUB_${scope}_WORKFLOW_ID is required for RunningHub workflow mode.`);
     }
 
     applyScalarInputs(nodes, config, scope, params);
@@ -354,7 +313,7 @@ async function buildNodeInfoList({ config, scope, params, mediaKind }) {
 
     const hasPrompt = nodes.some(node => String(node.fieldValue || '').includes(params.prompt || ''));
     if (!hasPrompt && !scopedSetting(config, scope, 'PROMPT_NODE_ID')) {
-        throw new Error(`RunningHub prompt node could not be inferred. Set RUNNINGHUB_${scope}_PROMPT_NODE_ID and RUNNINGHUB_${scope}_PROMPT_FIELD.`);
+        throw configError(`RunningHub prompt node could not be inferred. Set RUNNINGHUB_${scope}_PROMPT_NODE_ID and RUNNINGHUB_${scope}_PROMPT_FIELD.`);
     }
 
     return { rh, nodes };
@@ -396,11 +355,11 @@ async function submitRunningHubTask({ config, scope, params, mediaKind }) {
     });
 
     if (Number(result.code) !== 0) {
-        throw new Error(`RunningHub submit failed: ${result.msg || result.message || JSON.stringify(result)}`);
+        throw submitError(`RunningHub submit failed: ${result.msg || result.message || JSON.stringify(result)}`, { upstreamCode: result.code });
     }
 
     const taskId = result.data?.taskId;
-    if (!taskId) throw new Error('RunningHub submit response did not include data.taskId.');
+    if (!taskId) throw submitError('RunningHub submit response did not include data.taskId.');
     return { taskId, rh };
 }
 
@@ -427,7 +386,7 @@ export const RUNNINGHUB_GLOBAL_CREDENTIALS = Object.freeze({
 function buildStandardImageConfig(config, credentials = RUNNINGHUB_CN_CREDENTIALS) {
     const apiKey = setting(config, credentials.apiKeyName);
     if (!apiKey) {
-        throw new Error(`${credentials.label} API Key 未配置。请在设置中填写 ${credentials.apiKeyName}。`);
+        throw credentialError(`${credentials.label} API Key 未配置。请在设置中填写 ${credentials.apiKeyName}。`);
     }
 
     return {
@@ -463,7 +422,7 @@ function shouldUseStandardImageApi(params, config) {
 
 async function resolveStandardImageUrls({ rh, params, assets }) {
     if (!assets.length) {
-        throw new Error('RunningHub RHArt image-to-image requires at least one input image.');
+        throw inputError('RunningHub RHArt image-to-image requires at least one input image.');
     }
 
     const imageUrls = [];
@@ -476,39 +435,11 @@ async function resolveStandardImageUrls({ rh, params, assets }) {
             params
         });
         if (!uploaded.downloadUrl) {
-            throw new Error('RunningHub upload did not return data.download_url for standard model image input.');
+            throw responseError('RunningHub upload did not return data.download_url for standard model image input.', { operation: 'upload' });
         }
         imageUrls.push(uploaded.downloadUrl);
     }
     return imageUrls;
-}
-
-/**
- * 标准模型的请求体。
- *
- * gpt-image-2 的官方稳定版把 quality 列为**必填**（详情页参数表带 *，Playground 默认 medium），
- * 不带这个字段请求会被直接打回——这跟价格无关，是条链路能不能通的问题。
- * 其它模型没有这个参数，多传会被当成未知字段，所以只对这一族补。
- *
- * 而且钉死在 medium：目录里那份 ¥ 单价就是按 medium 档折算的。
- * 放开让用户选画质而价格不跟着变，high 档会把费用少报 3.7 倍
- * （medium 1K $0.054，high 1K $0.198）。要支持 high 得单独开一条目录条目。
- */
-export function buildStandardImageBody(finalUrl, params) {
-    const body = {
-        prompt: params.prompt || '',
-        aspectRatio: normalizeRhartAspectRatio(params.aspectRatio),
-        resolution: normalizeRhartResolution(params.resolution)
-    };
-    // 认接口路径里的 slug，不是 RH 页面上的显示名：显示名叫 gpt-image-2/…/stable，
-    // 真实路径是 /rhart-image-g-2-official/…。低价渠道 /rhart-image-g-2/… 没有这个参数，
-    // 多传会被当成非法字段，所以必须带 -official 才匹配。
-    if (/\/rhart-image-g-2-official\//i.test(String(finalUrl || ''))) {
-        // 写死 medium，连传进来的 quality 都不认：目录里的 cost 只按分辨率索引，
-        // 表达不了画质这一维。让画质可变而报价不变，等于按 medium 报价、按 high 收钱。
-        body.quality = 'medium';
-    }
-    return body;
 }
 
 async function submitRunningHubStandardImageTask({ config, params, credentials }) {
@@ -574,7 +505,7 @@ async function downloadResults(results, params, mediaKind) {
     const urls = (results || [])
         .map(item => ({ url: item.url || item.fileUrl, ext: outputExt(item, mediaKind === 'video' ? 'mp4' : 'png') }))
         .filter(item => item.url);
-    if (!urls.length) throw new Error('RunningHub task completed but returned no result URLs.');
+    if (!urls.length) throw responseError('RunningHub task completed but returned no result URLs.');
 
     const downloaded = await Promise.all(urls.map(async item => ({
         buffer: await BaseProvider.asyncDownloadToBuffer(item.url, params.useProxy),
@@ -630,94 +561,6 @@ export const RunningHubGlobalImageProvider = {
     }
 };
 
-/**
- * 视频分辨率原样传。
- *
- * 别复用图片那个 normalizeRhartResolution——它把一切不认识的都压成 1k，
- * 视频档位是 480p/540p/720p/1080p/2k/4k，压完就全成 1k 了，
- * 用户选 1080p 却出 480p，而且账单还按 1080p 报。
- */
-function normalizeVideoResolution(resolution) {
-    const value = String(resolution || '720p').trim().toLowerCase();
-    return /^(480p|540p|720p|1080p|2k|4k)$/.test(value) ? value : '720p';
-}
-
-/**
- * 从接口路径的末段判断这次是哪种生成，决定要不要上传素材、上传什么。
- * 认路径不认节点的模式名：同一个模式名在不同模型上可能落到不同末段。
- */
-export function standardVideoMode(finalUrl) {
-    const path = String(finalUrl || '').split('?')[0];
-    if (/\/(video-edit|edit-video)$/i.test(path)) return 'video-edit';
-    if (/\/multimodal-video$/i.test(path)) return 'multimodal-video';
-    if (/\/(reference-to-video|video-to-video)$/i.test(path)) return 'reference-to-video';
-    if (/\/(image-to-video|first-last-frame|start-end-to-video|multi-image-to-video)$/i.test(path)) return 'image-to-video';
-    return 'text-to-video';
-}
-
-/**
- * 标准视频的请求体。
- *
- * 音频开关钉死在开：RH 这几个模型（Seedance 1.5 Pro 的 generateAudio、
- * 可灵 o3 的 sound）**价格随它翻倍**，而目录里的 cost 只按分辨率索引，
- * 表达不了这一维。放开让节点自己传，就成了按带音频报价、按无音频出片——
- * 或者反过来按无音报价、按带音收钱。要便宜的无音档得单开一条目录条目。
- * 这和 gpt-image-2 把 quality 钉死在 medium 是同一个理由。
- */
-export function buildStandardVideoBody(finalUrl, params) {
-    const mode = standardVideoMode(finalUrl);
-    const body = { prompt: params.prompt || '' };
-    const aspectRatio = normalizeRhartAspectRatio(params.aspectRatio);
-    const resolution = normalizeVideoResolution(params.resolution);
-    // duration 在 RH 详情页的参数表里带 *，是必填。之前写成"有才传"，
-    // 节点没给就整个字段消失，请求会被打回。缺省按 5 秒——
-    // 目录里的 ¥/秒 也是按 5 秒片子折算的，两边对齐。
-    const duration = Number(params.duration);
-    const normalizedDuration = Number.isFinite(duration) && duration > 0 ? duration : 5;
-
-    // 这三家标准视频 API 看起来都是 RHArt，但字段契约并不通用。
-    // 只发详情页明确列出的字段；多传 resolution / aspectRatio 也会被上游当成非法参数。
-    if (/\/rhart-video\/sparkvideo-2\.0/i.test(finalUrl)) {
-        body.resolution = resolution;
-        body.duration = normalizedDuration;
-        body.ratio = aspectRatio;
-        body.generateAudio = true;
-        return { body, mode };
-    }
-
-    if (/\/kling-video-o3-/i.test(finalUrl)) {
-        if (mode === 'video-edit') {
-            body.keepOriginalSound = true;
-            return { body, mode };
-        }
-        body.duration = normalizedDuration;
-        if (mode === 'text-to-video' || mode === 'reference-to-video') {
-            body.aspectRatio = aspectRatio;
-        }
-        body.sound = true;
-        return { body, mode };
-    }
-
-    if (/\/vidu\//i.test(finalUrl)) {
-        body.resolution = resolution;
-        body.duration = normalizedDuration;
-        if (mode === 'text-to-video' || mode === 'reference-to-video') {
-            body.aspectRatio = aspectRatio;
-        }
-        if (/q3-/i.test(finalUrl) || /-q3$/i.test(finalUrl)) body.audio = true;
-        return { body, mode };
-    }
-
-    body.aspectRatio = aspectRatio;
-    body.resolution = resolution;
-    body.duration = normalizedDuration;
-    if (/\/seedance-v1\.5-pro/i.test(finalUrl)) body.generateAudio = true;
-    // 可灵 3.0 和 o3 都带 sound 这一维，价格差约 1.5 倍。目录里的 cost 记的是带音价，
-    // 所以这里必须钉死开——放开就成了按带音报价、按无音出片。
-    if (/\/kling-(video-o3|v3\.0)/i.test(finalUrl)) body.sound = true;
-    return { body, mode };
-}
-
 export async function uploadStandardVideoInputs({
     rh,
     params,
@@ -736,14 +579,14 @@ export async function uploadStandardVideoInputs({
             params
         });
         if (!uploaded.downloadUrl) {
-            throw new Error('RunningHub upload did not return data.download_url for standard model video input.');
+            throw responseError('RunningHub upload did not return data.download_url for standard model video input.', { operation: 'upload' });
         }
         return uploaded.downloadUrl;
     };
 
     if (mode === 'multimodal-video') {
         if (!assets.images.length && !assets.videos.length && !assets.audios.length) {
-            throw new Error('RunningHub Seedance 全能参考至少需要一个图片、视频或音频素材。');
+            throw inputError('RunningHub Seedance 全能参考至少需要一个图片、视频或音频素材。');
         }
         if (assets.images.length) {
             body.imageUrls = [];
@@ -762,7 +605,7 @@ export async function uploadStandardVideoInputs({
 
     if (mode === 'image-to-video') {
         if (!assets.images.length) {
-            throw new Error('RunningHub 标准视频的图生视频需要至少一张输入图片。');
+            throw inputError('RunningHub 标准视频的图生视频需要至少一张输入图片。');
         }
         const imageUrls = [];
         for (const asset of assets.images.slice(0, 2)) imageUrls.push(await upload(asset, 'image'));
@@ -789,7 +632,7 @@ export async function uploadStandardVideoInputs({
 
     if (mode === 'reference-to-video') {
         if (!assets.images.length && !assets.videos.length) {
-            throw new Error('RunningHub 标准视频的参考生视频需要至少一张参考图或一段参考视频。');
+            throw inputError('RunningHub 标准视频的参考生视频需要至少一张参考图或一段参考视频。');
         }
         // Vidu Q3 只需要 1–7 张参考图；可灵 O3 还能额外接一段视频，
         // 接视频时参考图上限从 7 张降为 4 张。两类接口共用这个动作名，不能把视频设成必填。
@@ -813,7 +656,7 @@ export async function uploadStandardVideoInputs({
 
     if (mode === 'video-edit') {
         if (!assets.videos.length) {
-            throw new Error('RunningHub 标准视频的视频编辑需要一段输入视频。');
+            throw inputError('RunningHub 标准视频的视频编辑需要一段输入视频。');
         }
         body.videoUrl = await upload(assets.videos[0], 'video');
         // 参考生视频常常还能带一张图当画面参考，有就一起传。
@@ -870,7 +713,7 @@ async function queryStandardTask({ rh, taskId, params, signal, kind = 'video' })
     BaseProvider.injectProxy(options, params.useProxy);
     // POST here is the documented read-only query, never a task-creation endpoint.
     const response = await BaseProvider.fetch(`${rh.baseUrl}/openapi/v2/query`, options);
-    if (!response.ok) throw new Error('RunningHub 原任务查询暂不可用。');
+    if (!response.ok) throw unknownError('RunningHub 原任务查询暂不可用。', { status: response.status });
     const result = await response.json();
     if (String(result?.taskId || '') !== String(taskId)
         || (result.code !== undefined && Number(result.code) !== 0)) return { status: 'unknown' };
@@ -970,29 +813,29 @@ async function submitStandardTask({ config, params, recoveryContext, body }) {
         });
     } catch (error) {
         if (![400, 401, 402, 403, 404, 422, 429].includes(error?.status)) error.submissionUncertain = true;
-        throw error;
+        throw wrapError(error, 'submit');
     }
 
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw Object.assign(
-        new Error('RunningHub 提交响应无法确认，请先核对原任务。'), { submissionUncertain: true });
+        submitError('RunningHub 提交响应无法确认，请先核对原任务。'), { submissionUncertain: true });
     const taskId = result.taskId || result.data?.taskId;
     const initialResults = Array.isArray(result.results) ? result.results : [];
     if (taskId) {
         if (typeof taskId === 'number' && !Number.isSafeInteger(taskId)) throw Object.assign(
-            new Error('RunningHub 任务编号精度不足，无法自动核对。'), { submissionUncertain: true });
+            submitError('RunningHub 任务编号精度不足，无法自动核对。'), { submissionUncertain: true });
         const reference = remoteTaskReference({ taskId, ...recoveryContext });
-        if (!reference) throw Object.assign(new Error('RunningHub 未返回可核对的任务编号。'), { submissionUncertain: true });
+        if (!reference) throw Object.assign(submitError('RunningHub 未返回可核对的任务编号。'), { submissionUncertain: true });
         config.generationTaskSubmitted?.(reference);
     }
     const status = String(result.status || '').toUpperCase();
     if ((result.code !== undefined && Number(result.code) !== 0)
         || status === 'FAILED' || hasMeaningfulValue(result.errorCode) || hasMeaningfulValue(result.errorMessage) || hasMeaningfulValue(result.failedReason)) {
-        throw Object.assign(new Error(`RunningHub 标准任务提交失败：${formatRunningHubError(result)}`), {
+        throw Object.assign(submitError(`RunningHub 标准任务提交失败：${formatRunningHubError(result)}`, { upstreamCode: result.errorCode || result.code }), {
             providerTaskFailed: Boolean(taskId && status === 'FAILED'),
         });
     }
     if (!taskId && !initialResults.length) throw Object.assign(
-        new Error('RunningHub 标准任务提交返回里既没有 taskId 也没有结果。'), { submissionUncertain: true });
+        submitError('RunningHub 标准任务提交返回里既没有 taskId 也没有结果。'), { submissionUncertain: true });
     return { taskId, rh, initialResults };
 }
 
@@ -1014,7 +857,7 @@ async function finishStandardTask({ rh, taskId, initialResults, params, kind }) 
             timeoutMs: BaseProvider.parseTimeToMs(params.timeEstimate || '10min') * (kind === 'image' ? Math.max(1, Number(params.generateCount || 1)) : 1),
             pollFn: async () => {
                 const result = await queryStandardTask({ rh, taskId, params, signal: params.signal, kind });
-                if (result.status === 'failed') throw Object.assign(new Error('RunningHub 已确认原生成任务失败。'), { providerTaskFailed: true });
+                if (result.status === 'failed') throw Object.assign(taskError('RunningHub 已确认原生成任务失败。'), { providerTaskFailed: true });
                 return { done: result.status === 'success', data: result.results };
             },
         });
@@ -1023,12 +866,12 @@ async function finishStandardTask({ rh, taskId, initialResults, params, kind }) 
         if (kind === 'image') {
             const requestedCount = Math.max(1, Math.min(10, Math.trunc(Number(params.generateCount) || 1)));
             const uniqueCount = new Set(results.map((item) => item?.url || item?.fileUrl).filter(Boolean)).size;
-            if (uniqueCount < requestedCount) throw new Error('RunningHub 返回图片不足，需核对原任务结果。');
+            if (uniqueCount < requestedCount) throw responseError('RunningHub 返回图片不足，需核对原任务结果。');
         }
         return await downloadResults(results, params, kind);
     } catch (error) {
         if (!taskId) error.submissionUncertain = true;
-        throw error;
+        throw wrapError(error, 'download');
     }
 }
 

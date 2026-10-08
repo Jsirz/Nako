@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import { remapCanvasNodeReferences } from './canvasNodeReferences';
 import { disconnectCanvasNodes } from './canvasConnections';
@@ -69,6 +70,19 @@ export function hasGeneratingCanvasNodes(nodes: readonly CanvasClipboardNode[]):
   return nodes.some((node) => ['loading', 'queued'].includes(String(node.status)));
 }
 
+function isDetachedCopyNode(node: Pick<CanvasClipboardNode, 'type'> & Record<string, unknown>): boolean {
+  return (
+    node.type === 'Text' ||
+    node.type.startsWith('Upload ') ||
+    node.kind === 'asset' ||
+    node.category === 'asset'
+  );
+}
+
+function preservesExternalUpstream(node: Pick<CanvasClipboardNode, 'type'>): boolean {
+  return node.type === 'Image' || node.type === 'Video';
+}
+
 function sourcePortIndexAt(node: CanvasClipboardNode, index: number): number {
   const sourcePortIndices = node.sourcePortIndices;
   if (!Array.isArray(sourcePortIndices)) return 0;
@@ -80,11 +94,24 @@ function cloneParentConnections(
   node: CanvasClipboardNode,
   idMap: ReadonlyMap<string, string>,
   preserveInternalConnections: boolean,
+  detachedSourceIds: ReadonlySet<string>,
 ): Pick<CanvasClipboardNode, 'parentIds'> & Record<string, unknown> {
   const parentIds = node.parentIds ?? [];
+  if (isDetachedCopyNode(node)) {
+    return {
+      parentIds: [],
+      ...(node.sourcePortIndices !== undefined ? { sourcePortIndices: [] } : {}),
+    };
+  }
+  const copiedParentId = (parentId: string) => {
+    const mappedId = idMap.get(parentId);
+    return mappedId && !detachedSourceIds.has(parentId)
+      ? mappedId
+      : undefined;
+  };
   if (node.type === 'ComfyUI') {
     const nextParentIds = parentIds.map((parentId) =>
-      preserveInternalConnections ? idMap.get(parentId) ?? '' : '',
+      preserveInternalConnections ? copiedParentId(parentId) ?? '' : '',
     );
     return {
       parentIds: nextParentIds,
@@ -97,8 +124,11 @@ function cloneParentConnections(
 
   const retainedParents = preserveInternalConnections
     ? parentIds.flatMap((parentId, index) => {
-        const mappedId = idMap.get(parentId);
-        return mappedId ? [{ id: mappedId, sourcePortIndex: sourcePortIndexAt(node, index) }] : [];
+        const mappedId = copiedParentId(parentId);
+        const retainedId = mappedId || (preservesExternalUpstream(node) ? parentId : undefined);
+        return retainedId
+          ? [{ id: retainedId, sourcePortIndex: sourcePortIndexAt(node, index) }]
+          : [];
       })
     : [];
   const result: Pick<CanvasClipboardNode, 'parentIds'> & Record<string, unknown> = {
@@ -113,6 +143,7 @@ function cloneChildConnections<TNode extends CanvasClipboardNode>(
   node: TNode,
   idMap: ReadonlyMap<string, string>,
 ): TNode {
+  if (isDetachedCopyNode(node)) return node;
   if (Array.isArray(node.inputLinks)) {
     const inputLinks = node.inputLinks as Array<Record<string, unknown>>;
     const copiedLinks = inputLinks.flatMap((link, index) => {
@@ -164,8 +195,9 @@ export function cloneCanvasNodes<TNode extends CanvasClipboardNode>(
   nodes: readonly TNode[],
   options: CloneCanvasNodesOptions,
 ): ClonedCanvasNodes<TNode> {
-  if (hasGeneratingCanvasNodes(nodes)) throw new Error(GENERATING_COPY_MESSAGE);
+  if (hasGeneratingCanvasNodes(nodes)) throw canvasError(GENERATING_COPY_MESSAGE, 'clipboard.clone');
   const idMap = new Map(nodes.map((node) => [node.id, options.createId()]));
+  const detachedSourceIds = new Set(nodes.filter(isDetachedCopyNode).map((node) => node.id));
   const origin = nodes.reduce(
     (current, node) => ({
       x: Math.min(current.x, node.x),
@@ -195,12 +227,23 @@ export function cloneCanvasNodes<TNode extends CanvasClipboardNode>(
           }
         : {}),
       ...remapCanvasNodeReferences(node, id =>
-        options.preserveParentConnections ? idMap.get(id) : undefined,
+        options.preserveParentConnections
+          ? idMap.get(id) && !detachedSourceIds.has(id)
+            ? idMap.get(id)
+            : preservesExternalUpstream(node)
+              ? id
+              : undefined
+          : undefined,
       ),
       id: idMap.get(node.id)!,
       x: node.x + translation.x,
       y: node.y + translation.y,
-      ...cloneParentConnections(node, idMap, options.preserveParentConnections === true),
+      ...cloneParentConnections(
+        node,
+        idMap,
+        options.preserveParentConnections === true,
+        detachedSourceIds,
+      ),
     };
     delete clonedNode.groupId;
     return clonedNode;
@@ -226,8 +269,14 @@ export function insertClonedCanvasNodes<TNode extends CanvasClipboardNode>(
   idMap: ReadonlyMap<string, string>,
   options: InsertClonedCanvasNodesOptions = {},
 ): TNode[] {
+  const copiedSourceIds = new Set(
+    newNodes.filter((node) => !isDetachedCopyNode(node)).map((node) => node.id),
+  );
+  const childConnectionMap = new Map(
+    [...idMap.entries()].filter(([, copiedId]) => copiedSourceIds.has(copiedId)),
+  );
   const existingNodes = options.preserveChildConnections
-    ? nodes.map((node) => cloneChildConnections(node, idMap))
+    ? nodes.map((node) => cloneChildConnections(node, childConnectionMap))
     : nodes;
   return [...existingNodes, ...newNodes];
 }

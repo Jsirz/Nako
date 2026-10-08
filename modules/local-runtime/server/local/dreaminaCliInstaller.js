@@ -1,6 +1,10 @@
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+import { defaultOpenBrowser } from './dreaminaBrowser.js';
+
 import crypto from 'node:crypto';
 import { spawn as nodeSpawn } from 'node:child_process';
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream } from 'node:fs';
 import {
   lstat,
   mkdir,
@@ -42,12 +46,10 @@ const RUNTIME_COMMANDS = new Set([
 const DREAMINA_LOGIN_URL = 'https://jimeng.jianying.com/ai-tool/cli-auth';
 const DREAMINA_DEVICE_CONFIRM_PATH = '/passport/open/scan_user_code/';
 
-export class DreaminaCliInstallError extends Error {
+export class DreaminaCliInstallError extends PluginError {
   constructor(code, message, status = 409) {
-    super(message);
+    super(code, message, { status, context: { moduleId: 'local-runtime', operation: 'dreaminaCliInstall' } });
     this.name = 'DreaminaCliInstallError';
-    this.code = code;
-    this.status = status;
   }
 }
 
@@ -330,33 +332,9 @@ function parseDeviceFlow(text, now) {
   };
 }
 
-function defaultOpenBrowser(url, browser = 'default') {
-  if (browser !== 'default') {
-    const suffix = browser === 'edge' ? 'Microsoft/Edge/Application/msedge.exe' : 'Google/Chrome/Application/chrome.exe';
-    const executable = [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]
-      .filter(Boolean).map((root) => path.join(root, suffix)).find(existsSync);
-    if (!executable) throw new DreaminaCliInstallError('DREAMINA_BROWSER_MISSING', '未找到所选浏览器，请复制授权链接到该浏览器打开。', 400);
-    return new Promise((resolve, reject) => {
-      const child = nodeSpawn(executable, [url], { detached: true, stdio: 'ignore', windowsHide: false });
-      child.once('spawn', () => { child.unref(); resolve(); });
-      child.once('error', reject);
-    });
-  }
-  return new Promise((resolve, reject) => {
-    const child = nodeSpawn('explorer.exe', [url], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
-    });
-    child.once('spawn', () => {
-      child.unref();
-      resolve();
-    });
-    child.once('error', reject);
-  });
-}
 
-export function createDreaminaCliInstaller({
+class DreaminaCliInstaller {
+  constructor({
   installRoot,
   fetcher = globalThis.fetch,
   spawnChild = nodeSpawn,
@@ -365,39 +343,40 @@ export function createDreaminaCliInstaller({
   architecture = process.arch,
   now = () => new Date(),
   loginCommandTimeoutMs = LOGIN_COMMAND_TIMEOUT_MS,
-} = {}) {
+  } = {}) {
   if (
     !installRoot
     || typeof fetcher !== 'function'
     || typeof spawnChild !== 'function'
     || typeof openBrowser !== 'function'
   ) {
-    throw new Error('installRoot, fetcher, spawnChild, and openBrowser are required');
+    throw localRuntimeError('installRoot, fetcher, spawnChild, and openBrowser are required', 'createDreaminaCliInstaller', ERRORS.invalidConfiguration);
   }
-  const root = path.resolve(installRoot);
+  this.root = path.resolve(installRoot);
+  Object.assign(this, { fetcher, spawnChild, openBrowser, now, loginCommandTimeoutMs });
   if (
     !Number.isInteger(loginCommandTimeoutMs)
     || loginCommandTimeoutMs < 100
     || loginCommandTimeoutMs > 60_000
-  ) throw new Error('Dreamina login command timeout is invalid');
-  const activeManifestPath = path.join(root, 'active.json');
-  let pendingInstall = null;
-  let loginAttempt = null;
-  let pendingLoginStart = null;
-  let pendingLoginCheck = null;
-  let pendingAuthProbe = null;
-  let authProbe = null;
-  let authEpoch = 0;
-  let activeAccountUses = 0;
+  ) throw localRuntimeError('Dreamina login command timeout is invalid', 'createDreaminaCliInstaller', ERRORS.invalidConfiguration);
+  this.activeManifestPath = path.join(this.root, 'active.json');
+  this.pendingInstall = null;
+  this.loginAttempt = null;
+  this.pendingLoginStart = null;
+  this.pendingLoginCheck = null;
+  this.pendingAuthProbe = null;
+  this.authProbe = null;
+  this.authEpoch = 0;
+  this.activeAccountUses = 0;
+  this.supported = platform === 'win32' && architecture === 'x64';
+  }
 
-  const supported = platform === 'win32' && architecture === 'x64';
-
-  function expireLoginAttempt() {
+  expireLoginAttempt() {
     if (
-      loginAttempt?.status === 'awaiting-authorization'
-      && new Date(loginAttempt.expiresAt).getTime() <= now().getTime()
+      this.loginAttempt?.status === 'awaiting-authorization'
+      && new Date(this.loginAttempt.expiresAt).getTime() <= this.now().getTime()
     ) {
-      loginAttempt = {
+      this.loginAttempt = {
         status: 'expired',
         loginRunning: false,
         retryable: true,
@@ -406,9 +385,9 @@ export function createDreaminaCliInstaller({
     }
   }
 
-  function publicLoginAttempt() {
-    expireLoginAttempt();
-    if (!loginAttempt) return null;
+  publicLoginAttempt() {
+    this.expireLoginAttempt();
+    if (!this.loginAttempt) return null;
     const {
       status,
       loginRunning,
@@ -419,7 +398,7 @@ export function createDreaminaCliInstaller({
       expiresAt,
       pollAfterMs,
       browserOpened,
-    } = loginAttempt;
+    } = this.loginAttempt;
     return Object.freeze({
       status,
       loginRunning,
@@ -433,8 +412,8 @@ export function createDreaminaCliInstaller({
     });
   }
 
-  function runCli(executablePath, args, authHome, {
-    timeoutMs = loginCommandTimeoutMs,
+  runCli(executablePath, args, authHome, {
+    timeoutMs = this.loginCommandTimeoutMs,
     outputLimit = LOGIN_OUTPUT_LIMIT,
     startCode = 'DREAMINA_LOGIN_START_FAILED',
     startMessage = '无法启动即梦登录，请重新安装后重试。',
@@ -447,7 +426,7 @@ export function createDreaminaCliInstaller({
     return new Promise((resolve, reject) => {
       let child;
       try {
-        child = spawnChild(executablePath, args, {
+        child = this.spawnChild(executablePath, args, {
           shell: false,
           windowsHide: true,
           stdio: ['ignore', 'pipe', 'pipe'],
@@ -513,15 +492,15 @@ export function createDreaminaCliInstaller({
       }, timeoutMs);
       abort = () => {
         child.kill?.();
-        finish(Object.assign(new Error('Generation cancelled'), { name: 'AbortError' }));
+        finish(localRuntimeError('Generation cancelled', 'runCli', ERRORS.permission, 499));
       };
       if (signal?.aborted) abort();
       else signal?.addEventListener?.('abort', abort, { once: true });
     });
   }
 
-  async function inspectPrivate() {
-    if (!supported) {
+  async inspectPrivate() {
+    if (!this.supported) {
       return {
         public: {
           status: 'unsupported',
@@ -533,7 +512,7 @@ export function createDreaminaCliInstaller({
     }
     let manifest;
     try {
-      manifest = JSON.parse(await readFile(activeManifestPath, 'utf8'));
+      manifest = JSON.parse(await readFile(this.activeManifestPath, 'utf8'));
     } catch (error) {
       if (error?.code === 'ENOENT') {
         return { public: { status: 'missing', installable: true, loginRunning: false } };
@@ -564,9 +543,9 @@ export function createDreaminaCliInstaller({
     }
     let executablePath;
     try {
-      executablePath = contained(root, path.join(root, manifest.executable));
+      executablePath = contained(this.root, path.join(this.root, manifest.executable));
       const [rootStats, executableStats] = await Promise.all([
-        optionalLstat(root),
+        optionalLstat(this.root),
         optionalLstat(executablePath),
       ]);
       if (
@@ -576,7 +555,7 @@ export function createDreaminaCliInstaller({
         || executableStats.isSymbolicLink()
         || (await fileSha256(executablePath)) !== manifest.binarySha256
       ) {
-        throw new Error('invalid installation');
+        throw localRuntimeError('invalid installation', 'inspectPrivate', ERRORS.invalidConfiguration);
       }
     } catch {
       return {
@@ -588,7 +567,7 @@ export function createDreaminaCliInstaller({
         },
       };
     }
-    const login = publicLoginAttempt();
+    const login = this.publicLoginAttempt();
     return {
       executablePath,
       public: {
@@ -602,40 +581,40 @@ export function createDreaminaCliInstaller({
     };
   }
 
-  async function inspect({ refreshAuthentication = false } = {}) {
-    const status = (await inspectPrivate()).public;
+  async inspect({ refreshAuthentication = false } = {}) {
+    const status = (await this.inspectPrivate()).public;
     if (!refreshAuthentication || status.status !== 'installed') return status;
-    const account = await getAccount({ fresh: true });
-    const pending = publicLoginAttempt();
+    const account = await this.getAccount({ fresh: true });
+    const pending = this.publicLoginAttempt();
     return { ...status, account, login: pending?.status === 'awaiting-authorization' ? pending : {
       status: account ? 'authenticated' : 'idle', loginRunning: false, retryable: !account,
       message: account ? '即梦已登录，可以在 Nako 中使用。' : '请登录即梦；已有授权暂不可用时，可重试检测。',
     } };
   }
 
-  async function installOnce() {
-    if (!supported) {
+  async installOnce() {
+    if (!this.supported) {
       throw new DreaminaCliInstallError(
         'DREAMINA_PLATFORM_UNSUPPORTED',
         '即梦 CLI 当前只支持 64 位 Windows。',
       );
     }
     const installer = await fetchBuffer(
-      fetcher,
+      this.fetcher,
       INSTALLER_URL,
       MAX_INSTALLER_BYTES,
       { exactPath: '/cli' },
     );
     const contract = parseInstaller(installer);
-    const versionBuffer = await fetchBuffer(fetcher, contract.versionUrl, MAX_VERSION_BYTES);
+    const versionBuffer = await fetchBuffer(this.fetcher, contract.versionUrl, MAX_VERSION_BYTES);
     const version = parseVersion(versionBuffer);
-    const previous = await inspect();
+    const previous = await this.inspect();
     if (previous.status === 'installed' && previous.version === version) {
       return { ...previous, changed: false };
     }
     const [binary, skill] = await Promise.all([
-      fetchBuffer(fetcher, contract.binaryUrl, MAX_BINARY_BYTES),
-      fetchBuffer(fetcher, contract.skillUrl, MAX_SKILL_BYTES),
+      fetchBuffer(this.fetcher, contract.binaryUrl, MAX_BINARY_BYTES),
+      fetchBuffer(this.fetcher, contract.skillUrl, MAX_SKILL_BYTES),
     ]);
     const integrity = validateArtifacts({
       binary,
@@ -643,8 +622,8 @@ export function createDreaminaCliInstaller({
       expectedSkillMd5: contract.skillMd5,
     });
 
-    await mkdir(root, { recursive: true });
-    const rootStats = await lstat(root);
+    await mkdir(this.root, { recursive: true });
+    const rootStats = await lstat(this.root);
     if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
       throw new DreaminaCliInstallError(
         'DREAMINA_INSTALL_PATH_UNSAFE',
@@ -652,11 +631,11 @@ export function createDreaminaCliInstaller({
         500,
       );
     }
-    const versionsRoot = contained(root, path.join(root, 'versions'));
+    const versionsRoot = contained(this.root, path.join(this.root, 'versions'));
     await mkdir(versionsRoot, { recursive: true });
     const versionDirectoryName = `${version}-${integrity.binarySha256.slice(0, 12)}`;
-    const versionDirectory = contained(root, path.join(versionsRoot, versionDirectoryName));
-    const staging = await mkdtemp(path.join(root, '.install-'));
+    const versionDirectory = contained(this.root, path.join(versionsRoot, versionDirectoryName));
+    const staging = await mkdtemp(path.join(this.root, '.install-'));
     try {
       await Promise.all([
         writeFile(path.join(staging, 'dreamina.exe'), binary, { flag: 'wx', mode: 0o700 }),
@@ -691,78 +670,78 @@ export function createDreaminaCliInstaller({
         executable: `versions/${versionDirectoryName}/dreamina.exe`,
         binarySha256: integrity.binarySha256,
         skillMd5: integrity.skillMd5,
-        installedAt: now().toISOString(),
+        installedAt: this.now().toISOString(),
       };
-      const temporaryManifest = `${activeManifestPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+      const temporaryManifest = `${this.activeManifestPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
       try {
         await writeFile(temporaryManifest, `${JSON.stringify(manifest, null, 2)}\n`, {
           encoding: 'utf8',
           flag: 'wx',
           mode: 0o600,
         });
-        await rename(temporaryManifest, activeManifestPath);
+        await rename(temporaryManifest, this.activeManifestPath);
       } finally {
         await rm(temporaryManifest, { force: true }).catch(() => {});
       }
-      return { ...(await inspect()), changed: true };
+      return { ...(await this.inspect()), changed: true };
     } finally {
       await rm(staging, { recursive: true, force: true }).catch(() => {});
     }
   }
 
-  async function install() {
-    if (!pendingInstall) {
-      pendingInstall = installOnce().finally(() => { pendingInstall = null; });
+  async install() {
+    if (!this.pendingInstall) {
+      this.pendingInstall = this.installOnce().finally(() => { this.pendingInstall = null; });
     }
-    return pendingInstall;
+    return this.pendingInstall;
   }
 
-  async function openLoginPage(browser) {
+  async openLoginPage(browser) {
     let browserOpened = true;
     try {
-      if (browser === 'default') await openBrowser(loginAttempt.verificationUri);
-      else await openBrowser(loginAttempt.verificationUri, browser);
+      if (browser === 'default') await this.openBrowser(this.loginAttempt.verificationUri);
+      else await this.openBrowser(this.loginAttempt.verificationUri, browser);
     } catch {
       browserOpened = false;
     }
-    loginAttempt.browserOpened = browserOpened;
-    loginAttempt.message = browserOpened
+    this.loginAttempt.browserOpened = browserOpened;
+    this.loginAttempt.message = browserOpened
       ? '已打开即梦官方授权页，请核对用户码并完成登录。'
       : '未能打开所选浏览器，请复制授权链接到该浏览器打开。';
-    return publicLoginAttempt();
+    return this.publicLoginAttempt();
   }
 
-  async function startLoginOnce({ force = false, browser = 'default' } = {}) {
+  async startLoginOnce({ force = false, browser = 'default' } = {}) {
     if (typeof force !== 'boolean' || !['default', 'edge', 'chrome'].includes(browser)) {
       throw new DreaminaCliInstallError('DREAMINA_LOGIN_ARGUMENT_INVALID', '请选择有效的登录浏览器。', 400);
     }
-    if (activeAccountUses) throw new DreaminaCliInstallError('DREAMINA_ACCOUNT_BUSY', '即梦任务正在提交或查询，请等待完成后切换账号。', 409);
-    if (pendingLoginCheck) await pendingLoginCheck;
+    if (this.activeAccountUses) throw new DreaminaCliInstallError('DREAMINA_ACCOUNT_BUSY', '即梦任务正在提交或查询，请等待完成后切换账号。', 409);
+    if (this.pendingLoginCheck) await this.pendingLoginCheck;
 
-    const installed = await inspectPrivate();
+    const installed = await this.inspectPrivate();
     if (installed.public.status !== 'installed' || !installed.executablePath) {
       throw new DreaminaCliInstallError(
         'DREAMINA_CLI_NOT_INSTALLED',
         '请先安装即梦 CLI。',
       );
     }
-    const current = publicLoginAttempt();
-    if (!force && current?.status === 'awaiting-authorization') return openLoginPage(browser);
-    authEpoch += 1;
-    authProbe = null;
-    if (force) loginAttempt = null;
-    const authHome = contained(root, path.join(root, 'auth-home'));
+    const current = this.publicLoginAttempt();
+    if (!force && current?.status === 'awaiting-authorization') return this.openLoginPage(browser);
+    this.authEpoch += 1;
+    this.authProbe = null;
+    if (force) this.loginAttempt = null;
+    const authHome = contained(this.root, path.join(this.root, 'auth-home'));
     await mkdir(authHome, { recursive: true });
-    const result = await runCli(installed.executablePath, [force ? 'relogin' : 'login', '--headless'], authHome);
+    const result = await this.runCli(installed.executablePath, [force ? 'relogin' : 'login', '--headless'], authHome);
     const output = `${result.stdout}\n${result.stderr}`;
     if (result.code === 0 && loginOutputIsAuthenticated(output)) {
-      loginAttempt = {
+      this.loginAttempt = {
         status: 'authenticated',
         loginRunning: false,
         retryable: false,
         message: '即梦已登录，可以在 Nako 中使用。',
       };
-      return publicLoginAttempt();
+      return this.publicLoginAttempt();
     }
     if (result.code !== 0) {
       throw new DreaminaCliInstallError(
@@ -771,24 +750,24 @@ export function createDreaminaCliInstaller({
         502,
       );
     }
-    const deviceFlow = parseDeviceFlow(output, now);
-    loginAttempt = {
+    const deviceFlow = parseDeviceFlow(output, this.now);
+    this.loginAttempt = {
       ...deviceFlow,
       status: 'awaiting-authorization',
       loginRunning: true,
       retryable: true,
     };
-    return openLoginPage(browser);
+    return this.openLoginPage(browser);
   }
 
-  function startLogin(options) {
-    pendingLoginStart ??= startLoginOnce(options).finally(() => { pendingLoginStart = null; });
-    return pendingLoginStart;
+  startLogin(options) {
+    this.pendingLoginStart ??= this.startLoginOnce(options).finally(() => { this.pendingLoginStart = null; });
+    return this.pendingLoginStart;
   }
 
-  async function checkLoginOnce() {
-    if (pendingLoginStart) await pendingLoginStart;
-    const current = publicLoginAttempt();
+  async checkLoginOnce() {
+    if (this.pendingLoginStart) await this.pendingLoginStart;
+    const current = this.publicLoginAttempt();
     if (!current) {
       return Object.freeze({
         status: 'idle',
@@ -798,54 +777,54 @@ export function createDreaminaCliInstaller({
       });
     }
     if (current.status !== 'awaiting-authorization') return current;
-    const deviceCode = loginAttempt.deviceCode;
-    const installed = await inspectPrivate();
-    if (!deviceCode || !installed.executablePath) return publicLoginAttempt();
-    const authHome = contained(root, path.join(root, 'auth-home'));
-    const result = await runCli(
+    const deviceCode = this.loginAttempt.deviceCode;
+    const installed = await this.inspectPrivate();
+    if (!deviceCode || !installed.executablePath) return this.publicLoginAttempt();
+    const authHome = contained(this.root, path.join(this.root, 'auth-home'));
+    const result = await this.runCli(
       installed.executablePath,
       ['login', 'checklogin', `--device_code=${deviceCode}`, '--poll=0'],
       authHome,
     );
     const output = `${result.stdout}\n${result.stderr}`;
     if (result.code === 0) {
-      authEpoch += 1; authProbe = null;
-      loginAttempt = {
+      this.authEpoch += 1; this.authProbe = null;
+      this.loginAttempt = {
         status: 'authenticated',
         loginRunning: false,
         retryable: false,
         message: '即梦登录成功，现在可以在 Nako 中使用。',
       };
-      return publicLoginAttempt();
+      return this.publicLoginAttempt();
     }
     if (/(?:登录尚未完成|authorization[_ ]pending|increase\s+--poll)/iu.test(output)) {
-      loginAttempt = { ...loginAttempt, status: 'awaiting-authorization' };
-      return publicLoginAttempt();
+      this.loginAttempt = { ...this.loginAttempt, status: 'awaiting-authorization' };
+      return this.publicLoginAttempt();
     }
     if (/(?:过期|已失效|expired|invalid device)/iu.test(output)) {
-      loginAttempt = {
+      this.loginAttempt = {
         status: 'expired',
         loginRunning: false,
         retryable: true,
         message: '即梦登录已过期，请重新发起登录。',
       };
-      return publicLoginAttempt();
+      return this.publicLoginAttempt();
     }
-    loginAttempt = {
+    this.loginAttempt = {
       status: 'failed',
       loginRunning: false,
       retryable: true,
       message: '未能确认即梦登录状态，请检查网络后重试。',
     };
-    return publicLoginAttempt();
+    return this.publicLoginAttempt();
   }
 
-  function checkLogin() {
-    pendingLoginCheck ??= checkLoginOnce().finally(() => { pendingLoginCheck = null; });
-    return pendingLoginCheck;
+  checkLogin() {
+    this.pendingLoginCheck ??= this.checkLoginOnce().finally(() => { this.pendingLoginCheck = null; });
+    return this.pendingLoginCheck;
   }
 
-  async function execute(args, { timeoutMs = 30_000, signal = null } = {}) {
+  async execute(args, { timeoutMs = 30_000, signal = null } = {}) {
     if (
       !Array.isArray(args)
       || !RUNTIME_COMMANDS.has(args[0])
@@ -861,16 +840,16 @@ export function createDreaminaCliInstaller({
         400,
       );
     }
-    const installed = await inspectPrivate();
+    const installed = await this.inspectPrivate();
     if (installed.public.status !== 'installed' || !installed.executablePath) {
       throw new DreaminaCliInstallError(
         'DREAMINA_CLI_NOT_INSTALLED',
         '请先安装即梦 CLI。',
       );
     }
-    const authHome = contained(root, path.join(root, 'auth-home'));
+    const authHome = contained(this.root, path.join(this.root, 'auth-home'));
     await mkdir(authHome, { recursive: true });
-    return runCli(installed.executablePath, args, authHome, {
+    return this.runCli(installed.executablePath, args, authHome, {
       timeoutMs,
       outputLimit: RUNTIME_OUTPUT_LIMIT,
       startCode: 'DREAMINA_RUNTIME_START_FAILED',
@@ -883,15 +862,15 @@ export function createDreaminaCliInstaller({
     });
   }
 
-  async function getAccount({ fresh = false } = {}) {
-    const checkedAt = now().getTime();
-    if (!fresh && authProbe && checkedAt - authProbe.checkedAt < AUTH_PROBE_CACHE_MS) return authProbe.account;
-    if (pendingAuthProbe) return pendingAuthProbe;
-    const epoch = authEpoch;
-    pendingAuthProbe = (async () => {
+  async getAccount({ fresh = false } = {}) {
+    const checkedAt = this.now().getTime();
+    if (!fresh && this.authProbe && checkedAt - this.authProbe.checkedAt < AUTH_PROBE_CACHE_MS) return this.authProbe.account;
+    if (this.pendingAuthProbe) return this.pendingAuthProbe;
+    const epoch = this.authEpoch;
+    this.pendingAuthProbe = (async () => {
       let account = null;
       try {
-        const result = await execute(['user_credit'], { timeoutMs: 15_000 });
+        const result = await this.execute(['user_credit'], { timeoutMs: 15_000 });
         const value = result.code === 0 ? JSON.parse(result.stdout) : null;
         const uid = typeof value?.user_id === 'number' && Number.isSafeInteger(value.user_id)
           ? String(value.user_id) : typeof value?.user_id === 'string' ? value.user_id : '';
@@ -899,41 +878,41 @@ export function createDreaminaCliInstaller({
           uid, nickname: typeof value.user_name === 'string' ? [...value.user_name].filter((character) => character.codePointAt(0) >= 32).join('').slice(0, 100) : '',
         };
       } catch { /* Authentication errors never disclose CLI output or credentials. */ }
-      if (epoch !== authEpoch) return null;
-      authProbe = { checkedAt: now().getTime(), account };
+      if (epoch !== this.authEpoch) return null;
+      this.authProbe = { checkedAt: this.now().getTime(), account };
       return account;
-    })().finally(() => { pendingAuthProbe = null; });
-    return pendingAuthProbe;
+    })().finally(() => { this.pendingAuthProbe = null; });
+    return this.pendingAuthProbe;
   }
 
-  async function isAuthenticated() { return Boolean(await getAccount()); }
+  async isAuthenticated() { return Boolean(await this.getAccount()); }
 
-  function getCachedAuthentication() {
+  getCachedAuthentication() {
     // Fast model discovery uses the last confirmed state while refreshing it.
     // Generation always acquires a fresh account lease before submission.
-    return Boolean(authProbe?.account);
+    return Boolean(this.authProbe?.account);
   }
 
-  async function acquireAccount() {
-    if (pendingLoginStart || publicLoginAttempt()?.status === 'awaiting-authorization') {
+  async acquireAccount() {
+    if (this.pendingLoginStart || this.publicLoginAttempt()?.status === 'awaiting-authorization') {
       throw new DreaminaCliInstallError('DREAMINA_LOGIN_PENDING', '请先完成即梦账号授权。', 409);
     }
-    activeAccountUses += 1;
+    this.activeAccountUses += 1;
     let released = false;
-    const release = () => { if (!released) { released = true; activeAccountUses -= 1; } };
+    const release = () => { if (!released) { released = true; this.activeAccountUses -= 1; } };
     try {
-      const account = await getAccount({ fresh: true });
+      const account = await this.getAccount({ fresh: true });
       if (!account) throw new DreaminaCliInstallError('DREAMINA_CLI_NOT_AUTHENTICATED', '即梦登录暂不可用，请检查网络或重新授权。', 401);
       return { account, release };
     } catch (error) { release(); throw error; }
   }
 
-  async function createTaskDirectory() {
-    const installed = await inspectPrivate();
+  async createTaskDirectory() {
+    const installed = await this.inspectPrivate();
     if (installed.public.status !== 'installed') {
       throw new DreaminaCliInstallError('DREAMINA_CLI_NOT_INSTALLED', '请先安装即梦 CLI。');
     }
-    const tasksRoot = contained(root, path.join(root, 'tasks'));
+    const tasksRoot = contained(this.root, path.join(this.root, 'tasks'));
     await mkdir(tasksRoot, { recursive: true });
     const stats = await lstat(tasksRoot);
     if (!stats.isDirectory() || stats.isSymbolicLink()) {
@@ -946,8 +925,8 @@ export function createDreaminaCliInstaller({
     return mkdtemp(path.join(tasksRoot, '.task-'));
   }
 
-  async function cleanupTaskDirectory(directory) {
-    const tasksRoot = contained(root, path.join(root, 'tasks'));
+  async cleanupTaskDirectory(directory) {
+    const tasksRoot = contained(this.root, path.join(this.root, 'tasks'));
     const candidate = contained(tasksRoot, directory);
     const relative = path.relative(tasksRoot, candidate);
     if (relative.includes(path.sep) || !path.basename(candidate).startsWith('.task-')) {
@@ -972,19 +951,17 @@ export function createDreaminaCliInstaller({
     await rm(candidate, { recursive: true, force: true });
   }
 
-  return {
-    inspect,
-    install,
-    startLogin,
-    checkLogin,
-    execute,
-    isAuthenticated,
-    getAccount,
-    acquireAccount,
-    getCachedAuthentication,
-    createTaskDirectory,
-    cleanupTaskDirectory,
-  };
+  publicApi() {
+    return Object.fromEntries([
+      'inspect', 'install', 'startLogin', 'checkLogin', 'execute', 'isAuthenticated',
+      'getAccount', 'acquireAccount', 'getCachedAuthentication',
+      'createTaskDirectory', 'cleanupTaskDirectory',
+    ].map(name => [name, this[name].bind(this)]));
+  }
+}
+
+export function createDreaminaCliInstaller(options = {}) {
+  return new DreaminaCliInstaller(options).publicApi();
 }
 
 export const DREAMINA_CLI_OFFICIAL_INSTALL_COMMAND =

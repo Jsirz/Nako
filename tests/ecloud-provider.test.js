@@ -16,7 +16,7 @@ import { loadModelCatalog } from '../modules/generation-core/server/config/model
 import {
   textModelConnection,
   modelParameters,
-} from '../modules/agent/server/agent/drama/dramaModelGenerator.js';
+} from '../plugins/platform/text-transport/modelConfig.js';
 import { canvasAgentModels } from '../modules/agent/ui/agent/canvasAgentModels';
 import { generationUnitPrice } from '../modules/generation-core/ui/generation/canvasGenerationRequests';
 

@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import type { WorkflowCanvasBlueprint, WorkflowSeedAdvancement } from './workflowManagerClient';
 
 export function normalizeSelectParameterValues(
@@ -73,7 +75,7 @@ export function normalizeNumericParameterValues(
       continue;
     }
     if (kind === 'seed' && !['fixed', 'increment', 'decrement'].includes(seedPolicy)) {
-      throw new Error(`${parameter.label}种子策略无效`);
+      throw localRuntimeError(`${parameter.label}种子策略无效`, 'normalizeNumericParameterValues', ERRORS.invalidConfiguration);
     }
     const currentNumeric =
       kind === 'seed' && currentValue && typeof currentValue === 'object'
@@ -90,19 +92,19 @@ export function normalizeNumericParameterValues(
         delete values[parameter.key];
         continue;
       }
-      throw new Error(`${parameter.label}请输入有效数字`);
+      throw localRuntimeError(`${parameter.label}请输入有效数字`, 'normalizeNumericParameterValues', ERRORS.invalidConfiguration);
     }
     if (
       Number.isFinite(parameter.control.minimum) &&
       numericValue < Number(parameter.control.minimum)
     ) {
-      throw new Error(`${parameter.label}不能小于 ${parameter.control.minimum}`);
+      throw localRuntimeError(`${parameter.label}不能小于 ${parameter.control.minimum}`, 'normalizeNumericParameterValues', ERRORS.invalidConfiguration);
     }
     if (
       Number.isFinite(parameter.control.maximum) &&
       numericValue > Number(parameter.control.maximum)
     ) {
-      throw new Error(`${parameter.label}不能大于 ${parameter.control.maximum}`);
+      throw localRuntimeError(`${parameter.label}不能大于 ${parameter.control.maximum}`, 'normalizeNumericParameterValues', ERRORS.invalidConfiguration);
     }
     if (kind !== 'seed') {
       values[parameter.key] = numericValue;
@@ -121,7 +123,7 @@ export function normalizeNumericParameterValues(
         ? (finiteNumericValue((currentValue as { step?: unknown }).step) ?? declaredStep)
         : declaredStep;
     if (!Number.isSafeInteger(policyStep) || policyStep <= 0 || policyStep !== declaredStep) {
-      throw new Error(`${parameter.label}种子步长无效`);
+      throw localRuntimeError(`${parameter.label}种子步长无效`, 'normalizeNumericParameterValues', ERRORS.invalidConfiguration);
     }
     values[parameter.key] = { mode: seedPolicy, value: numericValue, step: policyStep };
   }

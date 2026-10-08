@@ -5,6 +5,8 @@
  * Scans configured directories for supported model files.
  */
 
+import { createModuleLogger } from '../../../kernel/logger.js';
+const logger = createModuleLogger('generation-core');
 import express from 'express';
 import fs from 'fs/promises';
 import fsSync from 'fs';
@@ -73,7 +75,7 @@ function loadModelRegistry() {
             return JSON.parse(data);
         }
     } catch (error) {
-        console.warn('[Model Registry] Failed to load registry:', error.message);
+        logger.warn('Model registry load failed', { error, operation: 'loadModelRegistry' });
     }
     return null;
 }
@@ -81,7 +83,7 @@ function loadModelRegistry() {
 // Load registry on startup
 const modelRegistry = loadModelRegistry();
 if (modelRegistry) {
-    console.log(`[Model Registry] Loaded v${modelRegistry.version} with ${Object.keys(modelRegistry.architectures).length} architectures`);
+    logger.info('Model registry loaded', { version: modelRegistry.version, architectures: Object.keys(modelRegistry.architectures).length });
 }
 
 /**
@@ -174,14 +176,14 @@ async function scanDirectory(dirPath, modelType) {
                         };
                         models.push(model);
                     } catch (statErr) {
-                        console.warn(`Could not stat file ${fullPath}:`, statErr.message);
+                        logger.warn('Local model stat failed', { error: statErr, path: fullPath, operation: 'scanDirectory' });
                     }
                 }
             }
         }
     } catch (err) {
         if (err.code !== 'ENOENT') {
-            console.warn(`Could not scan directory ${dirPath}:`, err.message);
+            logger.warn('Local model directory scan failed', { error: err, path: dirPath, operation: 'scanDirectory' });
         }
     }
 
@@ -197,7 +199,7 @@ async function scanAllModels() {
     // Ensure models directory structure exists
     if (!fsSync.existsSync(MODELS_BASE_DIR)) {
         fsSync.mkdirSync(MODELS_BASE_DIR, { recursive: true });
-        console.log(`[Local Models] Created models directory: ${MODELS_BASE_DIR}`);
+        logger.info('Local model directory created', { path: MODELS_BASE_DIR });
     }
 
     for (const [, config] of Object.entries(MODEL_DIRECTORIES)) {
@@ -222,7 +224,7 @@ async function scanAllModels() {
         }
     }
 
-    console.log(`[Local Models] Found ${allModels.length} model(s) in ${MODELS_BASE_DIR}`);
+    logger.info('Local models scanned', { count: allModels.length, path: MODELS_BASE_DIR });
     return allModels;
 }
 
@@ -359,7 +361,7 @@ router.get('/', async (req, res) => {
 
         res.json(models);
     } catch (error) {
-        console.error('Error fetching local models:', error);
+        logger.error('Local models lookup failed', { error, operation: 'listModels' });
         res.status(500).json({ error: error.message });
     }
 });
@@ -373,7 +375,7 @@ router.get('/gpu', async (req, res) => {
         const gpuInfo = await checkGpuInfo();
         res.json(gpuInfo);
     } catch (error) {
-        console.error('Error checking GPU:', error);
+        logger.error('GPU lookup failed', { error, operation: 'checkGpuInfo' });
         res.status(500).json({
             available: false,
             sufficient: false,
@@ -392,7 +394,7 @@ router.post('/refresh', async (req, res) => {
         const models = await getCachedModels();
         res.json(models);
     } catch (error) {
-        console.error('Error refreshing models:', error);
+        logger.error('Local models refresh failed', { error, operation: 'refreshModels' });
         res.status(500).json({ error: error.message });
     }
 });
@@ -446,7 +448,7 @@ router.get('/:id', async (req, res) => {
 
         res.json(model);
     } catch (error) {
-        console.error('Error fetching model:', error);
+        logger.error('Local model lookup failed', { error, modelId: req.params.id, operation: 'getModel' });
         res.status(500).json({ error: error.message });
     }
 });

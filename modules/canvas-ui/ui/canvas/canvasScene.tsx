@@ -113,6 +113,15 @@ const nodeActionNames = [
   'onNodeContextMenu',
   'onNodeUpload',
 ];
+const readOnlyNodeActions = new Set([
+  'onNodePointerDown',
+  'onNodeMouseEnter',
+  'onNodeMouseLeave',
+  'onSelect',
+  'onExpand',
+  'onOpenCompare',
+  'onOpenComposite',
+]);
 
 // Position updates rebuild application callbacks. Keep the card's action identities
 // stable, but dispatch through the latest committed scene (never a stale closure).
@@ -131,7 +140,7 @@ function useNodeActions(React: Runtime, props: Props) {
           .map((name) => [
             name,
             (...args: unknown[]) => {
-              if (committedRef.current.readOnly) return;
+              if (committedRef.current.readOnly && !readOnlyNodeActions.has(name)) return;
               const action = committedRef.current[name];
               if (typeof action === 'function') return action(...args);
             },
@@ -178,6 +187,11 @@ function sameSceneNode(a: Parameters<typeof SceneNode>[0], b: Parameters<typeof 
 }
 
 export function CanvasScene(React: Runtime, props: Props, components: Components) {
+  const state = useCanvasSceneState(React, props);
+  return renderCanvasSceneSurface(React, props, components, state);
+}
+
+function useCanvasSceneState(React: Runtime, props: Props) {
   const [nodeRegistryRevision, setNodeRegistryRevision] = React.useState(0);
   React.useEffect(() => {
     const changed = () => setNodeRegistryRevision(value => value + 1);
@@ -197,12 +211,8 @@ export function CanvasScene(React: Runtime, props: Props, components: Components
   }, [actions]);
   const {
     nodes,
-    viewport,
     selectedNodeIds,
     visibleNodeIds,
-    visibleGroups,
-    nodesByGroupId,
-    nodeDisplayData,
     documentEpoch,
     canvasRef,
   } = props;
@@ -238,18 +248,23 @@ export function CanvasScene(React: Runtime, props: Props, components: Components
       observer.disconnect();
     };
   }, [canvasRef, documentEpoch]);
-  const selectionProps = {
-    documentEpoch,
-    viewport,
-    onRenameGroup: props.onRenameGroup,
-    onGridLayout: props.onGridLayout,
-    onToggleGridSlider: props.onToggleGridSlider,
-    onCreateCollage: props.onCreateCollage,
-    showGridSlider: props.showGridSlider,
-    gridColumns: props.gridColumns,
-    isDragging: props.isDragging,
-    isPanning: props.isPanning,
+  return {
+    nodeRegistryRevision, MemoSceneNode, actions, hoveredNodeId, enterNode, leaveNode,
+    selected, selectedNodes, visible, viewportSize,
   };
+}
+
+function renderCanvasSceneSurface(
+  React: Runtime,
+  props: Props,
+  components: Components,
+  state: ReturnType<typeof useCanvasSceneState>,
+) {
+  const { nodes, viewport, selectedNodeIds, visibleNodeIds, visibleGroups, nodesByGroupId,
+    nodeDisplayData, documentEpoch, canvasRef } = props;
+  const { nodeRegistryRevision, MemoSceneNode, actions, hoveredNodeId, enterNode, leaveNode,
+    selected, selectedNodes, visible, viewportSize } = state;
+  const selectionProps = canvasSelectionProps(props);
   const callbacks = Object.fromEntries(forwardedCallbacks.map((name) => [name, actions[name]]));
   const { Edges, Selection } = components;
   return (
@@ -279,7 +294,6 @@ export function CanvasScene(React: Runtime, props: Props, components: Components
       <CanvasWallpaper />
       <div
         id="canvas-viewport-content"
-        inert={props.readOnly || undefined}
         style={{
           transform: `translate3d(${viewport.x}px, ${viewport.y}px, 0) scale(${viewport.zoom})`,
           transformOrigin: '0 0',
@@ -377,8 +391,9 @@ export function CanvasScene(React: Runtime, props: Props, components: Components
                   ? display.connectedImageNodes
                   : emptyConnections,
                 onUpdate: actions.onUpdateNode,
-                selected: !props.readOnly && selected.has(node.id),
-                showControls: !props.readOnly && selectedNodeIds.length === 1 && selected.has(node.id),
+                selected: selected.has(node.id),
+                showControls: selectedNodeIds.length === 1 && selected.has(node.id),
+                readOnly: props.readOnly,
                 isHoveredForConnection: props.connectionHoveredNodeId === node.id,
                 isInvalidHover: props.connectionHoveredNodeId === node.id && props.isInvalidHover,
                 onContextMenu: actions.onNodeContextMenu,
@@ -412,4 +427,19 @@ export function CanvasScene(React: Runtime, props: Props, components: Components
       </div>
     </div>
   );
+}
+
+function canvasSelectionProps(props: Props) {
+  return {
+    documentEpoch: props.documentEpoch,
+    viewport: props.viewport,
+    onRenameGroup: props.onRenameGroup,
+    onGridLayout: props.onGridLayout,
+    onToggleGridSlider: props.onToggleGridSlider,
+    onCreateCollage: props.onCreateCollage,
+    showGridSlider: props.showGridSlider,
+    gridColumns: props.gridColumns,
+    isDragging: props.isDragging,
+    isPanning: props.isPanning,
+  };
 }

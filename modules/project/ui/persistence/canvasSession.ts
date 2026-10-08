@@ -1,5 +1,5 @@
 import { browserServices } from '../../../kernel/browser';
-import { STABLE_MAX_ZOOM, STABLE_MIN_ZOOM, type CanvasViewport } from '../../../canvas-ui/api/ui/canvas/canvasNavigation';
+import { STABLE_MAX_ZOOM, STABLE_MIN_ZOOM, type CanvasViewport } from '../../../contracts/projectUi';
 
 export const CANVAS_SESSION_STORAGE_KEY = 'nako.canvas.resume.v1';
 

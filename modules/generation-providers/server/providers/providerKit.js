@@ -1,11 +1,13 @@
 import { annotateProviderError } from '../../../desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
 import { BaseProvider } from './baseProvider.js';
 import { chatPayloads } from '../../../contracts/chatStream.js';
+import { providerError, wrapProviderError, PROVIDER_ERRORS } from '../../../contracts/providerErrors.js';
+import { ERRORS } from '../../../contracts/index.js';
 
 export function assertRequiredConfig(config, keys, message) {
     const missing = (keys || []).filter(k => !config?.[k]);
     if (missing.length > 0) {
-        throw new Error(message || `缺少必要配置: ${missing.join(', ')}`);
+        throw providerError(message || `缺少必要配置: ${missing.join(', ')}`, { providerId: 'provider-kit', operation: 'configure', code: ERRORS.invalidModel, context: { missing } });
     }
 }
 
@@ -69,7 +71,7 @@ function openAiChatError(payload, modelId, fallback, status = 0) {
   const message = String(
     payload?.error?.message || payload?.message || fallback || '上游返回未知错误',
   ).slice(0, 500);
-  const error = new Error(`API 错误 (${modelId}): ${message}`);
+  const error = providerError(`API 错误 (${modelId}): ${message}`, { providerId: modelId, operation: 'read-chat-response' });
   const numericStatus = Number(status);
   if (Number.isInteger(numericStatus) && numericStatus >= 100 && numericStatus <= 599) {
     error.status = numericStatus;
@@ -93,8 +95,8 @@ async function readOpenAiChatResponse(response, modelId, onToken) {
         return { text, reasoning };
     }
     const raw = await response.text();
-    if (!raw.trim()) throw Object.assign(new Error('文本模型响应为空。'), {
-        code: 'EMPTY_RESPONSE', upstreamStatus: response.status,
+    if (!raw.trim()) throw providerError('文本模型响应为空。', {
+        providerId: modelId, operation: 'read-chat-response', code: PROVIDER_ERRORS.empty, upstreamStatus: response.status,
     });
     const contentType = String(response.headers.get('content-type') || '').toLowerCase();
     if (!contentType.includes('text/event-stream')) {
@@ -102,8 +104,8 @@ async function readOpenAiChatResponse(response, modelId, onToken) {
         try {
             payload = JSON.parse(raw);
         } catch {
-            throw Object.assign(new Error('文本模型响应格式无效。'), {
-                code: 'INVALID_JSON_RESPONSE', upstreamStatus: response.status,
+            throw providerError('文本模型响应格式无效。', {
+                providerId: modelId, operation: 'read-chat-response', code: PROVIDER_ERRORS.invalidJson, upstreamStatus: response.status,
             });
         }
         if (!response.ok || payload?.error) throw annotateProviderError(openAiChatError(payload, modelId, response.statusText, response.status), { stage: 'submit', response, payload });
@@ -142,7 +144,7 @@ export async function submitOpenAiChatWithLogs({
         response = await BaseProvider.fetch(url, fetchOptions);
         result = await readOpenAiChatResponse(response, modelId, onToken);
     } catch (error) {
-        throw annotateProviderError(error, { stage: error.diagnostics?.stage || (response?.ok ? 'stream' : 'submit'), response, requestBody: body });
+        throw annotateProviderError(wrapProviderError(error, { providerId: modelId, operation: 'submit-chat' }), { stage: error.diagnostics?.stage || (response?.ok ? 'stream' : 'submit'), response, requestBody: body });
     }
     BaseProvider.saveDebugLog(logsDir, `${modelId}_SUBMIT_RES`, nodeId, {
         post_url: url,

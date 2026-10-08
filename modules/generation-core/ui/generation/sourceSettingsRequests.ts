@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 export type SettingsRequestOptions = { signal?: AbortSignal };
 
 /** Bounds both headers and body, including transports that ignore abort. Never replays writes. */
@@ -22,7 +23,9 @@ export async function requestSettingsJson<T>(
   options.signal?.addEventListener('abort', cancel, { once: true });
   if (options.signal?.aborted) cancel();
   const timer = setTimeout(() => {
-    const reason = new Error(`${label.replace(/失败$/, '')}超时，请核对配置后重试。`);
+    const reason = new PluginError(ERRORS.invalidConfiguration, `${label.replace(/失败$/, '')}超时，请核对配置后重试。`, {
+      context: { moduleId: 'generation-core', operation: 'requestSettings', url, timeoutMs },
+    });
     rejectAbort(reason);
     controller.abort(reason);
   }, timeoutMs);
@@ -35,9 +38,10 @@ export async function requestSettingsJson<T>(
         const body = await response.json();
         if (controller.signal.aborted) throw controller.signal.reason;
         if (!response.ok)
-          throw new Error(
-            typeof body?.error === 'string' ? body.error : `${label} (${response.status})`,
-          );
+          throw new PluginError(ERRORS.invalidConfiguration,
+            typeof body?.error === 'string' ? body.error : `${label} (${response.status})`, {
+              status: response.status, context: { moduleId: 'generation-core', operation: 'requestSettings', url, method: init.method || 'GET' },
+            });
         return body as T;
       })(),
     ]);

@@ -1,3 +1,4 @@
+import { DESKTOP_ERRORS, DesktopShutdownError, desktopError, desktopFailure } from '../../../contracts/desktopErrors.js';
 import http from 'node:http';
 
 const DEFAULT_PORT = 3001;
@@ -8,7 +9,7 @@ export function resolveListenTarget(environment = process.env) {
 
   const configured = Number(environment.SERVER_PORT || DEFAULT_PORT);
   if (!Number.isInteger(configured) || configured < 1 || configured > 65_535) {
-    throw new Error('SERVER_PORT must be an integer between 1 and 65535.');
+    throw desktopError(DESKTOP_ERRORS.configuration, 'SERVER_PORT must be an integer between 1 and 65535.', 'runtime.configure');
   }
   return Object.freeze({ host: '127.0.0.1', port: configured });
 }
@@ -21,7 +22,7 @@ function closeServer(server) {
   if (!server?.listening) return Promise.resolve();
   server.closeAllConnections?.();
   return new Promise((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
+    server.close((error) => (error ? reject(desktopFailure(error, DESKTOP_ERRORS.runtimeStop, 'Backend listener shutdown failed.', 'runtime.close')) : resolve()));
   });
 }
 
@@ -50,7 +51,7 @@ export function createLocalRuntimeLifecycle({
       await new Promise((resolve, reject) => {
         const onError = (error) => {
           server?.off('listening', onListening);
-          reject(error);
+          reject(desktopFailure(error, DESKTOP_ERRORS.runtimeStart, 'Backend listener startup failed.', 'runtime.listen'));
         };
         const onListening = () => {
           server?.off('error', onError);
@@ -89,7 +90,7 @@ export function createLocalRuntimeLifecycle({
         }
       }
       server = null;
-      if (failures.length) throw new AggregateError(failures, 'Backend shutdown failed.');
+      if (failures.length) throw new DesktopShutdownError(failures);
     })();
     try {
       await stopPromise;

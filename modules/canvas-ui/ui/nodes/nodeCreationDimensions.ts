@@ -1,5 +1,4 @@
-import { installCanvasSession } from '../../../project/api/ui/persistence/canvasSession';
-import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { projectPreferences } from '../../../kernel/browser';
 
 type MediaKind = 'Image' | 'Video';
 interface Dimensions {
@@ -12,7 +11,7 @@ interface ModelDimensions {
 }
 
 function storageKey(projectId?: string) {
-  const project = projectId || installCanvasSession().load()?.workflowId;
+  const project = projectId || projectPreferences().currentProjectId();
   return project ? `nako.node-dimensions.v1:${encodeURIComponent(project)}` : undefined;
 }
 
@@ -22,7 +21,7 @@ function dimension(value: unknown): string | undefined {
 
 function read(key: string): Partial<Record<MediaKind, Dimensions>> {
   try {
-    const record = JSON.parse(preferenceStorage().getItem(key) || '{}');
+    const record = JSON.parse(projectPreferences().getItem(key) || '{}');
     return Object.fromEntries(
       ['Image', 'Video'].map((kind) => [
         kind,
@@ -51,7 +50,7 @@ export function rememberNodeDimensions(
       aspectRatio: dimension(values.aspectRatio),
       resolution: dimension(values.resolution),
     };
-    preferenceStorage().setItem(key, JSON.stringify(record));
+    projectPreferences().setItem(key, JSON.stringify(record));
   } catch {
     // A blocked or full browser store must not prevent editing a node.
   }

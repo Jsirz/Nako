@@ -192,13 +192,12 @@ describe('Work-Fisher provider', () => {
     });
   });
 
-  it('publishes the five requested chat presets as visual models and sends image content', async () => {
+  it('publishes the four requested chat presets as visual models and sends image content', async () => {
     const expected = [
       ['GM 3.8 Flash · Work-Fisher', 'workfisher/gm-3.8-flash'],
       ['GPT-6 Astra · Work-Fisher', 'workfisher/g6-astra'],
-      ['GPT-5.6 Sol · Work-Fisher', 'workfisher/g5.6-sol'],
-      ['GPT-5.6 Terra · Work-Fisher', 'workfisher/g5.6-terra'],
-      ['GPT-5.6 Luna · Work-Fisher', 'workfisher/g5.6-luna'],
+      ['GPT-6 Sol · Work-Fisher', 'workfisher/g6-sol'],
+      ['GPT-6 Luna · Work-Fisher', 'workfisher/g6-luna'],
     ];
     const definitions = expected.map(([name]) => MODEL_DEFINITIONS.find((model) => model.name === name));
     expect(definitions.every((model) => model?.supportedReferenceTypes.includes('image'))).toBe(true);

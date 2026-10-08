@@ -178,6 +178,20 @@ export function createWorkflowManagerClient(fetcher: typeof fetch = fetch): Work
         definitionId,
         input,
       ),
+    ...createWorkflowLibraryClient(api),
+  };
+}
+
+function createWorkflowLibraryClient(
+  api: <T>(path: string, init?: RequestInit) => Promise<T>,
+): Pick<WorkflowManagerClient,
+  'listProjects' | 'listAssets' | 'uploadAsset' | 'trashAsset' |
+  'getRunningHubCredentialStatus' | 'saveRunningHubCredentials' | 'validateRunningHubCredential' |
+  'listRunningHubWebApps' | 'listOfficialWorkflows' | 'addOfficialWorkflow' |
+  'createRunningHubWebApp' | 'deleteRunningHubWebApp' |
+  'createRunningHubWebAppCategory' | 'deleteRunningHubWebAppCategory'
+> {
+  return {
     listProjects: () => api('/api/workflows'),
     listAssets: async (projectId, mediaKind) => {
       const type = mediaAssetType(mediaKind);

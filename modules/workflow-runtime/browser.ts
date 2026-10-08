@@ -1,10 +1,11 @@
-import type { NakoPlugin } from '../contracts/index.js';
+import type { PluginDefinition } from '../contracts/index.js';
+import { definePlugin } from '../kernel/plugin.js';
 import { activateBrowserModule, trackBrowserResource } from '../kernel/browser';
 import { createWorkflowManagerClient } from '../local-runtime/api/ui/local/workflowManagerClient';
 import { installWorkflowManager } from '../local-runtime/api/ui/local/workflowManager';
 import { installWorkflowCanvasNodes } from '../local-runtime/api/ui/local/workflowCanvasNodes';
 
-const plugin: NakoPlugin = {
+const plugin: PluginDefinition = {
   manifest: {
     id: 'ui.workflow-runtime',
     version: '1.0.0',
@@ -22,4 +23,4 @@ const plugin: NakoPlugin = {
     });
   },
 };
-export default plugin;
+export default definePlugin(plugin);

@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { GenerationAdmission } from './generationAdmission.js';
 import {
   canRecoverGenerationTask,
   isRecoverableProvider,
@@ -8,7 +10,7 @@ import {
 const TERMINAL_STATUSES = new Set(['success', 'failed', 'cancelled', 'unknown']);
 
 function cloneTask(task) {
-  return task ? { ...task } : null;
+  return task ? structuredClone(task) : null;
 }
 
 function normalizeLimit(value) {
@@ -33,26 +35,39 @@ function createSchedulerCommitProof({ runId, receiptPayloadHash, finishedAt }) {
   };
 }
 
-export function createGenerationCoordinator({
-  parseTimeToMs = () => 15 * 60 * 1_000,
-  now = () => Date.now(),
-  setTimer = setTimeout,
-  clearTimer = clearTimeout,
-  minimumLeaseTtlMs = 180_000,
-  leaseSafetyMarginMs = 120_000,
-  taskStore = null,
-} = {}) {
-  const inFlightByModelId = new Map();
-  const leases = new Map();
-  const tasks = new Map();
-  const controllers = new Map();
-  let leaseSeed = 0;
-
-  function persist(task) {
-    taskStore?.upsert?.(cloneTask(task));
+class GenerationCoordinator {
+  constructor({
+    parseTimeToMs = () => 15 * 60 * 1_000,
+    now = () => Date.now(),
+    setTimer = setTimeout,
+    clearTimer = clearTimeout,
+    minimumLeaseTtlMs = 180_000,
+    leaseSafetyMarginMs = 120_000,
+    taskStore = null,
+  } = {}) {
+    Object.assign(this, { parseTimeToMs, now, setTimer, clearTimer,
+      minimumLeaseTtlMs, leaseSafetyMarginMs, taskStore });
+    this.inFlightByModelId = new Map();
+    this.leases = new Map();
+    this.tasks = new Map();
+    this.controllers = new Map();
+    this.leaseSeed = 0;
+    for (const name of Object.getOwnPropertyNames(GenerationCoordinator.prototype)) {
+      if (name !== 'constructor') this[name] = this[name].bind(this);
+    }
+    this.admission = new GenerationAdmission(this);
   }
 
-  function getConcurrency(modelIdKey, maxConcurrent = 1) {
+  persist(task) {
+    try { this.taskStore?.upsert?.(cloneTask(task)); }
+    catch (cause) {
+      throw new PluginError(ERRORS.taskPersistence, '生成任务状态保存失败，未发布本次状态。', {
+        context: { moduleId: 'generation-core', nodeId: task.nodeId, attemptId: task.attemptId }, cause,
+      });
+    }
+  }
+  getConcurrency(modelIdKey, maxConcurrent = 1) {
+    const { inFlightByModelId } = this;
     const limit = normalizeLimit(maxConcurrent);
     const inFlight = Number(inFlightByModelId.get(modelIdKey) || 0);
     return {
@@ -63,7 +78,8 @@ export function createGenerationCoordinator({
     };
   }
 
-  function release(leaseId) {
+  release(leaseId) {
+    const { leases, clearTimer, inFlightByModelId } = this;
     if (!leaseId) return false;
     const lease = leases.get(leaseId);
     if (!lease || lease.released) return false;
@@ -78,7 +94,8 @@ export function createGenerationCoordinator({
     return true;
   }
 
-  function transition(nodeId, status, details = {}, timestampMs = now(), expectedAttemptId) {
+  transition(nodeId, status, details = {}, timestampMs = this.now(), expectedAttemptId) {
+    const { tasks, controllers, persist, release } = this;
     const task = tasks.get(nodeId);
     if (
       !task ||
@@ -87,31 +104,25 @@ export function createGenerationCoordinator({
     )
       return false;
 
-    Object.assign(task, details, {
-      status,
-      updatedAt: new Date(timestampMs).toISOString(),
-    });
+    const next = { ...task, ...structuredClone(details), status, updatedAt: new Date(timestampMs).toISOString() };
     if (TERMINAL_STATUSES.has(status)) {
-      task.finishedAt = task.updatedAt;
-      const startedAtMs = Date.parse(task.createdAt);
-      task.durationMs = Number.isFinite(startedAtMs) ? Math.max(0, timestampMs - startedAtMs) : 0;
-      task.diagnosticCode =
-        details.code ||
-        (status === 'success'
-          ? 'GENERATION_SUCCEEDED'
-          : status === 'cancelled'
-            ? 'GENERATION_CANCELLED'
-            : status === 'unknown'
-              ? 'WORKFLOW_RUN_UNKNOWN'
-              : 'GENERATION_FAILED');
+      next.finishedAt = next.updatedAt;
+      const startedAtMs = Date.parse(next.createdAt);
+      next.durationMs = Number.isFinite(startedAtMs) ? Math.max(0, timestampMs - startedAtMs) : 0;
+      next.diagnosticCode = details.code || (status === 'success' ? 'GENERATION_SUCCEEDED'
+        : status === 'cancelled' ? 'GENERATION_CANCELLED' : status === 'unknown' ? 'WORKFLOW_RUN_UNKNOWN' : 'GENERATION_FAILED');
+    }
+    persist(next);
+    tasks.set(nodeId, next);
+    if (TERMINAL_STATUSES.has(status)) {
       release(task.leaseId);
       controllers.delete(nodeId);
     }
-    persist(task);
-    return cloneTask(task);
+    return cloneTask(next);
   }
 
-  function expire(leaseId) {
+  expire(leaseId) {
+    const { leases, tasks, controllers, finalizeUnknown, transition, release } = this;
     const lease = leases.get(leaseId);
     if (!lease) return;
     const task = tasks.get(lease.nodeId);
@@ -140,209 +151,51 @@ export function createGenerationCoordinator({
     release(leaseId);
   }
 
-  function begin({
-    nodeId,
-    attemptId,
-    kind,
-    modelName,
-    modelIdKey,
-    maxConcurrent = 1,
-    timeEstimate = '5min',
-    generateCount = 1,
-    metadata = {},
-    leaseHeartbeatMs,
-    absoluteTimeoutMs,
-  }) {
-    const taskId = String(nodeId || `generation-${now()}-${leaseSeed + 1}`);
-    const concurrency = getConcurrency(modelIdKey, maxConcurrent);
-    if (tasks.get(taskId)?.status === 'loading') {
-      return {
-        ok: false,
-        code: 'NODE_GENERATION_ACTIVE',
-        inFlight: concurrency.inFlight,
-        maxConcurrent: concurrency.maxConcurrent,
-      };
-    }
-    if (concurrency.blocked) {
-      return {
-        ok: false,
-        code: 'MODEL_CONCURRENCY_LIMIT',
-        inFlight: concurrency.inFlight,
-        maxConcurrent: concurrency.maxConcurrent,
-      };
-    }
-
-    const inFlight = concurrency.inFlight + 1;
-    inFlightByModelId.set(modelIdKey, inFlight);
-    const leaseId = `lease_${now()}_${++leaseSeed}_${taskId}`;
-    const estimatedMs = Math.max(0, Number(parseTimeToMs(timeEstimate)) || 0);
-    const ttlMs = Math.max(
-      minimumLeaseTtlMs,
-      estimatedMs * Math.max(1, Number(generateCount) || 1) + leaseSafetyMarginMs,
-    );
-    const heartbeatMs = Number.isFinite(Number(leaseHeartbeatMs))
-      ? Math.max(1_000, Number(leaseHeartbeatMs))
-      : ttlMs;
-    const absoluteTtlMs = Number.isFinite(Number(absoluteTimeoutMs))
-      ? Math.max(ttlMs, Number(absoluteTimeoutMs))
-      : ttlMs;
-    const controller = new AbortController();
-    const startedAtMs = now();
-    const timestamp = new Date(startedAtMs).toISOString();
-    const task = {
-      nodeId: taskId,
-      attemptId: String(attemptId || crypto.randomUUID()),
-      kind,
-      modelName,
-      modelIdKey,
-      maxConcurrent: concurrency.maxConcurrent,
-      leaseId,
-      status: 'loading',
-      retryable: false,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      absoluteDeadlineAt: new Date(startedAtMs + absoluteTtlMs).toISOString(),
-      ...metadata,
-    };
-    const timer = setTimer(() => expire(leaseId), Math.min(heartbeatMs, absoluteTtlMs));
-
-    leases.set(leaseId, {
-      leaseId,
-      attemptId: task.attemptId,
-      nodeId: taskId,
-      modelIdKey,
-      timer,
-      released: false,
-      heartbeatMs,
-      absoluteDeadlineMs: startedAtMs + absoluteTtlMs,
-    });
-    tasks.set(taskId, task);
-    controllers.set(taskId, controller);
-    persist(task);
-
-    return {
-      ok: true,
-      leaseId,
-      attemptId: task.attemptId,
-      nodeId: taskId,
-      signal: controller.signal,
-      inFlight,
-      maxConcurrent: concurrency.maxConcurrent,
-      ttlMs,
-      absoluteTtlMs,
-    };
+  begin(request) {
+    return this.admission.begin(request);
   }
 
-  function adopt(taskRecord, { leaseHeartbeatMs = 30_000, absoluteDeadlineMs } = {}) {
-    const nodeId = String(taskRecord?.nodeId || '');
-    if (!nodeId || taskRecord?.status !== 'loading' || TERMINAL_STATUSES.has(taskRecord?.status)) {
-      return { ok: false, code: 'GENERATION_RECOVERY_NOT_ACTIVE' };
-    }
-    if (tasks.has(nodeId)) {
-      const existing = tasks.get(nodeId);
-      return {
-        ok: true,
-        nodeId,
-        leaseId: existing.leaseId,
-        signal: controllers.get(nodeId)?.signal,
-        recovered: false,
-      };
-    }
-    const modelIdKey = String(taskRecord.modelIdKey || 'comfy:recovered');
-    const timestampMs = now();
-    const persistedDeadline = Date.parse(taskRecord.absoluteDeadlineAt || '');
-    const fallbackDeadline =
-      timestampMs + Math.max(1_000, Number(absoluteDeadlineMs) || 30 * 60_000);
-    const absoluteDeadline = Number.isFinite(persistedDeadline)
-      ? persistedDeadline
-      : fallbackDeadline;
-    if (absoluteDeadline <= timestampMs) {
-      const expired = {
-        ...taskRecord,
-        status: 'failed',
-        phase: 'recovery-expired',
-        code: 'WORKFLOW_RUN_TIMEOUT',
-        diagnosticCode: 'WORKFLOW_RUN_TIMEOUT',
-        error: '工作流测试在服务重启期间超过最长执行时间。',
-        retryable: true,
-        remoteMayContinue: Boolean(taskRecord.promptId),
-        updatedAt: new Date(timestampMs).toISOString(),
-        finishedAt: new Date(timestampMs).toISOString(),
-      };
-      tasks.set(nodeId, expired);
-      persist(expired);
-      return { ok: false, code: 'GENERATION_RECOVERY_EXPIRED', task: cloneTask(expired) };
-    }
-    const leaseId = `lease_${timestampMs}_${++leaseSeed}_${nodeId}`;
-    const controller = new AbortController();
-    const heartbeatMs = Math.max(1_000, Number(leaseHeartbeatMs) || 30_000);
-    const task = {
-      ...taskRecord,
-      leaseId,
-      phase: 'recovering',
-      updatedAt: new Date(timestampMs).toISOString(),
-      absoluteDeadlineAt: new Date(absoluteDeadline).toISOString(),
-    };
-    const timer = setTimer(
-      () => expire(leaseId),
-      Math.min(heartbeatMs, absoluteDeadline - timestampMs),
-    );
-    leases.set(leaseId, {
-      leaseId,
-      nodeId,
-      modelIdKey,
-      timer,
-      released: false,
-      heartbeatMs,
-      absoluteDeadlineMs: absoluteDeadline,
-    });
-    tasks.set(nodeId, task);
-    controllers.set(nodeId, controller);
-    inFlightByModelId.set(modelIdKey, Number(inFlightByModelId.get(modelIdKey) || 0) + 1);
-    persist(task);
-    return {
-      ok: true,
-      nodeId,
-      leaseId,
-      signal: controller.signal,
-      recovered: true,
-      absoluteDeadlineMs: absoluteDeadline,
-    };
+  adopt(taskRecord, options) {
+    return this.admission.adopt(taskRecord, options);
   }
 
-  function update(nodeId, details = {}, expectedAttemptId) {
+  nextLeaseId(nodeId, timestampMs = this.now()) {
+    return `lease_${timestampMs}_${++this.leaseSeed}_${nodeId}`;
+  }
+
+  update(nodeId, details = {}, expectedAttemptId) {
+    const { tasks, transition, now } = this;
     const task = tasks.get(nodeId);
     if (!task || TERMINAL_STATUSES.has(task.status)) return false;
     return transition(nodeId, task.status, details, now(), expectedAttemptId);
   }
 
-  function pauseObservation(nodeId, details = {}) {
+  pauseObservation(nodeId, details = {}) {
+    const { tasks, now, persist, release, controllers } = this;
     const task = tasks.get(nodeId);
     if (!task || TERMINAL_STATUSES.has(task.status)) return false;
     const timestamp = new Date(now()).toISOString();
+    const next = { ...task, ...structuredClone(details), status: 'loading', phase: 'observation-paused',
+      updatedAt: timestamp, observationPausedAt: details.observationPausedAt || timestamp };
+    delete next.leaseId;
+    persist(next);
+    tasks.set(nodeId, next);
     release(task.leaseId);
     controllers.delete(nodeId);
-    delete task.leaseId;
-    Object.assign(task, details, {
-      status: 'loading',
-      phase: 'observation-paused',
-      updatedAt: timestamp,
-      observationPausedAt: details.observationPausedAt || timestamp,
-    });
-    persist(task);
-    return cloneTask(task);
+    return cloneTask(next);
   }
 
-  function reacquireObservation(
+  reacquireObservation(
     nodeId,
     { leaseHeartbeatMs = 30_000, absoluteTimeoutMs = 30 * 60_000 } = {},
   ) {
+    const { tasks, taskStore, getConcurrency, now, persist, setTimer, expire,
+      leases, inFlightByModelId, controllers } = this;
     const persisted = tasks.get(nodeId) || taskStore?.get?.(nodeId);
     if (!persisted || persisted.status !== 'loading' || persisted.phase !== 'observation-paused') {
       return { ok: false, code: 'WORKFLOW_OBSERVATION_NOT_PAUSED' };
     }
-    if (!tasks.has(nodeId)) tasks.set(nodeId, { ...persisted });
-    const task = tasks.get(nodeId);
+    const task = persisted;
     const concurrency = getConcurrency(task.modelIdKey, task.maxConcurrent ?? 1);
     if (concurrency.blocked) {
       return { ok: false, code: 'MODEL_CONCURRENCY_LIMIT' };
@@ -350,41 +203,25 @@ export function createGenerationCoordinator({
     const timestampMs = now();
     const heartbeatMs = Math.max(1_000, Number(leaseHeartbeatMs) || 30_000);
     const absoluteTtlMs = Math.max(heartbeatMs, Number(absoluteTimeoutMs) || 30 * 60_000);
-    const leaseId = `lease_${timestampMs}_${++leaseSeed}_${nodeId}`;
+    const leaseId = this.nextLeaseId(nodeId, timestampMs);
     const controller = new AbortController();
+    const next = { ...task, leaseId, phase: 'observation-resuming', code: undefined, error: undefined,
+      retryable: false, updatedAt: new Date(timestampMs).toISOString(),
+      observationResumedAt: new Date(timestampMs).toISOString(),
+      absoluteDeadlineAt: new Date(timestampMs + absoluteTtlMs).toISOString() };
+    persist(next);
     const timer = setTimer(() => expire(leaseId), Math.min(heartbeatMs, absoluteTtlMs));
-    leases.set(leaseId, {
-      leaseId,
-      nodeId,
-      modelIdKey: task.modelIdKey,
-      timer,
-      released: false,
-      heartbeatMs,
-      absoluteDeadlineMs: timestampMs + absoluteTtlMs,
-    });
+    leases.set(leaseId, { leaseId, nodeId, modelIdKey: task.modelIdKey, timer, released: false,
+      heartbeatMs, absoluteDeadlineMs: timestampMs + absoluteTtlMs });
     inFlightByModelId.set(task.modelIdKey, concurrency.inFlight + 1);
     controllers.set(nodeId, controller);
-    Object.assign(task, {
-      leaseId,
-      phase: 'observation-resuming',
-      code: undefined,
-      error: undefined,
-      retryable: false,
-      updatedAt: new Date(timestampMs).toISOString(),
-      observationResumedAt: new Date(timestampMs).toISOString(),
-      absoluteDeadlineAt: new Date(timestampMs + absoluteTtlMs).toISOString(),
-    });
-    persist(task);
-    return {
-      ok: true,
-      nodeId,
-      leaseId,
-      signal: controller.signal,
-      task: cloneTask(task),
+    tasks.set(nodeId, next);
+    return { ok: true, nodeId, leaseId, signal: controller.signal, task: cloneTask(next),
     };
   }
 
-  function heartbeat(nodeId) {
+  heartbeat(nodeId) {
+    const { tasks, leases, now, expire, persist, clearTimer, setTimer } = this;
     const task = tasks.get(nodeId);
     const lease = task ? leases.get(task.leaseId) : null;
     if (!task || !lease || TERMINAL_STATUSES.has(task.status)) return false;
@@ -394,15 +231,17 @@ export function createGenerationCoordinator({
       expire(lease.leaseId);
       return false;
     }
+    const updatedAt = new Date(timestampMs).toISOString();
+    const next = { ...task, updatedAt, lastHeartbeatAt: updatedAt };
+    persist(next);
+    tasks.set(nodeId, next);
     clearTimer(lease.timer);
     lease.timer = setTimer(() => expire(lease.leaseId), Math.min(lease.heartbeatMs, remainingMs));
-    task.updatedAt = new Date(timestampMs).toISOString();
-    task.lastHeartbeatAt = task.updatedAt;
-    persist(task);
-    return cloneTask(task);
+    return cloneTask(next);
   }
 
-  function complete(nodeId, result = {}, expectedAttemptId) {
+  complete(nodeId, result = {}, expectedAttemptId) {
+    const { transition, now } = this;
     return transition(
       nodeId,
       'success',
@@ -417,7 +256,8 @@ export function createGenerationCoordinator({
     );
   }
 
-  function completeIfActive(nodeId, receiptPayloadHash, pendingReceiptId) {
+  completeIfActive(nodeId, receiptPayloadHash, pendingReceiptId) {
+    const { tasks, controllers, now, transition } = this;
     if (!/^[a-f\d]{64}$/i.test(String(receiptPayloadHash || ''))) return false;
     if (!String(pendingReceiptId || '').trim()) return false;
     const task = tasks.get(nodeId);
@@ -448,7 +288,8 @@ export function createGenerationCoordinator({
     );
   }
 
-  function fail(nodeId, details = {}, expectedAttemptId) {
+  fail(nodeId, details = {}, expectedAttemptId) {
+    const { transition, now } = this;
     return transition(
       nodeId,
       'failed',
@@ -463,7 +304,8 @@ export function createGenerationCoordinator({
     );
   }
 
-  function cancel(nodeId) {
+  cancel(nodeId) {
+    const { tasks, controllers, transition } = this;
     const task = tasks.get(nodeId);
     if (!task || TERMINAL_STATUSES.has(task.status)) {
       return { ok: false, code: 'GENERATION_NOT_ACTIVE', task: cloneTask(task) };
@@ -477,7 +319,8 @@ export function createGenerationCoordinator({
     return { ok: true, task: cancelled };
   }
 
-  function requestCancel(nodeId, details = {}) {
+  requestCancel(nodeId, details = {}) {
+    const { tasks, controllers, update, now } = this;
     const task = tasks.get(nodeId);
     if (!task || TERMINAL_STATUSES.has(task.status)) {
       return { ok: false, code: 'GENERATION_NOT_ACTIVE', task: cloneTask(task) };
@@ -492,7 +335,8 @@ export function createGenerationCoordinator({
     return { ok: true, task: cancelling };
   }
 
-  function finalizeCancel(nodeId, details = {}) {
+  finalizeCancel(nodeId, details = {}) {
+    const { transition, getTask } = this;
     const cancelled = transition(nodeId, 'cancelled', {
       code: 'WORKFLOW_RUN_CANCELLED',
       error: '工作流测试已取消。',
@@ -504,7 +348,8 @@ export function createGenerationCoordinator({
       : { ok: false, code: 'GENERATION_NOT_ACTIVE', task: getTask(nodeId) };
   }
 
-  function finalizeUnknown(nodeId, details = {}, expectedAttemptId) {
+  finalizeUnknown(nodeId, details = {}, expectedAttemptId) {
+    const { transition, now } = this;
     return transition(
       nodeId,
       'unknown',
@@ -520,7 +365,8 @@ export function createGenerationCoordinator({
     );
   }
 
-  function reconcileRemoteTask(nodeId, expectedAttemptId, status, details = {}) {
+  reconcileRemoteTask(nodeId, expectedAttemptId, status, details = {}) {
+    const { getTask, now, persist, tasks } = this;
     const task = getTask(nodeId);
     if (
       !expectedAttemptId ||
@@ -532,7 +378,7 @@ export function createGenerationCoordinator({
     const timestamp = new Date(now()).toISOString();
     const reconciled = {
       ...task,
-      ...details,
+      ...structuredClone(details),
       status: status === 'partial' ? 'unknown' : status,
       retryable: false,
       remoteMayContinue: false,
@@ -548,7 +394,8 @@ export function createGenerationCoordinator({
     return cloneTask(reconciled);
   }
 
-  function recordRemoteTask(nodeId, expectedAttemptId, reference, slot = 0) {
+  recordRemoteTask(nodeId, expectedAttemptId, reference, slot = 0) {
+    const { getTask, update, now, persist, tasks } = this;
     const task = getTask(nodeId);
     const remoteTask = sanitizeRemoteTaskReference(reference);
     if (
@@ -597,11 +444,12 @@ export function createGenerationCoordinator({
     return cloneTask(recorded);
   }
 
-  function getTask(nodeId) {
-    return cloneTask(tasks.get(nodeId) || taskStore?.get?.(nodeId));
+  getTask(nodeId) {
+    return cloneTask(this.tasks.get(nodeId) || this.taskStore?.get?.(nodeId));
   }
 
-  function isActive(nodeId) {
+  isActive(nodeId) {
+    const { tasks, controllers, leases } = this;
     const task = tasks.get(nodeId);
     const controller = task ? controllers.get(nodeId) : null;
     return (
@@ -610,33 +458,38 @@ export function createGenerationCoordinator({
     );
   }
 
-  function dispose() {
+  dispose() {
+    const { leases, clearTimer, inFlightByModelId, controllers } = this;
     for (const lease of leases.values()) clearTimer(lease.timer);
     leases.clear();
     inFlightByModelId.clear();
     controllers.clear();
   }
 
+}
+
+export function createGenerationCoordinator(options) {
+  const coordinator = new GenerationCoordinator(options);
   return {
-    adopt,
-    begin,
-    cancel,
-    complete,
-    completeIfActive,
-    dispose,
-    fail,
-    finalizeCancel,
-    finalizeUnknown,
-    getConcurrency,
-    getTask,
-    heartbeat,
-    isActive,
-    pauseObservation,
-    reacquireObservation,
-    reconcileRemoteTask,
-    recordRemoteTask,
-    release,
-    requestCancel,
-    update,
+    adopt: coordinator.adopt,
+    begin: coordinator.begin,
+    cancel: coordinator.cancel,
+    complete: coordinator.complete,
+    completeIfActive: coordinator.completeIfActive,
+    dispose: coordinator.dispose,
+    fail: coordinator.fail,
+    finalizeCancel: coordinator.finalizeCancel,
+    finalizeUnknown: coordinator.finalizeUnknown,
+    getConcurrency: coordinator.getConcurrency,
+    getTask: coordinator.getTask,
+    heartbeat: coordinator.heartbeat,
+    isActive: coordinator.isActive,
+    pauseObservation: coordinator.pauseObservation,
+    reacquireObservation: coordinator.reacquireObservation,
+    reconcileRemoteTask: coordinator.reconcileRemoteTask,
+    recordRemoteTask: coordinator.recordRemoteTask,
+    release: coordinator.release,
+    requestCancel: coordinator.requestCancel,
+    update: coordinator.update,
   };
 }

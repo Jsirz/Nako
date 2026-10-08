@@ -12,7 +12,8 @@
   ],
   "services": {
     "provides": [
-      "node.registry", "nodes.client"
-    ]
+      "node.registry", "nodes.client", "ui.canvas.project"
+    ],
+    "requires": ["ui.media.recovery"]
   }
 }

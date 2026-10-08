@@ -1,16 +1,9 @@
+import { PromptPresetError } from '../../../modules/contracts/storageErrors.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 const EMPTY_PRESETS = { text: [], image: [], video: [], audio: [] };
-class PromptPresetError extends Error {
-  constructor(message, status = 400, code = 'INVALID_PROMPT_PRESET') {
-    super(message);
-    this.name = 'PromptPresetError';
-    this.status = status;
-    this.code = code;
-  }
-}
 
 async function writeJsonAtomic(filePath, data) {
   const directory = path.dirname(filePath);

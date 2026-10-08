@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { browserServices } from '../../../kernel/browser';
 export type VideoWorkflowType = 'minimax-h3-t2va';
 
@@ -37,7 +38,7 @@ export type VideoWorkflowResult =
 async function readJson<T>(response: Response): Promise<T> {
   const result = await response.json() as T & { error?: unknown };
   if (!response.ok) {
-    throw new Error(result?.error ? String(result.error) : `本地视频工作流失败 (${response.status})`);
+    throw mediaError(result?.error ? String(result.error) : `本地视频工作流失败 (${response.status})`, { operation: 'readVideoWorkflow', httpStatus: response.status });
   }
   return result;
 }

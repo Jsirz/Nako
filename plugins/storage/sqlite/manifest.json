@@ -5,7 +5,11 @@
   "type": "storage",
   "services": {
     "provides": [
-      "project.repository"
+      "project.repository",
+      "project.directories",
+      "project.recovery",
+      "project.transactions",
+      "project.files"
     ]
   },
   "capabilities": [

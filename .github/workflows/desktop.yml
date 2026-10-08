@@ -67,6 +67,8 @@ jobs:
         env:
           NAKO_UPDATE_URL: ${{ vars.NAKO_UPDATE_URL }}
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
       - run: npm run desktop:smoke
         if: github.event_name != 'pull_request'
       - name: Fetch pinned Sparkle native integration tests
@@ -97,6 +99,7 @@ jobs:
             release/SHA256SUMS-*.txt
             release/latest*.yml
             release/appcast.xml
+            release/*.delta
             release/*.blockmap
       - name: Upload smoke test diagnostics
         if: always()

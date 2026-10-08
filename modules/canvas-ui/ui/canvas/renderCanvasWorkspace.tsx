@@ -83,7 +83,7 @@ export function renderCanvasWorkspace(context: ReturnType<typeof useCanvasDocume
       !readOnly && renderCanvasEmptyState({ ...context, batchSourceNodeIds }),
       renderCanvasControls({ ...context, batchSourceNodeIds }),
       !readOnly && renderCanvasSidePanels({ ...context, batchSourceNodeIds }),
-      !readOnly && renderCanvasContextOverlays({ ...context, batchSourceNodeIds }),
+      renderCanvasContextOverlays({ ...context, batchSourceNodeIds }),
       renderCanvasSettings({ ...context, batchSourceNodeIds }),
       !readOnly && renderCanvasAnnotation({ ...context, batchSourceNodeIds }),
       !readOnly && renderCanvasImageEditor({ ...context, batchSourceNodeIds }),

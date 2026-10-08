@@ -6,9 +6,9 @@ import path from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import {
   SKILL_INSTRUCTION_LIMITS,
-} from '../../../modules/agent/api/server/agent/drama/officialDramaBundle.js';
+} from '../../../modules/contracts/officialDramaBundle.js';
 import { readSkillInstructionFiles, readOfficialDramaInstructions, parseSkillInstructionManifest } from './skillInstructions.js';
-import { createOfficialSkillRegistry } from '../../../modules/agent/api/server/agent/officialSkillRegistry.js';
+import { createOfficialSkillRegistry } from './officialSkillRegistry.js';
 import { skillCategory } from '../../../modules/contracts/skillCatalog.js';
 import { createSkillCatalogState } from './skillCatalogState.js';
 import { skillDisplayMetadata, skillFrontmatter } from './skillFrontmatter.js';

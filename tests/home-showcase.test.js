@@ -166,7 +166,8 @@ it('renders the project browser toolbar and a create card without a recycle bin'
   fireEvent.click(screen.getByRole('button', { name: /新建文件夹/ }));
   expect(onCreateFolder).toHaveBeenCalledTimes(1);
 });
-it('enlarges showcase cards and opens the process from the detail without a node count', async () => {
+it.each(['/share/test1.nako', 'https://example.oss-cn-hangzhou.aliyuncs.com/test1.nako?signature=demo'])(
+  'enlarges showcase cards and opens the process for %s without a node count', async (archive) => {
   const onPreview = vi.fn(async () => {});
   vi.stubGlobal(
     'fetch',
@@ -178,7 +179,7 @@ it('enlarges showcase cards and opens the process from the detail without a node
           description: '剧本和分镜创作案例。',
           category: '短片创作',
           cover: '/share/Default_cover.png',
-          archive: '/share/test1.nako',
+          archive,
           nodeCount: 6,
         },
       ]),
@@ -193,28 +194,31 @@ it('enlarges showcase cards and opens the process from the detail without a node
   expect(onPreview).not.toHaveBeenCalled();
   expect(screen.queryByText(/个画布节点/)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /查看制作过程/ }));
-  await waitFor(() => expect(onPreview).toHaveBeenCalledWith('/share/test1.nako'));
+  await waitFor(() => expect(onPreview).toHaveBeenCalledWith(archive));
 });
 it('requests a non-persistent archive preview', async () => {
-  const archive = new Blob(['archive'], { type: 'application/octet-stream' });
   const workflow = { title: 'preview', nodes: [], groups: [] };
   const fetcher = vi.fn()
-    .mockResolvedValueOnce({ ok: true, blob: async () => archive })
     .mockResolvedValueOnce(Response.json({ workflow }));
   vi.stubGlobal('fetch', fetcher);
   await expect(previewShowcaseArchive('/share/test1.nako')).resolves.toEqual(workflow);
-  expect(fetcher.mock.calls[1][0]).toBe('/api/workflows/preview');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]).toEqual(['/api/workflows/preview', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archive: '/share/test1.nako' }),
+  }]);
 });
 it('restores showcase archives as independent project copies', async () => {
-  const archive = new Blob(['archive'], { type: 'application/octet-stream' });
   const fetcher = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, blob: async () => archive })
     .mockResolvedValueOnce(Response.json({ id: 'restored-copy' }, { status: 201 }));
   vi.stubGlobal('fetch', fetcher);
   await expect(restoreShowcaseArchive('/share/test1.nako')).resolves.toBe('restored-copy');
-  expect(fetcher.mock.calls[1][0]).toBe('/api/workflows/restore?copy=true');
-  expect(fetcher.mock.calls[1][1].body.size).toBe(7);
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0]).toEqual(['/api/workflows/restore?copy=true', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archive: '/share/test1.nako' }),
+  }]);
 });
 it('keeps settings and creation in the header without the removed search and view controls', () => {
   const settings = vi.fn(),

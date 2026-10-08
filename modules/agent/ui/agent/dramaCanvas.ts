@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import type { WorkflowCanvasBlueprint } from '../../../local-runtime/api/ui/local/workflowManagerClient';
 import type { WorkflowCanvasNodesAdapter } from '../../../contracts/workflowCanvasNodeProtocol';
 
@@ -76,7 +77,7 @@ interface PlanForCanvas {
 }
 
 function safeId(value: string): string {
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(value)) throw new Error('制作节点标识无效');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(value)) throw new AgentOperationError('制作节点标识无效', { operation: 'drama-node-id' });
   return value;
 }
 
@@ -99,15 +100,15 @@ export function buildDramaAssetNodes(
   execution: DramaExecutionSnapshot,
 ): DramaCanvasNode[] {
   if (plan.id !== execution.planId || plan.projectId !== execution.projectId || plan.revision !== execution.planRevision) {
-    throw new Error('制作计划或项目已经变化，请刷新状态');
+    throw new AgentOperationError('制作计划或项目已经变化，请刷新状态', { operation: 'build-drama-assets', planId: plan.id, projectId: plan.projectId });
   }
   return execution.assets.filter((asset) => asset.planRevision === plan.revision).map((asset) => {
     const index = plan.assets.findIndex((item) => item.id === asset.assetId);
     const definition = plan.assets[index];
-    if (!definition) throw new Error('生成结果不属于当前制作计划');
+    if (!definition) throw new AgentOperationError('生成结果不属于当前制作计划', { operation: 'build-drama-assets', assetId: asset.assetId });
     const output = asset.outputs[0];
     if (asset.status === 'success' && (!output || !localImage(output.url, plan.projectId) || !output.mediaId)) {
-      throw new Error('生成图像没有落入当前项目，不能加入画布');
+      throw new AgentOperationError('生成图像没有落入当前项目，不能加入画布', { operation: 'build-drama-assets', assetId: asset.assetId, projectId: plan.projectId });
     }
     const ratio = Number(asset.width) / Number(asset.height);
     const width = 340;
@@ -122,7 +123,7 @@ export function buildDramaAssetNodes(
       parentIds: [], sourcePortIndices: [],
       ...(asset.status === 'success' ? { resultUrl: output.url,
         resultUrls: asset.outputs.map((item) => {
-          if (!localImage(item.url, plan.projectId)) throw new Error('输出素材不属于当前项目');
+          if (!localImage(item.url, plan.projectId)) throw new AgentOperationError('输出素材不属于当前项目', { operation: 'build-drama-assets', projectId: plan.projectId });
           return item.url;
         }), assetId: output.mediaId } : {}),
       errorMessage: asset.error || '',
@@ -144,7 +145,7 @@ export function buildDramaCanvasNodes(
   const byReference = new Map(composition.assets.map((asset) => [`${asset.assetId}:${asset.attemptId}`, asset]));
   for (const [index, segment] of composition.segments.entries()) {
     if (segment.blueprint.workflowRef.verificationStatus !== 'draft' || segment.blueprint.workflowRef.attestationId) {
-      throw new Error('文戏组合必须创建待首次验证的工作流草稿');
+      throw new AgentOperationError('文戏组合必须创建待首次验证的工作流草稿', { operation: 'build-drama-composition', segmentId: segment.segmentId });
     }
     const workflow = adapter.createNode(structuredClone(segment.blueprint), { x: 1520, y: 140 + index * 680 });
     workflow.id = segmentNodeId(composition.planId, composition.planRevision, segment.segmentId);
@@ -155,10 +156,10 @@ export function buildDramaCanvasNodes(
     for (const binding of segment.inputBindings) {
       const source = byReference.get(`${binding.assetId}:${binding.attemptId}`);
       if (!source || source.mediaId !== binding.mediaId || source.status !== 'success') {
-        throw new Error('文戏引用的资产版本已经变化');
+        throw new AgentOperationError('文戏引用的资产版本已经变化', { operation: 'build-drama-composition', assetId: binding.assetId, attemptId: binding.attemptId });
       }
       const slot = slots.find((item) => item.bindingKey === binding.bindingKey && item.itemIndex === 0 && item.mediaKind === 'image');
-      if (!slot || used.has(slot.slotIndex)) throw new Error('工作流图片输入槽已经变化，不能猜测连接顺序');
+      if (!slot || used.has(slot.slotIndex)) throw new AgentOperationError('工作流图片输入槽已经变化，不能猜测连接顺序', { operation: 'build-drama-composition', bindingKey: binding.bindingKey });
       used.add(slot.slotIndex);
       workflow.parentIds[slot.slotIndex] = dramaAssetNodeId(composition.planId, binding.assetId, binding.attemptId);
       workflow.sourcePortIndices[slot.slotIndex] = 0;
@@ -176,7 +177,7 @@ export function mergeDramaCanvasNodes(
   incoming: readonly DramaCanvasNode[],
   { projectId, expectedProjectId }: { projectId: string; expectedProjectId: string },
 ): DramaCanvasNode[] {
-  if (!projectId || projectId !== expectedProjectId) throw new Error('当前项目已切换，未写入生成结果');
+  if (!projectId || projectId !== expectedProjectId) throw new AgentOperationError('当前项目已切换，未写入生成结果', { operation: 'merge-drama-nodes', projectId, expectedProjectId });
   const byId = new Map(current.map((node) => [node.id, node]));
   const output = [...current];
   const positions = new Map(current.map((node, index) => [node.id, index]));
@@ -190,7 +191,7 @@ export function mergeDramaCanvasNodes(
   for (const candidate of incoming) {
     const origin = candidate.dramaOrigin;
     if (!origin || origin.projectId !== projectId || candidate.projectId !== projectId) {
-      throw new Error('制作结果不属于当前项目');
+      throw new AgentOperationError('制作结果不属于当前项目', { operation: 'merge-drama-nodes', nodeId: candidate.id, projectId });
     }
     const previous = byId.get(candidate.id);
     if (!previous) {
@@ -212,7 +213,7 @@ export function mergeDramaCanvasNodes(
     }
     const prior = previous.dramaOrigin;
     if (!prior || prior.planId !== origin.planId || prior.projectId !== origin.projectId || prior.kind !== origin.kind) {
-      throw new Error('画布已有不同来源的同名节点，未覆盖用户内容');
+      throw new AgentOperationError('画布已有不同来源的同名节点，未覆盖用户内容', { operation: 'merge-drama-nodes', nodeId: candidate.id, projectId });
     }
     // Composition is insert-once: repeated clicks cannot reset edited parameters, ports, geometry or results.
     if (origin.kind === 'segment') continue;

@@ -1,11 +1,9 @@
+import { WorkspaceError } from '../../../modules/contracts/storageErrors.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import express from 'express';
 
-class WorkspaceError extends Error {
-  constructor(message, status = 400) { super(message); this.status = status; }
-}
 const empty = () => ({ prompt: '', modelId: '', apiSessionId: '', excludedNodes: [], generationApproval: 'confirm', thinkingEnabled: null, thinkingEffort: '' });
 function normalize(value) {
   const result = empty();
@@ -42,7 +40,7 @@ export function createAgentWorkspaceStore(privateDirectory) {
     const file = fileFor(project);
     try {
       const result = JSON.parse(await readFile(file, 'utf8'));
-      if (result.projectId !== project || !Number.isSafeInteger(result.revision) || result.revision < 0) throw Error();
+      if (result.projectId !== project || !Number.isSafeInteger(result.revision) || result.revision < 0) throw new WorkspaceError('助手草稿记录格式无效。', 500);
       return { projectId: project, revision: result.revision, value: normalize(result.value) };
     } catch (error) {
       if (error.code === 'ENOENT') return { projectId: project, revision: 0, value: empty() };

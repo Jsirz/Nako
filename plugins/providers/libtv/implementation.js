@@ -3,7 +3,10 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { materializeInputs } from '../../../modules/generation-providers/api/server/providers/cliMediaInputs.js';
-import { libTvError } from '../../../modules/local-runtime/api/server/local/libTvCliRuntime.js';
+import { providerError, wrapProviderError } from '../../../modules/contracts/providerErrors.js';
+import { LOCAL_RUNTIME_ERRORS } from '../../../modules/contracts/localRuntimeErrors.js';
+const libTvError = (message, code = LOCAL_RUNTIME_ERRORS.libTvCli, status = 502) =>
+  providerError(message, { providerId: 'libtv', operation: status === 400 ? 'validate-input' : 'execute-cli', code, status, retryable: false, expose: true });
 import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
 
 const endpoint = 'https://www.liblib.tv/';
@@ -126,7 +129,7 @@ async function generate(kind, params, config) {
     return kind === 'image' ? result.results.length === 1 ? result.results[0] : result.results : { buffer: result.buffer, format: result.format };
   } catch (error) {
     if (submitted) error.submissionUncertain = true;
-    throw error;
+    throw wrapProviderError(error, { providerId: 'libtv', operation: submitted ? 'observe' : 'prepare' });
   } finally {
     if (directory) await runtime.cleanupTaskDirectory(directory).catch(() => {});
     lease.release();

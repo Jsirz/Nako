@@ -5,12 +5,8 @@ export interface CanvasGroupableNode {
   [key: string]: unknown;
 }
 
-export interface CanvasGroup {
-  id: string;
-  nodeIds: string[];
-  label: string;
-  [key: string]: unknown;
-}
+import type { CanvasGroup } from '../../../contracts/canvasDocument';
+export type { CanvasGroup } from '../../../contracts/canvasDocument';
 
 export interface CanvasGroupState<
   TNode extends CanvasGroupableNode = CanvasGroupableNode,

@@ -2,7 +2,7 @@
   "name": "nako-canvas",
   "description": "Nako single-machine plugin canvas",
   "private": true,
-  "version": "1.5.7",
+  "version": "1.5.8",
   "type": "module",
   "scripts": {
     "check:brand": "node scripts/runtime/run.mjs tests/nako-brand.check.mjs",
@@ -24,9 +24,11 @@
     "build:launcher": "node scripts/runtime/run.mjs node_modules/vite/bin/vite.js build --config apps/desktop/launcher/vite.config.ts",
     "unit": "node scripts/runtime/run.mjs node_modules/vitest/vitest.mjs run --config vite.config.ts",
     "check:architecture": "node scripts/runtime/run.mjs scripts/check-architecture.mjs",
+    "check:docs": "node scripts/runtime/run.mjs scripts/architecture/documentation.mjs",
+    "audit:conventions": "node scripts/runtime/run.mjs scripts/architecture/conventions.mjs",
     "smoke:server": "node scripts/runtime/run.mjs scripts/smoke-server.mjs",
     "check:local-only": "node scripts/runtime/run.mjs scripts/check-local-only.mjs",
-    "check": "npm run check:architecture && npm run check:local-only && npm run typecheck && npm run unit && npm run build:stable && npm run build:launcher && npm run smoke:server && npm run smoke:plugins",
+    "check": "npm run check:architecture && npm run check:docs && npm run check:local-only && npm run typecheck && npm run unit && npm run build:stable && npm run build:launcher && npm run smoke:server && npm run smoke:plugins",
     "smoke:plugins": "node scripts/runtime/run.mjs scripts/smoke-server.mjs --without-agent"
   },
   "dependencies": {

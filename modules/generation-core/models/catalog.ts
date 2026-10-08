@@ -1,19 +1,36 @@
-// Generated from plugin-owned models.ts files.
+import type { CatalogModel } from '../../contracts/modelCatalog';
+import { ERRORS, PluginError } from '../../contracts/errors.js';
 export * from './defaults';
-import * as p0 from '../../../plugins/providers/doubao/models';
-import * as p1 from '../../../plugins/providers/deepseek/models';
-import * as p2 from '../../../plugins/providers/official-text/models';
-import * as p3 from '../../../plugins/providers/libtv/models';
-import * as p4 from '../../../plugins/providers/dreamina/models';
-import * as p5 from '../../../plugins/providers/jimeng/models';
-import * as p6 from '../../../plugins/providers/openai/models';
-import * as p7 from '../../../plugins/providers/runninghub/models';
-import * as p8 from '../../../plugins/providers/seedvr2/models';
-import * as p9 from '../../../plugins/providers/mureka/models';
-import * as p10 from '../../../plugins/providers/kling/models';
-import * as p11 from '../../../plugins/providers/ecloud/models';
-import * as p12 from '../../../plugins/providers/work-fisher/models';
-export const TEXT_MODELS = [...p0.TEXT_MODELS, ...p1.TEXT_MODELS, ...p2.TEXT_MODELS, ...p11.TEXT_MODELS, ...p12.TEXT_MODELS].sort((a,b)=>a.catalogOrder-b.catalogOrder);
-export const IMAGE_MODELS = [...p0.IMAGE_MODELS, ...p3.IMAGE_MODELS, ...p4.IMAGE_MODELS, ...p5.IMAGE_MODELS, ...p6.IMAGE_MODELS, ...p7.IMAGE_MODELS, ...p8.IMAGE_MODELS, ...p11.IMAGE_MODELS, ...p12.IMAGE_MODELS].sort((a,b)=>a.catalogOrder-b.catalogOrder);
-export const AUDIO_MODELS = [...p9.AUDIO_MODELS, ...p11.AUDIO_MODELS, ...p12.AUDIO_MODELS].sort((a,b)=>a.catalogOrder-b.catalogOrder);
-export const VIDEO_MODELS = [...p0.VIDEO_MODELS, ...p3.VIDEO_MODELS, ...p4.VIDEO_MODELS, ...p7.VIDEO_MODELS, ...p10.VIDEO_MODELS, ...p11.VIDEO_MODELS, ...p12.VIDEO_MODELS].sort((a,b)=>a.catalogOrder-b.catalogOrder);
+
+export const TEXT_MODELS: CatalogModel[] = [];
+export const IMAGE_MODELS: CatalogModel[] = [];
+export const AUDIO_MODELS: CatalogModel[] = [];
+export const VIDEO_MODELS: CatalogModel[] = [];
+const lists = { TEXT_MODELS, IMAGE_MODELS, AUDIO_MODELS, VIDEO_MODELS };
+
+/** The application composition root supplies declarative data, never provider objects. */
+export function installModelCatalog(input: unknown) {
+  if (!input || typeof input !== 'object') throw invalidCatalog();
+  const source = input as Record<string, unknown>;
+  const names = new Set<string>();
+  const projected = Object.entries(lists).map(([key, target]) => {
+    const models = source[key];
+    if (!Array.isArray(models)) throw invalidCatalog(key);
+    for (const model of models) {
+      if (!model || typeof model.name !== 'string' || !model.name || names.has(model.name)
+        || !Number.isFinite(model.catalogOrder) || typeof model.provider !== 'string'
+        || !model.endpoint || typeof model.endpoint !== 'object') throw invalidCatalog(key);
+      names.add(model.name);
+    }
+    return { target, models: structuredClone(models) as CatalogModel[] };
+  });
+  for (const { target, models } of projected) {
+    target.splice(0, target.length, ...models.sort((a, b) => a.catalogOrder - b.catalogOrder));
+  }
+}
+
+function invalidCatalog(list?: string) {
+  return new PluginError(ERRORS.invalidModel, 'Invalid model catalog contribution', {
+    context: { moduleId: 'generation-core', operation: 'installModelCatalog', list },
+  });
+}

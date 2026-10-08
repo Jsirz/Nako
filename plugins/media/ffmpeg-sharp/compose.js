@@ -16,7 +16,8 @@ export function createImageComposer({ libraryDirectory, store }) {
       const prefix = `/library/media/${projectId}/images/`, url = decodeURIComponent(String(image.url || image).split('?')[0]);
       if (!url.startsWith(prefix) || !/^[a-zA-Z0-9_ .-]+$/.test(url.slice(prefix.length))) throw nodeError(NODE_ERROR.DENIED, '拼图图片超出项目范围');
       const file = await fs.realpath(path.join(root, url.slice(prefix.length)));
-      if (path.dirname(file).toLowerCase() !== root.toLowerCase()) throw nodeError(NODE_ERROR.DENIED, '拼图图片超出项目范围');
+      const actualDirectory = path.dirname(file);
+      if ((process.platform === 'win32' ? actualDirectory.toLowerCase() !== root.toLowerCase() : actualDirectory !== root)) throw nodeError(NODE_ERROR.DENIED, '拼图图片超出项目范围');
       const input = await sharp(file, { limitInputPixels: 32 * 1024 * 1024 }).resize(cellWidth, cellWidth, { fit: 'contain', background: '#111111' }).png().toBuffer();
       layers.push({ input, left: index % columns * cellWidth, top: Math.floor(index / columns) * cellWidth });
     }

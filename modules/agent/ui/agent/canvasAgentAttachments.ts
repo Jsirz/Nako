@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 export interface AgentReference {
   nodeId: string;
   url: string;
@@ -24,7 +25,7 @@ export async function readAgentImage(
   };
   signal.addEventListener('abort', cancel, { once: true });
   const timer = setTimeout(() => {
-    rejectAbort(new Error('图片读取超时，请重试。'));
+    rejectAbort(new AgentOperationError('图片读取超时，请重试。', { operation: 'read-agent-image', reason: 'timeout' }));
     controller.abort();
     reader?.abort();
   }, 15_000);
@@ -35,19 +36,19 @@ export async function readAgentImage(
         let blob: Blob;
         if (typeof input === 'string') {
           const response = await fetcher(input, { signal: controller.signal });
-          if (!response.ok) throw new Error('参考图片读取失败，请重新选择图片。');
+          if (!response.ok) throw new AgentOperationError('参考图片读取失败，请重新选择图片。', { operation: 'read-agent-image', status: response.status });
           blob = await response.blob();
         } else blob = input;
         if (controller.signal.aborted) throw new DOMException('已取消', 'AbortError');
-        if (!blob.size) throw new Error('图片为空，请重新选择图片。');
+        if (!blob.size) throw new AgentOperationError('图片为空，请重新选择图片。', { operation: 'read-agent-image', reason: 'empty' });
         return await new Promise<{ url: string }>((resolve, reject) => {
           reader = new FileReader();
-          reader.onerror = () => reject(new Error('图片读取失败，请重试。'));
+          reader.onerror = () => reject(new AgentOperationError('图片读取失败，请重试。', { operation: 'read-agent-image', reason: 'file-read' }));
           reader.onabort = () => reject(new DOMException('已取消', 'AbortError'));
           reader.onload = () => {
             const url = String(reader?.result ?? '');
             const comma = url.indexOf(',');
-            if (comma < 0) reject(new Error('图片读取失败，请重试。'));
+            if (comma < 0) reject(new AgentOperationError('图片读取失败，请重试。', { operation: 'read-agent-image', reason: 'invalid-data-url' }));
             else resolve({ url });
           };
           reader.readAsDataURL(blob);

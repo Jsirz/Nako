@@ -13,12 +13,10 @@ export function isHiddenGenerationSource(source: string) {
 }
 
 export function isModelVisible(name: string) {
-  return isGenerationSourceVisible(modelSources.get(name));
+  const model = [...IMAGE_MODELS, ...VIDEO_MODELS, ...TEXT_MODELS, ...AUDIO_MODELS]
+    .find(entry => entry.name === name);
+  return isGenerationSourceVisible(model?.source);
 }
-const catalog: readonly { name: string; source?: string }[] = [
-  ...IMAGE_MODELS, ...VIDEO_MODELS, ...TEXT_MODELS, ...AUDIO_MODELS,
-];
-const modelSources = new Map(catalog.map((model) => [model.name, model.source]));
 const SOURCE_ORDER = ['work_fisher', 'ecloud', 'runninghub', 'runninghub_global', 'official'];
 
 export function visibleSourceBlocks(blocks: SourceBlock[]) {

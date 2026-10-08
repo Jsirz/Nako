@@ -4,6 +4,8 @@
  */
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs, pollJsonTask } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, submitError, responseError } = providerErrorsFor('aliyun');
 
 export const AliyunVideoProvider = {
     async generateVideo(params, config) {
@@ -14,7 +16,7 @@ export const AliyunVideoProvider = {
         } = params;
 
         if (!ALIYUN_API_KEY) {
-            throw new Error("阿里云 API Key (ALIYUN_API_KEY) 未配置。");
+            throw credentialError("阿里云 API Key (ALIYUN_API_KEY) 未配置。");
         }
 
         // 从 URL 动态解析出 BaseUrl (用于后续轮询)
@@ -87,11 +89,11 @@ export const AliyunVideoProvider = {
 
         // 错误处理
         if (result.code) {
-            throw new Error(`阿里云提交失败: [${result.code}] ${result.message}`);
+            throw submitError(`阿里云提交失败: [${result.code}] ${result.message}`, { upstreamCode: result.code });
         }
 
         const taskId = result.output?.task_id;
-        if (!taskId) throw new Error("阿里云未返回有效任务 ID");
+        if (!taskId) throw submitError("阿里云未返回有效任务 ID");
 
         const pollUrl = `${baseUrl}/api/v1/tasks/${taskId}`;
 
@@ -130,7 +132,7 @@ export const AliyunVideoProvider = {
             }
         });
 
-        if (!videoUrl) throw new Error("阿里云生成成功但未返回视频链接");
+        if (!videoUrl) throw responseError("阿里云生成成功但未返回视频链接");
         const videoBuffer = await BaseProvider.asyncDownloadToBuffer(videoUrl, params.useProxy);
         return { buffer: videoBuffer, format: 'mp4' };
     }

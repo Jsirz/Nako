@@ -1,10 +1,11 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import crypto from 'node:crypto';
 import {
   validCanvasControl,
   projectCanvasResult,
 } from '../../../contracts/canvasControlProtocol.js';
 const operationError = (message, code, status) =>
-  Object.assign(new Error(message), { name: 'AgentRequestError', code, status });
+  Object.assign(new AgentOperationError(message, { operation: 'canvas-operation-receipt' }, code, status), { name: 'AgentRequestError' });
 
 /** Pending capabilities belong to this authenticated user's service and originating turn. */
 export function createCanvasControlBridge({ timeout = 120000 } = {}) {

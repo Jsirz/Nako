@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 import { selectDirectoryWithSystemDialog } from '../../../modules/local-runtime/api/server/platform/directoryPicker.js';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -30,12 +31,12 @@ const MEDIA_EXTENSION = new Set([
 ]);
 const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/iu;
 
-class MediaDownloadError extends Error {
-  constructor(message, code = 'DOWNLOAD_FAILED', status = 400) {
-    super(message);
+class MediaDownloadError extends PluginError {
+  constructor(message, operationCode = 'DOWNLOAD_FAILED', status = 400) {
+    super(status === 404 ? ERRORS.mediaNotFound : status >= 500 ? ERRORS.mediaStorage : ERRORS.invalidMedia, message, {
+      status, context: { moduleId: 'media.filesystem', operation: 'download', operationCode },
+    });
     this.name = 'MediaDownloadError';
-    this.code = code;
-    this.status = status;
   }
 }
 
@@ -389,7 +390,7 @@ function downloadError(error) {
         ? 409
         : 500;
   const code = known
-    ? error.code
+    ? error.context?.operationCode || error.code
     : error?.code === 'ENOSPC'
       ? 'DOWNLOAD_DISK_FULL'
       : ['EACCES', 'EPERM', 'EROFS'].includes(error?.code)

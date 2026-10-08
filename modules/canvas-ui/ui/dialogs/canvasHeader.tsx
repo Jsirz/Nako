@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { CanvasTransferMenu } from './CanvasTransferMenu';
@@ -40,24 +41,19 @@ interface Components {
   BackIcon: CanvasComponent;
 }
 export function CanvasHeader(React: Runtime, props: Props, components: Components) {
+  const state = useCanvasHeaderActions(React, props);
+  return renderCanvasHeaderContent(React, props, components, state);
+}
+
+function useCanvasHeaderActions(React: Runtime, props: Props) {
   const {
     canvasTitle,
-    isEditingTitle,
     editingTitleValue,
-    canvasTitleInputRef,
     setCanvasTitle,
     setIsEditingTitle,
     setEditingTitleValue,
-    hasUnsavedChanges,
-    lastAutoSaveTime,
-    lastSavedBy = '用户-',
-    lastSavedRevision = null,
-    isChatOpen = false,
-    chatPanelWidth = 400,
     documentEpoch,
-    readOnly = false,
   } = props;
-  const { Tooltip, SaveIcon, BackIcon } = components;
   const [menuOpen, setMenuOpen] = React.useState(false),
     menuRoot = React.useRef<HTMLDivElement>(null),
     [saving, setSaving] = React.useState(false),
@@ -142,7 +138,7 @@ export function CanvasHeader(React: Runtime, props: Props, components: Component
         const titleDraft = live.current.isEditingTitle &&
           live.current.editingTitleValue.trim() !== live.current.canvasTitle;
         if (!receipt || receipt.unchanged === false || titleDraft)
-          throw new Error('当前项目尚未保存完成，请保存后再切换');
+          throw canvasError('当前项目尚未保存完成，请保存后再切换', 'project.switch');
       }
       await live.current.onSwitchProject(id);
       if (owner === lifetime.current) setMenuOpen(false);
@@ -178,6 +174,18 @@ export function CanvasHeader(React: Runtime, props: Props, components: Component
     return () => document.removeEventListener('pointerdown', outside);
   }, [menuOpen]);
 
+  return { menuOpen, setMenuOpen, menuRoot, saving, error, setError, commitTitle,
+    titleKeyDown, startRename, save, leave, switchProject };
+}
+
+function renderCanvasHeaderContent(
+  React: Runtime, props: Props, { Tooltip, SaveIcon, BackIcon }: Components,
+  { menuOpen, setMenuOpen, menuRoot, saving, error, setError, commitTitle,
+    titleKeyDown, startRename, save, leave, switchProject }: ReturnType<typeof useCanvasHeaderActions>,
+) {
+  const { canvasTitle, isEditingTitle, editingTitleValue, canvasTitleInputRef, setEditingTitleValue,
+    hasUnsavedChanges, lastAutoSaveTime, lastSavedBy = '用户-', lastSavedRevision = null,
+    isChatOpen = false, chatPanelWidth = 400, readOnly = false } = props;
   return (
     <React.Fragment>
       <div className="nako-window-drag-region" aria-hidden="true" />

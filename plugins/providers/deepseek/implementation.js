@@ -4,6 +4,8 @@
  */
 import { submitOpenAiChatWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, configError, inputError, responseError } = providerErrorsFor('deepseek');
 
 const VISION_DETAILS = new Set(['auto', 'low', 'high', 'original']);
 
@@ -37,15 +39,15 @@ export const DeepSeekProvider = {
         const { DEEPSEEK_API_KEY, LOGS_DIR } = config;
         const { nodeId, prompt, textModel, detail, url: finalUrl } = params;
 
-        if (!DEEPSEEK_API_KEY) throw new Error("DeepSeek API Key 未配置。请在 .env 中设置 DEEPSEEK_API_KEY");
+        if (!DEEPSEEK_API_KEY) throw credentialError("DeepSeek API Key 未配置。请在 .env 中设置 DEEPSEEK_API_KEY");
 
         if (!finalUrl) {
-            throw new Error(`[DeepSeek-Provider] 模型 ${textModel} 的端点地址未配置。`);
+            throw configError(`[DeepSeek-Provider] 模型 ${textModel} 的端点地址未配置。`);
         }
 
         const images = BaseProvider.resolveInputImages(params.images || params.imageBase64);
         if (images.length > 0 && textModel === 'deepseek-v4-pro') {
-            throw new Error(`DeepSeek 模型 ${textModel} 未声明支持图片输入，请选择 DeepSeek-V4.1-Flash。`);
+            throw inputError(`DeepSeek 模型 ${textModel} 未声明支持图片输入，请选择 DeepSeek-V4.1-Flash。`);
         }
 
         const content = images.length > 0
@@ -54,7 +56,7 @@ export const DeepSeekProvider = {
 
         const reasoningEffort = params.reasoning_effort ?? 'high';
         if (!['low', 'high', 'max'].includes(reasoningEffort)) {
-            throw new Error('DeepSeek 不支持所选思考强度。');
+            throw inputError('DeepSeek 不支持所选思考强度。');
         }
 
         // 构建请求体（OpenAI-compatible Chat Completions）。
@@ -89,7 +91,7 @@ export const DeepSeekProvider = {
         const text = result.text;
         
         if (!text) {
-            throw new Error(`DeepSeek 响应中未包含内容: ${JSON.stringify(result)}`);
+            throw responseError(`DeepSeek 响应中未包含内容: ${JSON.stringify(result)}`);
         }
 
         const response = { text };

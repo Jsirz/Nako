@@ -1,3 +1,4 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
 import crypto from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { redactSensitive } from './redaction.js';
@@ -39,6 +40,7 @@ export function createRequestContextMiddleware({
   randomUUID = crypto.randomUUID,
   logger = console,
 } = {}) {
+  const moduleLogger = createModuleLogger('identity-account', logger);
   return (request, response, next) => {
     const supplied = String(request.headers['x-request-id'] || '');
     const requestId = REQUEST_ID_PATTERN.test(supplied) ? supplied : randomUUID();
@@ -48,7 +50,7 @@ export function createRequestContextMiddleware({
     requestStorage.run(context, () => {
       response.once('finish', () => {
         if (response.statusCode >= 500) {
-          logger.error('HTTP request failed', { ...context, status: response.statusCode });
+          moduleLogger.error('HTTP request failed', { moduleId: 'identity-account', ...context, status: response.statusCode });
         }
       });
       next();

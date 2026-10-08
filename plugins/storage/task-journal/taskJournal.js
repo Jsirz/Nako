@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 
 const ACTIVE_STATUSES = new Set(['loading', 'queued']);
 
@@ -25,7 +26,7 @@ function atomicWriteJournal(filePath, records) {
 
 export class GenerationTaskJournal {
   constructor({ filePath, now = () => Date.now(), maxEntries = 1_000 }) {
-    if (!filePath) throw new Error('GenerationTaskJournal requires filePath');
+    if (!filePath) throw new PluginError(ERRORS.invalidConfiguration, 'GenerationTaskJournal requires filePath', { context: { moduleId: 'storage.task-journal' } });
     this.filePath = filePath;
     this.now = now;
     this.maxEntries = Math.max(1, Number(maxEntries) || 1_000);
@@ -35,20 +36,23 @@ export class GenerationTaskJournal {
 
   load() {
     if (!fs.existsSync(this.filePath)) return;
+    let records;
     try {
       const parsed = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
-      const records = parsed?.version === 1 ? parsed.tasks : null;
-      if (!Array.isArray(records)) throw new Error('Invalid generation task journal shape');
-
-      for (const record of records) {
-        if (record?.nodeId) this.tasks.set(String(record.nodeId), clone(record));
-      }
-      if (this.recoverInterruptedTasks()) this.flush();
-    } catch {
-      const quarantinePath = `${this.filePath}.corrupt-${this.now()}`;
-      fs.renameSync(this.filePath, quarantinePath);
-      this.tasks.clear();
+      records = parsed?.version === 1 ? parsed.tasks : null;
+      if (!Array.isArray(records)) throw new PluginError(ERRORS.invalidConfiguration, 'Invalid generation task journal shape', {
+        context: { moduleId: 'storage.task-journal', operation: 'load', filePath: this.filePath }
+      });
+    } catch (cause) {
+      if (!(cause instanceof SyntaxError) && !(cause instanceof PluginError)) throw cause;
+      fs.renameSync(this.filePath, `${this.filePath}.corrupt-${this.now()}`);
+      return;
     }
+    for (const record of records) {
+      if (record?.nodeId) this.tasks.set(String(record.nodeId), clone(record));
+    }
+    // A failed recovery write must not quarantine an otherwise valid journal.
+    if (this.recoverInterruptedTasks()) this.flush();
   }
 
   recoverInterruptedTasks() {
@@ -85,22 +89,29 @@ export class GenerationTaskJournal {
     return changed;
   }
 
-  flush() {
-    const ordered = Array.from(this.tasks.values())
+  flush(records = this.tasks) {
+    const ordered = Array.from(records.values())
       .sort((left, right) => String(left.updatedAt || '').localeCompare(String(right.updatedAt || '')));
     const active = ordered.filter((task) => ACTIVE_STATUSES.has(task.status));
     const terminalBudget = Math.max(0, this.maxEntries - active.length);
     const tasks = [
       ...active,
-      ...ordered.filter((task) => !ACTIVE_STATUSES.has(task.status)).slice(-terminalBudget),
+      ...(terminalBudget ? ordered.filter((task) => !ACTIVE_STATUSES.has(task.status)).slice(-terminalBudget) : []),
     ];
-    atomicWriteJournal(this.filePath, tasks);
+    try { atomicWriteJournal(this.filePath, tasks); }
+    catch (cause) {
+      throw new PluginError(ERRORS.taskPersistence, '生成任务日志写入失败。', {
+        context: { moduleId: 'storage.task-journal', operation: 'flush' }, cause,
+      });
+    }
   }
 
   upsert(task) {
-    if (!task?.nodeId) throw new Error('Generation task requires nodeId');
-    this.tasks.set(String(task.nodeId), clone(task));
-    this.flush();
+    if (!task?.nodeId) throw new PluginError(ERRORS.invalidConfiguration, 'Generation task requires nodeId', { context: { moduleId: 'storage.task-journal' } });
+    const next = new Map(this.tasks);
+    next.set(String(task.nodeId), clone(task));
+    this.flush(next);
+    this.tasks = next;
     return this.get(task.nodeId);
   }
 

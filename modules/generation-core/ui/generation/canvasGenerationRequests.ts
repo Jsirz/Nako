@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 import { browserHost } from '../../../kernel/browser';
 import { declaredNodeOutput } from '../../../contracts/nodeValues.js';
 import {
@@ -15,35 +16,13 @@ function withDefaultModel(node: CanvasNode, kind: ModelKind): CanvasNode {
   return { ...node, [kind + 'Model']: name, model: name };
 }
 import { browserServices } from '../../../kernel/browser';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 import { resolveImageGenerationMode } from './imageMode';
 import { resolveVideoGenerationMode, type VideoModeDefinition } from './videoMode';
 import { resolveMidjourneyReferencePayload } from './midjourneyReferences';
 
-export interface GenerationModel {
-  name: string;
-  source?: string;
-  maxInputs?: number;
-  resolutions?: string[];
-  durationMinByResolution?: Record<string, number>;
-  cost?: number | Partial<Record<string, number>>;
-  costByMode?: Partial<Record<string, number | Partial<Record<string, number>>>>;
-  priceTextByMode?: Record<string, Record<string, string>>;
-  referenceUrlParams?: Partial<Record<'image' | 'video' | 'audio', string>>;
-  timeEstimate?: string;
-  fixedDuration?: number;
-  advancedParams?: { key: string; default?: unknown; min?: number; max?: number }[];
-  videoModes?: VideoModeDefinition[];
-  imageModes?: VideoModeDefinition[];
-  audioModes?: { value: string }[];
-  languageModes?: { value: string }[];
-}
-export interface GenerationModels {
-  imageModels: GenerationModel[];
-  videoModels: GenerationModel[];
-  textModels: GenerationModel[];
-  audioModels: GenerationModel[];
-}
+import type { GenerationModel, GenerationModels } from '../../../contracts/generationUi';
+export type { GenerationModel, GenerationModels } from '../../../contracts/generationUi';
 
 /** Missing mode/resolution evidence must not become a generic quote. */
 export function generationUnitPrice(
@@ -207,9 +186,10 @@ export function buildImageRequest(
     model?.maxInputs ??
     14;
   if (images.length > maximum)
-    throw new Error(
-      `参考图片数量超限：当前模型最多支持 ${maximum} 张，已连接 ${images.length} 张，请调整后重试。`,
-    );
+    throw new PluginError(ERRORS.invalidConfiguration,
+      `参考图片数量超限：当前模型最多支持 ${maximum} 张，已连接 ${images.length} 张，请调整后重试。`, {
+        context: { moduleId: 'generation-core', operation: 'buildImageRequest', nodeId: node.id, maximum, count: images.length },
+      });
   const quoted = browserServices.__NAKO_MODEL_PRICING__?.priceFor(
     model?.name ?? text(node.imageModel),
     mode,

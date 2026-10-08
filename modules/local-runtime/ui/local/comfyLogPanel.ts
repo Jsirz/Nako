@@ -1,3 +1,4 @@
+import { createComfyLogPanelView } from './comfyLogPanelView';
 import type { ComfyLogs, LocalRuntimeClient } from './localRuntimeClient';
 
 const HOST_ATTRIBUTE = 'data-nako-comfyui-log-host';
@@ -38,90 +39,7 @@ const PHASE_LABEL: Record<ComfyPanelPhase, { text: string; color: string }> = {
 };
 
 export function createComfyLogPanel(client: LocalRuntimeClient) {
-  const host = document.createElement('div');
-  host.setAttribute(HOST_ATTRIBUTE, 'true');
-  host.style.cssText =
-    'position:fixed;left:16px;bottom:16px;z-index:60;font-family:Inter,"Microsoft YaHei UI",system-ui,sans-serif;';
-
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.setAttribute('data-nako-comfyui-log-toggle', 'true');
-  toggle.setAttribute('aria-expanded', 'false');
-  toggle.setAttribute('aria-live', 'polite');
-  toggle.style.cssText =
-    'display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:9999px;border:1px solid var(--nk-border);background:var(--nk-surface);color:var(--nk-text);font-size:12px;cursor:pointer;';
-
-  const dot = document.createElement('span');
-  dot.style.cssText =
-    'width:8px;height:8px;border-radius:9999px;background:var(--nk-hover);flex:none;';
-  const toggleText = document.createElement('span');
-  toggleText.textContent = 'ComfyUI 待启动';
-  // 没有这个箭头，用户看不出这个胶囊是可以点开的。
-  const caret = document.createElement('span');
-  caret.textContent = '⌃';
-  caret.setAttribute('aria-hidden', 'true');
-  caret.style.cssText =
-    'color:var(--nk-text-muted);font-size:10px;line-height:1;transform:translateY(1px);';
-  toggle.title = '查看本机 ComfyUI 状态与日志';
-  toggle.append(dot, toggleText, caret);
-
-  const panel = document.createElement('div');
-  panel.setAttribute('data-nako-comfyui-log-panel', 'true');
-  panel.hidden = true;
-  panel.style.cssText =
-    'position:absolute;left:0;bottom:calc(100% + 8px);width:min(560px,calc(100vw - 48px));border:1px solid var(--nk-border);border-radius:12px;background:var(--nk-surface);box-shadow:var(--nk-shadow);overflow:hidden;';
-
-  const header = document.createElement('div');
-  header.style.cssText =
-    'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-bottom:1px solid var(--nk-border);';
-  const title = document.createElement('span');
-  title.textContent = '本机 ComfyUI 日志';
-  title.style.cssText = 'font-size:12px;font-weight:600;color:var(--nk-text);';
-
-  const streamToggle = document.createElement('button');
-  streamToggle.type = 'button';
-  streamToggle.setAttribute('data-nako-comfyui-log-stream', 'true');
-  streamToggle.style.cssText =
-    'padding:2px 8px;border-radius:6px;border:1px solid var(--nk-border);background:transparent;color:var(--nk-text-secondary);font-size:11px;cursor:pointer;';
-
-  const power = document.createElement('button');
-  power.type = 'button';
-  power.setAttribute('data-nako-comfyui-log-power', 'true');
-  power.style.cssText =
-    'padding:2px 8px;border-radius:6px;border:1px solid var(--nk-border);background:transparent;color:var(--nk-text);font-size:11px;cursor:pointer;';
-
-  const close = document.createElement('button');
-  close.type = 'button';
-  close.textContent = '收起';
-  close.setAttribute('data-nako-comfyui-log-close', 'true');
-  close.style.cssText =
-    'padding:2px 8px;border-radius:6px;border:1px solid var(--nk-border);background:transparent;color:var(--nk-text-secondary);font-size:11px;cursor:pointer;';
-
-  const actions = document.createElement('div');
-  actions.style.cssText = 'display:flex;align-items:center;gap:6px;';
-  actions.append(power, streamToggle, close);
-  header.append(title, actions);
-
-  const hint = document.createElement('p');
-  hint.setAttribute('data-nako-comfyui-log-hint', 'true');
-  hint.style.cssText =
-    'margin:0;padding:8px 12px 0;font-size:11px;line-height:1.6;color:var(--nk-text-secondary);';
-
-  const output = document.createElement('pre');
-  output.setAttribute('data-nako-comfyui-log-output', 'true');
-  output.style.cssText =
-    'margin:0;padding:10px 12px;max-height:280px;overflow:auto;font-family:"Cascadia Code",Consolas,monospace;font-size:11px;line-height:1.6;color:var(--nk-text-secondary);white-space:pre-wrap;word-break:break-all;';
-  output.textContent = '正在读取日志…';
-
-  const taskProgress = document.createElement('section');
-  taskProgress.setAttribute('data-nako-comfyui-task-progress', 'true');
-  taskProgress.setAttribute('aria-live', 'polite');
-  taskProgress.hidden = true;
-  taskProgress.style.cssText =
-    'margin:10px 12px 0;padding:10px 11px;border:1px solid var(--nk-info);border-radius:9px;background:var(--nk-info-bg);color:var(--nk-text);';
-
-  panel.append(header, hint, taskProgress, output);
-  host.append(toggle, panel);
+  const { host, toggle, dot, toggleText, caret, panel, streamToggle, power, close, hint, output, taskProgress } = createComfyLogPanelView();
 
   let stream: Stream = 'stderr';
   let open = false;
@@ -130,27 +48,6 @@ export function createComfyLogPanel(client: LocalRuntimeClient) {
   let activity: WorkflowRunProgressDetail | null = null;
   let timer: ReturnType<typeof setInterval> | undefined;
 
-  const progressLabel = (detail: WorkflowRunProgressDetail): string => {
-    const value = Number(detail.progress?.value);
-    const maximum = Number(detail.progress?.maximum);
-    const nodeId = detail.progress?.currentNodeId || detail.currentNodeId;
-    const hasProgress = Number.isFinite(value) && Number.isFinite(maximum) && maximum > 0;
-    const percent = hasProgress
-      ? Math.max(0, Math.min(100, Math.round((value / maximum) * 100)))
-      : null;
-    return (
-      [
-        nodeId ? `节点 ${nodeId}` : null,
-        hasProgress ? `当前步骤 ${value}/${maximum}` : null,
-        percent === null ? null : `${percent}%`,
-      ]
-        .filter(Boolean)
-        .join(' · ') ||
-      (detail.realtimeChannel === 'history-fallback'
-        ? '正在查询 ComfyUI 状态'
-        : '正在等待 ComfyUI 进度')
-    );
-  };
 
   const renderActivity = () => {
     if (phase === 'error' || !activity || activity.status !== 'loading') {
@@ -406,4 +303,15 @@ export function installComfyLogPanel(
     installed?.host.remove();
     installed = null;
   };
+}
+
+function progressLabel(detail: WorkflowRunProgressDetail): string {
+  const value = Number(detail.progress?.value);
+  const maximum = Number(detail.progress?.maximum);
+  const nodeId = detail.progress?.currentNodeId || detail.currentNodeId;
+  const hasProgress = Number.isFinite(value) && Number.isFinite(maximum) && maximum > 0;
+  const percent = hasProgress ? Math.max(0, Math.min(100, Math.round((value / maximum) * 100))) : null;
+  return [nodeId ? `节点 ${nodeId}` : null, hasProgress ? `当前步骤 ${value}/${maximum}` : null,
+    percent === null ? null : `${percent}%`].filter(Boolean).join(' · ')
+    || (detail.realtimeChannel === 'history-fallback' ? '正在查询 ComfyUI 状态' : '正在等待 ComfyUI 进度');
 }

@@ -1,3 +1,5 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 import express from 'express';
 import { WorkflowDefinitionStoreError } from './workflowDefinitionStore.js';
 import {
@@ -36,7 +38,7 @@ function sendError(response, error, logger) {
     || error instanceof WorkflowCanvasNodeError
     || error instanceof DirectoryGrantError;
   if (!safe) {
-    logger.error('Workflow runtime internal error', { errorType: error?.name || 'Error' });
+    logger.error('Workflow runtime internal error', { operation: 'sendError', errorType: error?.name || 'Error' });
   }
   const status = safe ? Number(error.status) || 400 : 500;
   response.status(status).json({
@@ -64,12 +66,19 @@ export function createWorkflowRuntimeRouter({
   testRunService = null,
   attestationService = null,
   canvasNodeService = null,
-  logger = console,
+  logger = createModuleLogger('workflow-runtime'),
 }) {
   if (!definitionStore || !configurationStore || !deploymentService || !assetResolver) {
-    throw new Error('Workflow runtime router requires all runtime services');
+    throw workflowRuntimeError('Workflow runtime router requires all runtime services', 'createWorkflowRuntimeRouter');
   }
   const router = express.Router();
+  registerWorkflowConfigurationRoutes(router, { definitionStore, configurationStore, deploymentService, editorSnapshotService, assetResolver, logger });
+  registerWorkflowExecutionRoutes(router, { testRunService, attestationService, canvasNodeService, logger });
+  registerWorkflowRequestErrors(router);
+  return router;
+}
+
+function registerWorkflowConfigurationRoutes(router, { definitionStore, configurationStore, deploymentService, editorSnapshotService, assetResolver, logger }) {
 
   if (editorSnapshotService) {
     router.get('/workflow-library/:id/editor-snapshot', async (request, response) => {
@@ -209,6 +218,9 @@ export function createWorkflowRuntimeRouter({
     },
   );
 
+}
+
+function registerWorkflowExecutionRoutes(router, { testRunService, attestationService, canvasNodeService, logger }) {
   if (testRunService) {
     router.post(
       '/workflow-library/:id/test-runs',
@@ -359,6 +371,9 @@ export function createWorkflowRuntimeRouter({
     );
   }
 
+}
+
+function registerWorkflowRequestErrors(router) {
   router.use((error, _request, response, next) => {
     if (error?.type === 'entity.too.large') {
       response.status(413).json({

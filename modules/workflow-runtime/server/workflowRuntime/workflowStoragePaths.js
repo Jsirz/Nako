@@ -1,3 +1,4 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import path from 'node:path';
 import { realpath } from 'node:fs/promises';
 
@@ -8,9 +9,7 @@ function isInsideOrEqual(root, candidate) {
 
 export function resolveWorkflowStorageDirectory({ libraryDirectory, storageDirectory }) {
   if (!libraryDirectory) {
-    const error = new Error('执行工作流存储缺少 libraryDirectory');
-    error.code = 'WORKFLOW_STORAGE_CONFIGURATION_ERROR';
-    throw error;
+    throw workflowRuntimeError('执行工作流存储缺少 libraryDirectory', 'resolveWorkflowStorageDirectory', 'WORKFLOW_STORAGE_CONFIGURATION_ERROR');
   }
   const libraryRoot = path.resolve(libraryDirectory);
   const privateRoot = path.resolve(
@@ -18,9 +17,7 @@ export function resolveWorkflowStorageDirectory({ libraryDirectory, storageDirec
       || path.join(path.dirname(libraryRoot), 'private', 'execution-workflows'),
   );
   if (isInsideOrEqual(libraryRoot, privateRoot)) {
-    const error = new Error('执行工作流私有存储不能位于 /library 静态目录内');
-    error.code = 'WORKFLOW_STORAGE_EXPOSED';
-    throw error;
+    throw workflowRuntimeError('执行工作流私有存储不能位于 /library 静态目录内', 'resolveWorkflowStorageDirectory', 'WORKFLOW_STORAGE_EXPOSED');
   }
   return privateRoot;
 }
@@ -31,8 +28,6 @@ export async function assertWorkflowStorageIsPrivate({ libraryDirectory, storage
     realpath(storageDirectory).catch(() => path.resolve(storageDirectory)),
   ]);
   if (isInsideOrEqual(libraryRoot, privateRoot)) {
-    const error = new Error('执行工作流私有存储解析后位于 /library 静态目录内');
-    error.code = 'WORKFLOW_STORAGE_EXPOSED';
-    throw error;
+    throw workflowRuntimeError('执行工作流私有存储解析后位于 /library 静态目录内', 'assertWorkflowStorageIsPrivate', 'WORKFLOW_STORAGE_EXPOSED');
   }
 }

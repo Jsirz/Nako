@@ -1,4 +1,9 @@
-import type { NakoPlugin } from '../contracts/index.js';
+import type { PluginDefinition } from '../contracts/index.js';
+import { definePlugin } from '../kernel/plugin.js';
+import type { ProjectMediaRecoveryService } from '../contracts/projectWorkflow';
+import { interruptedMediaNode } from './ui/media/mediaOperationRecovery';
+import type { MediaSettingsService } from '../contracts/browserCapabilities';
+import { mountMediaDownloadSettings } from './ui/media/mediaDownloadSettings';
 import { activateBrowserModule, trackBrowserResource } from '../kernel/browser';
 import { installMediaEditing } from './ui/media/mediaEditing';
 import { installMediaDownloadFileName } from './ui/media/mediaDownloadFileName';
@@ -10,7 +15,7 @@ import { NativeStableMediaRenderer } from './ui/media/nativeStableMediaRenderer'
 import { startStableMediaEnhancement } from './ui/media/stableMediaEnhancement';
 import { installVideoWorkflows } from './ui/media/videoWorkflows';
 
-const plugin: NakoPlugin = {
+const plugin: PluginDefinition = {
   manifest: {
     id: 'ui.asset-media',
     version: '1.0.0',
@@ -19,10 +24,20 @@ const plugin: NakoPlugin = {
     reloadRequired: true,
     dependencies: { 'ui.workflow-runtime': '^1.0.0' },
     capabilities: ['ui.asset-media'],
+    services: { provides: ['ui.media.settings', 'ui.media.recovery'] },
   },
   async activate(context) {
     await activateBrowserModule(context, async () => {
-      trackBrowserResource(context, installMediaDownloadFileName());
+      const downloads = installMediaDownloadFileName();
+      const settings: MediaSettingsService = {
+        mountSettings(host) {
+          const dispose = mountMediaDownloadSettings(host, downloads);
+          context.onDispose(dispose);
+          return dispose;
+        },
+      };
+      context.services.register('ui.media.settings', settings);
+      context.services.register<ProjectMediaRecoveryService>('ui.media.recovery', Object.freeze({ interruptedMediaNode }));
       trackBrowserResource(context, installMediaNodeSizing());
       trackBrowserResource(context, installStableVideoPlayback());
       trackBrowserResource(context, installMiniMaxH3CanvasAdapter());
@@ -36,4 +51,4 @@ const plugin: NakoPlugin = {
     });
   },
 };
-export default plugin;
+export default definePlugin(plugin);

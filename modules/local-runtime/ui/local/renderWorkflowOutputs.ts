@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
 import { browserServices } from '../../../kernel/browser';
 import type {
@@ -112,7 +113,7 @@ export function renderWorkflowOutputs(
         const outputs = resultCandidates.filter((candidate) => selected.get(candidate.id)?.checked);
         const primaryCandidate = outputs.find((candidate) => primary.get(candidate.id)?.checked);
         if (!outputs.length || !primaryCandidate) {
-          throw new Error('请保留至少一个输出，并指定主输出。');
+          throw localRuntimeError('请保留至少一个输出，并指定主输出。', 'confirmWorkflowOutputs');
         }
         const outputSet = await client.createOutputBindingSet(state.selected!.id, {
           sourceRunId: state.run!.runId,
@@ -163,10 +164,10 @@ export function renderWorkflowOutputs(
         title: state.nodeTitle.trim() || state.selected!.name,
       });
       const adapter = browserServices.__NAKO_WORKFLOW_NODES__;
-      if (!adapter) throw new Error('画布节点适配器尚未加载，请刷新后重试。');
+      if (!adapter) throw localRuntimeError('画布节点适配器尚未加载，请刷新后重试。', 'confirmWorkflowOutputs');
       const verifiedRun = state.verifiedRun || state.run;
       if (verifiedRun?.status !== 'success' || !state.projectId) {
-        throw new Error('找不到本次成功测试的输入和输出，请重新打开已验证记录。');
+        throw localRuntimeError('找不到本次成功测试的输入和输出，请重新打开已验证记录。', 'confirmWorkflowOutputs');
       }
       const verifiedValues = await enrichVerifiedAssetValues(client, state.values);
       const insertion = await adapter.addToCanvas(blueprint, {

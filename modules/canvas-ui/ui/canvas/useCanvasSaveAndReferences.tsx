@@ -119,30 +119,7 @@ export function useCanvasSaveAndReferences(context: ReturnType<typeof useCanvasA
   const agentReferences = React.useMemo(
       () =>
         isChatOpen
-          ? nodes
-              .filter(
-                (ke) =>
-                  selectedNodeIds.includes(ke.id) &&
-                  [
-                    'image',
-                    'upload image',
-                    'video',
-                    'upload video',
-                    'audio',
-                    'upload audio',
-                  ].includes(String(ke.type).toLowerCase()) &&
-                  typeof ke.resultUrl == 'string' &&
-                  ke.resultUrl.length > 0,
-              )
-              .map((ke) => ({
-                nodeId: ke.id,
-                url: ke.resultUrl,
-                type: String(ke.type).toLowerCase().includes('video')
-                  ? 'video'
-                  : String(ke.type).toLowerCase().includes('audio')
-                    ? 'audio'
-                    : 'image',
-              }))
+          ? selectedMediaReferences(nodes, selectedNodeIds)
           : [],
       [isChatOpen, nodes, selectedNodeIds],
     ),
@@ -204,4 +181,26 @@ export function useCanvasSaveAndReferences(context: ReturnType<typeof useCanvasA
     handleTextToImage,
     handleMiniMaxH3T2VAGenerate,
   };
+}
+
+function selectedMediaReferences(
+  nodes: ReturnType<typeof useCanvasAgentControls>['nodes'],
+  selectedNodeIds: string[],
+) {
+  return nodes
+    .filter(
+      (node) =>
+        selectedNodeIds.includes(node.id) &&
+        ['image', 'upload image', 'video', 'upload video', 'audio', 'upload audio'].includes(
+          String(node.type).toLowerCase(),
+        ) &&
+        typeof node.resultUrl === 'string' && node.resultUrl.length > 0,
+    )
+    .map((node) => ({
+      nodeId: node.id,
+      url: node.resultUrl,
+      type: String(node.type).toLowerCase().includes('video')
+        ? 'video'
+        : String(node.type).toLowerCase().includes('audio') ? 'audio' : 'image',
+    }));
 }

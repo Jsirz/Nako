@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 export interface AgentDocument { id: string; name: string; text: string }
 export async function readAgentDocument(file: File, signal: AbortSignal, options: { preserveWhitespace?: boolean } = {}): Promise<AgentDocument> {
   const contentBase64 = await new Promise<string>((resolve, reject) => {
@@ -6,7 +7,7 @@ export async function readAgentDocument(file: File, signal: AbortSignal, options
     if (signal.aborted) { abort(); return; }
     signal.addEventListener('abort', abort, { once: true });
     reader.onload = () => { signal.removeEventListener('abort', abort); resolve(String(reader.result).split(',')[1]); };
-    reader.onerror = () => { signal.removeEventListener('abort', abort); reject(new Error('文档读取失败')); };
+    reader.onerror = () => { signal.removeEventListener('abort', abort); reject(new AgentOperationError('文档读取失败', { operation: 'read-agent-document' })); };
     reader.readAsDataURL(file);
   });
   if (signal.aborted) throw new DOMException('已取消', 'AbortError');
@@ -14,7 +15,7 @@ export async function readAgentDocument(file: File, signal: AbortSignal, options
     body: JSON.stringify({ name: file.name, contentBase64, ...(options.preserveWhitespace === true ? { preserveWhitespace: true } : {}) }), signal });
   const result = await response.json();
   if (signal.aborted) throw new DOMException('已取消', 'AbortError');
-  if (!response.ok || typeof result.script?.text !== 'string') throw new Error(result.error || '文档解析失败');
+  if (!response.ok || typeof result.script?.text !== 'string') throw new AgentOperationError(result.error || '文档解析失败', { operation: 'parse-agent-document', status: response.status });
   return { id: crypto.randomUUID(), name: file.name, text: result.script.text };
 }
 export function agentMessageWithDocuments(prompt: string, documents: readonly AgentDocument[]) {

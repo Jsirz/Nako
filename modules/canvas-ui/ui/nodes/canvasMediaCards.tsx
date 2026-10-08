@@ -14,6 +14,7 @@ interface NodeData {
 }
 interface Props extends Record<string, unknown> {
   data: NodeData;
+  readOnly?: boolean;
   selected?: boolean;
   isDragging?: boolean;
   isResizing?: boolean;
@@ -37,6 +38,7 @@ interface Components {
 function frameProps(props: Props) {
   return {
     data: props.data,
+    readOnly: props.readOnly,
     selected: props.selected,
     onNodePointerDown: props.onNodePointerDown,
     onContextMenu: props.onContextMenu,
@@ -64,12 +66,14 @@ function toolbarProps(props: Props) {
     onDragStart: props.onDragStart,
     onDragEnd: props.onDragEnd,
     onUpdate: props.onUpdate,
+    readOnly: props.readOnly,
   };
 }
 function headerProps(props: Props) {
   return {
     data: props.data,
     selected: props.selected,
+    readOnly: props.readOnly,
     onUpdate: props.onUpdate,
   };
 }
@@ -93,16 +97,19 @@ function MediaCard(
         className="flex flex-col items-center w-full"
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <Composer
-          data={node}
-          isLoading={node.status === 'loading'}
-          inputUrl={props.inputUrl}
-          connectedImageNodes={props.connectedImageNodes}
-          onUpdate={props.onUpdate}
-          onGenerate={props.onGenerate}
-          onSelect={props.onSelect}
-          zoom={props.zoom}
-        />
+        <div className={props.readOnly ? 'canvas-preview-readonly-composer' : undefined}>
+          <Composer
+            data={node}
+            readOnly={props.readOnly}
+            isLoading={node.status === 'loading'}
+            inputUrl={props.inputUrl}
+            connectedImageNodes={props.connectedImageNodes}
+            onUpdate={props.onUpdate}
+            onGenerate={props.onGenerate}
+            onSelect={props.onSelect}
+            zoom={props.zoom}
+          />
+        </div>
       </div>
     ) : null;
   const previewProps =
@@ -186,14 +193,17 @@ export function CanvasTextCard(
       {...frameProps(props)}
       controls={
         props.selected && !props.isDragging && showControls ? (
-          <Composer
-            data={node}
-            onUpdate={onUpdate}
-            onGenerate={props.onGenerate}
-            onSelect={props.onSelect}
-            zoom={props.zoom}
-            connectedAssets={props.connectedImageNodes || []}
-          />
+          <div className={props.readOnly ? 'canvas-preview-readonly-composer' : undefined}>
+            <Composer
+              data={node}
+              readOnly={props.readOnly}
+              onUpdate={onUpdate}
+              onGenerate={props.onGenerate}
+              onSelect={props.onSelect}
+              zoom={props.zoom}
+              connectedAssets={props.connectedImageNodes || []}
+            />
+          </div>
         ) : null
       }
     >
@@ -206,9 +216,10 @@ export function CanvasTextCard(
         showControls={showControls}
         onUpdate={onUpdate}
         onSelect={props.onSelect}
+        readOnly={props.readOnly}
         renderHeader={(children) => <Header {...headerProps(props)}>{children}</Header>}
       />
-      {props.selected && props.onResizeStart && showControls && (
+      {props.selected && props.onResizeStart && showControls && !props.readOnly && (
         <div
           className="absolute -bottom-6 -right-6 w-14 h-14 cursor-nwse-resize z-50 flex items-center justify-center group/resize"
           onPointerDown={(event) => {

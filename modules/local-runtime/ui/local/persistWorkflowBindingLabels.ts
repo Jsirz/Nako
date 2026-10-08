@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { bindingForCandidate } from './workflowManagerBindings';
 import type { WorkflowManagerClient } from './workflowManagerClient';
 import { ManagerState } from './workflowManagerTypes';
@@ -47,7 +48,7 @@ export function persistWorkflowBindingLabels(
       ];
     });
     if (selections.length !== bindings.length) {
-      throw new Error('参数候选已经变化，请返回外置参数页面重新保存。');
+      throw localRuntimeError('参数候选已经变化，请返回外置参数页面重新保存。', 'persistWorkflowBindingLabels');
     }
     const labelsByKey = new Map(bindings.map((binding) => [binding.key, binding.label]));
     if (!selections.some((selection) => selection.label !== labelsByKey.get(selection.key))) {

@@ -6,9 +6,12 @@ import crypto from 'crypto';
 import { resolveLocalPath } from '../../../asset-media/api/server/utils/imageHelpers.js';
 import FormData from 'form-data';
 import { normalizeLocalComfyServer } from '../../../contracts/comfyServerAddress.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 
 class ComfyClient {
     constructor() {
+        this.logger = createModuleLogger('local-runtime');
         this.clientId = crypto.randomUUID();
         this.ws = null;
     }
@@ -26,12 +29,12 @@ class ComfyClient {
             this.ws = new WebSocket(wsUrl);
 
             this.ws.on('open', () => {
-                console.log(`[ComfyUI] Connected to ${wsUrl}`);
+                this.logger.info('ComfyUI connected', { clientId: this.clientId });
                 resolve();
             });
 
             this.ws.on('error', (err) => {
-                console.error('[ComfyUI] WebSocket Error:', err);
+                this.logger.error('ComfyUI WebSocket failed', { errorType: err.name, code: err.code });
                 reject(err);
             });
         });
@@ -63,13 +66,13 @@ class ComfyClient {
         } 
         else if (absolutePath && fs.existsSync(absolutePath)) {
             try {
-                console.log(`[ComfyUI] Uploading local file: ${absolutePath}`);
+                this.logger.info('Uploading local ComfyUI input', { operation: 'uploadImage' });
                 // Use createReadStream for better reliability with FormData
                 const stream = fs.createReadStream(absolutePath);
                 filename = path.basename(absolutePath);
                 formData.append('image', stream, { filename });
             } catch (err) {
-                console.error(`[ComfyUI] Local read failed: ${absolutePath}`, err);
+                this.logger.error('ComfyUI local input read failed', { errorType: err.name, code: err.code });
                 if (fileUrl.startsWith('http')) {
                     const res = await fetch(fileUrl);
                     fileData = await res.buffer();
@@ -85,7 +88,7 @@ class ComfyClient {
             formData.append('image', fileData, { filename });
         }
         else {
-            throw new Error(`Unsupported file source: ${fileUrl.substring(0, 50)}`);
+            throw new PluginError(ERRORS.invalidMedia, 'Unsupported ComfyUI file source', { context: { moduleId: 'local-runtime', operation: 'uploadImage' } });
         }
         
         // 3. Send to ComfyUI
@@ -96,7 +99,7 @@ class ComfyClient {
         });
 
         if (!response.ok) {
-            throw new Error(`Upload failed: ${response.statusText}`);
+            throw new PluginError(ERRORS.providerRequest, 'ComfyUI upload failed', { status: response.status, context: { moduleId: 'local-runtime', operation: 'uploadImage' } });
         }
 
         const result = await response.json();
@@ -121,16 +124,16 @@ class ComfyClient {
         });
 
         if (!response.ok) {
-            throw new Error(`Queue prompt failed: ${response.statusText}`);
+            throw new PluginError(ERRORS.providerRequest, 'ComfyUI prompt submission failed', { status: response.status, context: { moduleId: 'local-runtime', operation: 'queuePrompt' } });
         }
 
         const { prompt_id } = await response.json();
-        console.log(`[ComfyUI] Task queued: ${prompt_id}`);
+        this.logger.info('ComfyUI task queued', { promptId: prompt_id });
 
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this.ws.off('message', onMessage);
-                reject(new Error(`ComfyUI task timed out after ${timeoutMs}ms`));
+                reject(new PluginError(ERRORS.providerRequest, 'ComfyUI task timed out', { context: { moduleId: 'local-runtime', promptId: prompt_id, timeoutMs } }));
             }, timeoutMs);
 
             const onMessage = async (data) => {
@@ -149,7 +152,7 @@ class ComfyClient {
                         }
                     }
                 } catch {
-                    console.debug('[ComfyUI] WS Message parse skipped (likely binary data)');
+                    this.logger.warn('ComfyUI message parse skipped', { clientId: this.clientId });
                 }
             };
 
@@ -179,21 +182,21 @@ class ComfyClient {
             // 处理图片
             if (nodeOutput.images) {
                 const imgData = nodeOutput.images[0];
-                console.log(`[ComfyUI] Returning specified image output node: ${outputNodeId}`);
+                this.logger.info('ComfyUI image output received', { outputNodeId });
                 return `http://${this.serverUrl}/view?filename=${imgData.filename}&subfolder=${imgData.subfolder}&type=${imgData.type}`;
             }
             
             // 处理音频 (VH-Audio, SaveAudioMP3 等节点)
             if (nodeOutput.audio) {
                 const audioData = nodeOutput.audio[0];
-                console.log(`[ComfyUI] Returning specified audio output node: ${outputNodeId}`);
+                this.logger.info('ComfyUI audio output received', { outputNodeId });
                 return `http://${this.serverUrl}/view?filename=${audioData.filename}&subfolder=${audioData.subfolder}&type=${audioData.type}`;
             }
 
             // Video Helper Suite stores video previews in the historical `gifs` field.
             const videoData = nodeOutput.gifs?.[0] || nodeOutput.videos?.[0];
             if (videoData) {
-                console.log(`[ComfyUI] Returning specified video output node: ${outputNodeId}`);
+                this.logger.info('ComfyUI video output received', { outputNodeId });
                 return `http://${this.serverUrl}/view?filename=${videoData.filename}&subfolder=${videoData.subfolder}&type=${videoData.type}`;
             }
         }

@@ -1,3 +1,7 @@
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
@@ -5,9 +9,9 @@ import path from 'node:path';
 import express from 'express';
 import { createComfyOperationReceipts } from './comfyOperationReceipts.js';
 
-class ComfyWorkflowError extends Error {
+class ComfyWorkflowError extends PluginError {
   constructor(message, status = 400, code = 'INVALID_COMFY_WORKFLOW') {
-    super(message);
+    super(code, message, { status, context: { moduleId: 'local-runtime', operation: 'comfyWorkflow' } });
     this.name = 'ComfyWorkflowError';
     this.status = status;
     this.code = code;
@@ -185,7 +189,7 @@ async function defaultDownloadResult(resultUrl) {
     throw new ComfyWorkflowError('ComfyUI 结果地址必须来自本机', 502, 'NON_LOCAL_COMFY_RESULT');
   }
   const response = await fetch(parsed, { signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) throw new Error(`ComfyUI 结果下载失败 (${response.status})`);
+  if (!response.ok) throw localRuntimeError(`ComfyUI 结果下载失败 (${response.status})`, 'defaultDownloadResult', ERRORS.providerRequest, response.status);
   const buffer = Buffer.from(await response.arrayBuffer());
   if (buffer.length === 0 || buffer.length > 200 * 1024 * 1024) {
     throw new ComfyWorkflowError('ComfyUI 结果大小无效', 502, 'INVALID_COMFY_RESULT');
@@ -268,7 +272,7 @@ async function saveResultAsset({ libraryDirectory, projectId, nodeId, config, pa
 
 function sendError(response, error, logger) {
   const status = error instanceof ComfyWorkflowError ? error.status : 500;
-  if (status >= 500) logger.error('ComfyUI workflow error:', error);
+  if (status >= 500) logger.error('ComfyUI workflow error', { operation: 'sendError', error });
   response.status(status).json({
     error:
       error instanceof ComfyWorkflowError
@@ -283,10 +287,10 @@ export function createComfyWorkflowRouter({
   workflowRegistry,
   comfyClient,
   downloadResult = defaultDownloadResult,
-  logger = console,
+  logger = createModuleLogger('local-runtime'),
 }) {
   if (!libraryDirectory || !workflowRegistry || !comfyClient) {
-    throw new Error('libraryDirectory, workflowRegistry, and comfyClient are required');
+    throw localRuntimeError('libraryDirectory, workflowRegistry, and comfyClient are required', 'createComfyWorkflowRouter', ERRORS.invalidConfiguration);
   }
   const router = express.Router();
   const operations = new Map();
@@ -380,7 +384,7 @@ export function createComfyWorkflowRouter({
           assertLocalComfyServer(comfyClient.serverUrl);
           const workflow = await config.handler(comfyClient, normalized.params);
           const resultUrl = await comfyClient.queuePrompt(workflow, config.timeout || 1_800_000, config.outputNodeId);
-          if (!resultUrl) throw new Error('ComfyUI did not return a result');
+          if (!resultUrl) throw localRuntimeError('ComfyUI did not return a result', 'createComfyWorkflowRouter');
           const result = await downloadResult(resultUrl);
           const asset = await saveResultAsset({
             libraryDirectory, projectId: normalized.projectId, nodeId: normalized.nodeId,
@@ -407,7 +411,7 @@ export function createComfyWorkflowRouter({
         config.timeout || 1_800_000,
         config.outputNodeId,
       );
-      if (!resultUrl) throw new Error('ComfyUI 未返回结果');
+      if (!resultUrl) throw localRuntimeError('ComfyUI 未返回结果', 'createComfyWorkflowRouter');
       const result = await downloadResult(resultUrl);
       const asset = await saveResultAsset({
         libraryDirectory,

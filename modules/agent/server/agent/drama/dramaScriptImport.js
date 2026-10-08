@@ -1,3 +1,4 @@
+import { AgentOperationError, AGENT_ERROR_CODES } from '../../../../contracts/agentErrors.js';
 import { inflateRawSync } from 'node:zlib';
 import { Buffer } from 'node:buffer';
 import { TextDecoder } from 'node:util';
@@ -5,8 +6,8 @@ import express from 'express';
 import { isAgentDocument } from '../../../../contracts/shared/agentDocumentFormats.js';
 
 
-export class DramaScriptImportError extends Error {
-  constructor(message) { super(message); this.name = 'DramaScriptImportError'; }
+export class DramaScriptImportError extends AgentOperationError {
+  constructor(message) { super(message, { operation: 'import-drama-script' }, AGENT_ERROR_CODES.invalidRequest); this.name = 'DramaScriptImportError'; }
 }
 
 function fail(message) { throw new DramaScriptImportError(message); }

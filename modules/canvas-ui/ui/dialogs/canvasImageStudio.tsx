@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { PanoramaGenerate } from './panoramaGenerate';
 import { createPortal } from 'react-dom';
 import * as React from 'react';
@@ -78,7 +79,7 @@ function ImageStudioContent(props: Props & { components: Components }) {
         node={node}
         onClose={onClose}
         onApply={(id, angle) => {
-          if (!props.onAngle) throw new Error('当前画布不可创建图片，请重新打开项目。');
+          if (!props.onAngle) throw canvasError('当前画布不可创建图片，请重新打开项目。', 'image-studio.angle');
           props.onAngle(id, angle);
         }}
       />
@@ -224,26 +225,36 @@ function ImageStudioContent(props: Props & { components: Components }) {
         <button
           className="primary"
           disabled={saving || !current}
-          onClick={async () => {
-            if (lock.current || !current) return;
-            lock.current = true;
-            setSaving(true);
-            setError('');
-            try {
-              await onSave(node.id, [current], () => {});
-              if (active.current) onClose();
-            } catch (cause) {
-              if (active.current)
-                setError(cause instanceof Error ? cause.message : '保存失败，请重试');
-            } finally {
-              lock.current = false;
-              if (active.current) setSaving(false);
-            }
-          }}
+          onClick={() => saveStudioImage({ current, node, lock, active, setSaving, setError, onSave, onClose })}
         >
           {saving ? '正在保存…' : '保存为新图片'}
         </button>
       </footer>
     </div>
   );
+}
+
+async function saveStudioImage({ current, node, lock, active, setSaving, setError, onSave, onClose }: {
+  current: CropOutput | undefined;
+  node: Source;
+  lock: React.MutableRefObject<boolean>;
+  active: React.MutableRefObject<boolean>;
+  setSaving: React.Dispatch<React.SetStateAction<boolean>>;
+  setError: React.Dispatch<React.SetStateAction<string>>;
+  onSave: Props['onSave'];
+  onClose: Props['onClose'];
+}) {
+  if (lock.current || !current) return;
+  lock.current = true;
+  setSaving(true);
+  setError('');
+  try {
+    await onSave(node.id, [current], () => {});
+    if (active.current) onClose();
+  } catch (cause) {
+    if (active.current) setError(cause instanceof Error ? cause.message : '保存失败，请重试');
+  } finally {
+    lock.current = false;
+    if (active.current) setSaving(false);
+  }
 }

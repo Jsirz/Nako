@@ -1,14 +1,16 @@
 'use strict';
 
+const { CONTROLLER_ERRORS, ControllerGuardError } = require('../../../contracts/controllerGuardErrors.cjs');
+
 const DEFAULT_INTERVAL_MILLISECONDS = 1000;
 
 function requireControllerProcessId(value) {
   if (typeof value === 'string' && !/^[1-9][0-9]*$/u.test(value)) {
-    throw new Error('CONTROLLER_PROCESS_ID_INVALID');
+    throw new ControllerGuardError(CONTROLLER_ERRORS.processId, 'requireControllerProcessId');
   }
   const processId = Number(value);
   if (!Number.isSafeInteger(processId) || processId <= 0) {
-    throw new Error('CONTROLLER_PROCESS_ID_INVALID');
+    throw new ControllerGuardError(CONTROLLER_ERRORS.processId, 'requireControllerProcessId');
   }
   return processId;
 }
@@ -41,7 +43,7 @@ function startControllerExitGuard({
   if (controllerProcessId === null) return null;
   const ownedProcessId = requireControllerProcessId(controllerProcessId);
   if (!Number.isSafeInteger(intervalMilliseconds) || intervalMilliseconds <= 0) {
-    throw new Error('CONTROLLER_GUARD_INTERVAL_INVALID');
+    throw new ControllerGuardError(CONTROLLER_ERRORS.interval, 'startControllerExitGuard');
   }
 
   let stopped = false;

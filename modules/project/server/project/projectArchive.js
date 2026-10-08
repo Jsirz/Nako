@@ -1,9 +1,5 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import * as tar from 'tar';
 import { resetSharedProject, validateSharedProject } from './sharedProject.js';
 import { writeAgentHistories, readAgentHistories } from './archiveHistory.js';
 import {
@@ -17,14 +13,14 @@ import {
   validateArchive,
 } from './archiveCommon.js';
 
-export async function createProjectArchive({ workflow, mediaDirectory, agentArchive }) {
-  const temporaryDirectory = await mkdtemp(path.join(os.tmpdir(), 'nako-project-backup-'));
+export async function createProjectArchive({ workflow, mediaDirectory, agentArchive, files }) {
+  const temporaryDirectory = await files.createTemporaryDirectory('nako-project-backup-');
   const stagingDirectory = path.join(temporaryDirectory, 'staging');
   const archivePath = path.join(temporaryDirectory, 'project.nako');
 
   try {
-    await mkdir(stagingDirectory, { recursive: true });
-    await writeFile(
+    await files.mkdir(stagingDirectory, { recursive: true });
+    await files.writeText(
       path.join(stagingDirectory, 'manifest.json'),
       JSON.stringify(
         {
@@ -36,24 +32,22 @@ export async function createProjectArchive({ workflow, mediaDirectory, agentArch
         null,
         2,
       ),
-      'utf8',
     );
-    await writeFile(
+    await files.writeText(
       path.join(stagingDirectory, 'workflow.json'),
       JSON.stringify(workflow, null, 2),
-      'utf8',
     );
 
-    const historyEntries = await writeAgentHistories(stagingDirectory, [workflow.id], agentArchive);
+    const historyEntries = await writeAgentHistories(files, stagingDirectory, [workflow.id], agentArchive);
     const sourceMediaDirectory = path.join(mediaDirectory, workflow.id);
-    if (fs.existsSync(sourceMediaDirectory)) {
-      await cp(sourceMediaDirectory, path.join(stagingDirectory, 'media'), { recursive: true });
+    if (files.exists(sourceMediaDirectory)) {
+      await files.copy(sourceMediaDirectory, path.join(stagingDirectory, 'media'), { recursive: true });
     }
 
     const entries = ['manifest.json', 'workflow.json'];
     entries.push(...historyEntries);
-    if (fs.existsSync(path.join(stagingDirectory, 'media'))) entries.push('media');
-    await tar.create(
+    if (files.exists(path.join(stagingDirectory, 'media'))) entries.push('media');
+    await files.createArchive(
       {
         cwd: stagingDirectory,
         file: archivePath,
@@ -65,16 +59,16 @@ export async function createProjectArchive({ workflow, mediaDirectory, agentArch
 
     return { archivePath, temporaryDirectory };
   } catch (error) {
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await files.remove(temporaryDirectory, { recursive: true, force: true });
     throw error;
   }
 }
 
-export async function readProjectArchive({ archivePath, extractionDirectory, maxArchiveEntries }) {
-  await validateArchive(archivePath, maxArchiveEntries);
-  await mkdir(extractionDirectory, { recursive: true });
+export async function readProjectArchive({ archivePath, extractionDirectory, maxArchiveEntries, files }) {
+  await validateArchive(files, archivePath, maxArchiveEntries);
+  await files.mkdir(extractionDirectory, { recursive: true });
   try {
-    await tar.extract({
+    await files.extractArchive({
       cwd: extractionDirectory,
       file: archivePath,
       preservePaths: false,
@@ -87,11 +81,15 @@ export async function readProjectArchive({ archivePath, extractionDirectory, max
     throw new ProjectTransferError('项目备份解压失败');
   }
 
+  return readProjectArchiveDocument({ extractionDirectory, files });
+}
+
+export async function readProjectArchiveDocument({ extractionDirectory, files }) {
   let manifest;
   let workflow;
   try {
-    manifest = JSON.parse(await readFile(path.join(extractionDirectory, 'manifest.json'), 'utf8'));
-    workflow = JSON.parse(await readFile(path.join(extractionDirectory, 'workflow.json'), 'utf8'));
+    manifest = JSON.parse(await files.readText(path.join(extractionDirectory, 'manifest.json')));
+    workflow = JSON.parse(await files.readText(path.join(extractionDirectory, 'workflow.json')));
   } catch {
     throw new ProjectTransferError('项目备份中的 JSON 已损坏');
   }
@@ -118,6 +116,8 @@ export async function restoreProjectArchive({
   archivePath,
   extractionDirectory,
   store,
+  transactions,
+  files,
   mediaDirectory,
   writeSnapshot,
   sanitizeNodes,
@@ -130,12 +130,13 @@ export async function restoreProjectArchive({
     archivePath,
     extractionDirectory,
     maxArchiveEntries,
+    files,
   });
   const sourceId = archivedWorkflow.id;
-  const histories = await readAgentHistories(extractionDirectory, [sourceId], agentArchive);
+  const histories = await readAgentHistories(files, extractionDirectory, [sourceId], agentArchive);
   const sourceMediaDirectory = path.join(extractionDirectory, 'media');
-  const idExists = Boolean(await store.getWorkflowById(sourceId));
-  const mediaExists = fs.existsSync(path.join(mediaDirectory, sourceId));
+  const idExists = Boolean(await store.get(sourceId));
+  const mediaExists = files.exists(path.join(mediaDirectory, sourceId));
   const collision = idExists || mediaExists;
   const targetId = copy || collision ? crypto.randomUUID() : sourceId;
   const targetMediaDirectory = path.join(mediaDirectory, targetId);
@@ -153,19 +154,20 @@ export async function restoreProjectArchive({
 
   let rollbackHistory;
   try {
-    if (fs.existsSync(sourceMediaDirectory)) {
-      await cp(sourceMediaDirectory, targetMediaDirectory, {
+    if (files.exists(sourceMediaDirectory)) {
+      await files.copy(sourceMediaDirectory, targetMediaDirectory, {
         recursive: true,
         force: false,
         errorOnExist: true,
       });
     }
 
-    const result = await store.runInTransaction(async () => {
-      const result = await store.saveWorkflow(restoredWorkflow, { sanitizeNodes });
+    const result = await transactions.runInTransaction(async () => {
+      restoredWorkflow.nodes = sanitizeNodes(restoredWorkflow.nodes, restoredWorkflow.id);
+      const result = await store.save(restoredWorkflow);
       if (histories.has(sourceId) && agentArchive)
         rollbackHistory = await agentArchive.importProject(histories.get(sourceId), result.id);
-      const savedWorkflow = await store.getWorkflowById(result.id);
+      const savedWorkflow = await store.get(result.id);
       if (savedWorkflow) await writeSnapshot(savedWorkflow);
       await syncFolderProjectCounts();
       return result;
@@ -175,7 +177,7 @@ export async function restoreProjectArchive({
     try {
       await rollbackHistory?.();
     } finally {
-      await rm(targetMediaDirectory, { recursive: true, force: true });
+      await files.remove(targetMediaDirectory, { recursive: true, force: true });
     }
     throw error;
   }

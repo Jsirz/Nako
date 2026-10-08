@@ -40,46 +40,16 @@ interface Components extends Omit<
 export function CanvasAudioNode(
   React: ComposerRuntime,
   props: Props,
-  {
-    models,
-    Frame,
-    Header,
-    Toolbar,
-    Player,
-    ConnectedAssets,
-    PromptEditor,
-    ModelSelector,
-    AdvancedSettings,
-    Tooltip,
-    CollapseIcon,
-    SettingsIcon,
-    GenerateIcon,
-  }: Components,
+  components: Components,
 ) {
+  const state = useAudioNodeState(React, props, components);
+  return renderAudioNode(React, props, components, state);
+}
+
+function useAudioNodeState(React: ComposerRuntime, props: Props, { models }: Components) {
   const {
     data: node,
-    selected,
     onUpdate,
-    onGenerate,
-    onSelect,
-    onUpload,
-    onNodePointerDown,
-    onContextMenu,
-    onConnectorDown,
-    isHoveredForConnection,
-    isInvalidHover,
-    onExpand,
-    onDragStart,
-    onDragEnd,
-    zoom,
-    showControls = true,
-    isDragging = false,
-    isVisible = true,
-    onMouseEnter,
-    onMouseLeave,
-    isResizing = false,
-    onResizeStart,
-    onAudioTrim,
     connectedImageNodes: assets = [],
   } = props;
   const fileInput = React.useRef<HTMLInputElement>(null),
@@ -153,23 +123,23 @@ export function CanvasAudioNode(
     onUpdate(node.id, patch);
   };
 
-  return (
-    <Frame
-      data={node}
-      selected={selected}
-      onNodePointerDown={onNodePointerDown}
-      onContextMenu={onContextMenu}
-      onConnectorDown={onConnectorDown}
-      isHoveredForConnection={isHoveredForConnection}
-      isInvalidHover={isInvalidHover}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      isResizing={isResizing}
-      onResizeStart={onResizeStart}
-      width={'365px'}
-      zoom={zoom}
-      controls={
-        selected && !isDragging && !isUpload && showControls ? (
+  return { fileInput, modeRoot, isUpload, modeOpen, setModeOpen, advancedOpen, setAdvancedOpen,
+    editing, setEditing, busy, model, mode, modeLabel, checking, blocked, warning,
+    count, lyricsMode, hasInput, disabled, changeModel };
+}
+
+function renderAudioControls(
+  React: ComposerRuntime, props: Props, components: Components,
+  state: ReturnType<typeof useAudioNodeState>,
+) {
+  const { data: node, selected, isDragging = false, showControls = true,
+    connectedImageNodes: assets = [], onUpdate, onSelect, onGenerate } = props;
+  const { models, ConnectedAssets, PromptEditor, ModelSelector, AdvancedSettings, Tooltip,
+    CollapseIcon, SettingsIcon, GenerateIcon } = components;
+  const { modeRoot, isUpload, modeOpen, setModeOpen, advancedOpen, setAdvancedOpen, editing,
+    setEditing, busy, model, mode, modeLabel, checking, blocked, warning, count, lyricsMode,
+    hasInput, disabled, changeModel } = state;
+  return selected && !isDragging && !isUpload && showControls ? (
           <div
             className={'flex flex-col items-center w-full'}
             onPointerDown={(re) => re.stopPropagation()}
@@ -354,10 +324,38 @@ export function CanvasAudioNode(
               )}
             </div>
           </div>
-        ) : null
-      }
+        ) : null;
+}
+
+function renderAudioNode(
+  React: ComposerRuntime, props: Props, components: Components,
+  state: ReturnType<typeof useAudioNodeState>,
+) {
+  const { data: node, selected, onUpdate, onUpload, onNodePointerDown, onContextMenu,
+    onConnectorDown, isHoveredForConnection, isInvalidHover, onExpand, onDragStart, onDragEnd,
+    zoom, showControls = true, isDragging = false, isVisible = true, onMouseEnter, onMouseLeave,
+    isResizing = false, onResizeStart, onAudioTrim } = props;
+  const { Frame, Header, Toolbar, Player } = components;
+  const { isUpload, fileInput } = state;
+  return (
+    <Frame
+      data={node}
+      readOnly={props.readOnly}
+      selected={selected}
+      onNodePointerDown={onNodePointerDown}
+      onContextMenu={onContextMenu}
+      onConnectorDown={onConnectorDown}
+      isHoveredForConnection={isHoveredForConnection}
+      isInvalidHover={isInvalidHover}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      isResizing={isResizing}
+      onResizeStart={onResizeStart}
+      width={'365px'}
+      zoom={zoom}
+      controls={renderAudioControls(React, props, components, state)}
     >
-      <Header data={node} selected={selected} onUpdate={onUpdate} />
+      <Header data={node} selected={selected} readOnly={props.readOnly} onUpdate={onUpdate} />
       <Toolbar
         projectId={props.projectId}
         data={node}

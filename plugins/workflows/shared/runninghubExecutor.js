@@ -176,7 +176,9 @@ export class RunningHubWorkflowExecutor {
     coordinator,
     libraryDirectory,
     credentialResolver,
-    clientFactory = (options) => new RunningHubWorkflowClient(options),
+    clientFactory = async ({ credentialRef, ...options }) => new RunningHubWorkflowClient({
+      ...options, apiKey: await credentialResolver(credentialRef),
+    }),
     uploadAssetAdapter = prepareRunningHubUploadAsset,
     wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
     now = () => Date.now(),
@@ -200,10 +202,9 @@ export class RunningHubWorkflowExecutor {
   }
 
   async clientFor(deployment) {
-    const apiKey = await this.credentialResolver(deployment.connection.credentialRef);
     return this.clientFactory({
       baseUrl: deployment.connection.baseUrl,
-      apiKey,
+      credentialRef: deployment.connection.credentialRef,
       timeoutMs: deployment.timeoutMs,
     });
   }

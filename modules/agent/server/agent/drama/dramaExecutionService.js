@@ -1,3 +1,4 @@
+import { AgentOperationError, AGENT_ERROR_CODES } from '../../../../contracts/agentErrors.js';
 import { DramaExecutionError } from '../../../../contracts/dramaExecutionError.js';
 export { DramaExecutionError } from '../../../../contracts/dramaExecutionError.js';
 import crypto from 'node:crypto';
@@ -124,14 +125,21 @@ export function createDramaExecutionService({
   now = () => new Date().toISOString(),
 } = {}) {
   if (!planStore || !libraryDirectory || !generationCoordinator || !compileSegment) {
-    throw new Error(
-      'Drama execution requires user-scoped stores and the shared generation runtime',
-    );
+    throw new AgentOperationError('Drama execution requires user-scoped stores and the shared generation runtime',
+      { operation: 'create-drama-execution' }, AGENT_ERROR_CODES.unavailable, 500);
   }
-  if (!executionStore) throw new Error('Drama execution requires a persistent execution store');
+  if (!executionStore) throw new AgentOperationError('Drama execution requires a persistent execution store',
+    { operation: 'create-drama-execution' }, AGENT_ERROR_CODES.unavailable, 500);
+  const records = createExecutionRecords({ executionStore, planStore, now });
+  const prepareApp = createWorkflowPreparation({ runningHubLibraryService, configurationStore, workflowCanvasNodeService });
+  const attempts = createAttemptRuntime({ ...records, prepareApp, testRunService, runStore, generationCoordinator });
+  const assets = createAssetExecution({ ...records, ...attempts, now, appContext });
+  const compose = createComposition({ ...records, ...assets, prepareApp, compileSegment });
+  return Object.freeze({ ...assets, compose, withEditablePlan: records.withEditablePlan });
+}
+
+function createExecutionRecords({ executionStore, planStore, now }) {
   const { root, read, write } = executionStore;
-  const inFlight = new Set();
-  let appLock = Promise.resolve();
 
   async function withLock(key, operation) {
     const lockKey = `${root}\0${key}`;
@@ -188,6 +196,20 @@ export function createDramaExecutionService({
     });
   }
 
+  async function withEditablePlan(input, action) {
+    await requirePlan(input);
+    return withLock(input.planId, async () => {
+      const data = await read(input.planId, input.projectId);
+      if (data.attempts.length) throw new DramaExecutionError(
+        '资产生成已开始，当前计划不能再修改；请创建新计划', 'DRAMA_PLAN_EXECUTION_LOCKED');
+      return action();
+    });
+  }
+  return { read, write, withLock, requirePlan, patch, withEditablePlan };
+}
+
+function createWorkflowPreparation({ runningHubLibraryService, configurationStore, workflowCanvasNodeService }) {
+  let appLock = Promise.resolve();
   async function prepareApp(route) {
     const operation = appLock
       .catch(() => undefined)
@@ -244,6 +266,11 @@ export function createDramaExecutionService({
     appLock = operation;
     return operation;
   }
+  return prepareApp;
+}
+
+function createAttemptRuntime({ patch, prepareApp, testRunService, runStore, generationCoordinator }) {
+  const inFlight = new Set();
 
   async function launch(record, context) {
     const key = `${record.planId}:${record.assetId}:${record.attemptId}`;
@@ -387,6 +414,10 @@ export function createDramaExecutionService({
     }
     return patchObserved({ status: 'pending', phase: task.phase || 'running', retryable: false });
   }
+  return { launch, refresh };
+}
+
+function createAssetExecution({ requirePlan, withLock, read, write, launch, refresh, now, appContext }) {
 
   async function beginAsset(input, context = appContext) {
     if (input.confirmPaidExecution !== true || input.maxAssets !== 1) {
@@ -508,6 +539,10 @@ export function createDramaExecutionService({
     }
     return { planId: plan.id, projectId: plan.projectId, planRevision: plan.revision, assets };
   }
+  return { beginAsset, getAsset, getPlanExecution };
+}
+
+function createComposition({ requirePlan, getPlanExecution, prepareApp, compileSegment }) {
 
   async function compose(input) {
     const plan = await requirePlan(input, true);
@@ -608,20 +643,6 @@ export function createDramaExecutionService({
       segments,
     };
   }
+  return compose;
 
-  async function withEditablePlan(input, action) {
-    await requirePlan(input);
-    return withLock(input.planId, async () => {
-      const data = await read(input.planId, input.projectId);
-      if (data.attempts.length) {
-        throw new DramaExecutionError(
-          '资产生成已开始，当前计划不能再修改；请创建新计划',
-          'DRAMA_PLAN_EXECUTION_LOCKED',
-        );
-      }
-      return action();
-    });
-  }
-
-  return Object.freeze({ beginAsset, getAsset, getPlanExecution, compose, withEditablePlan });
 }

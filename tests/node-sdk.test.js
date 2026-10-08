@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { validateNodePackageManifest } from '../modules/contracts/nodeSdk.js';
 import { NodeRegistry } from '../modules/kernel/nodeRegistry.js';
 import { NodeDagScheduler } from '../modules/kernel/nodeDagScheduler.js';
+import { PluginError, ERRORS } from '../modules/contracts/errors.js';
 
 const packageValue = (overrides = {}) => ({
   manifest: {
@@ -20,6 +21,18 @@ describe('Node SDK and registry', () => {
     const manifest = validateNodePackageManifest(packageValue().manifest);
     expect(manifest.nodes[0].outputs[0].id).toBe('out');
     expect(() => validateNodePackageManifest({ ...manifest, nodes: [{ ...manifest.nodes[0], inputs: [{ id: 'bad id', media: ['text'] }] }] })).toThrow();
+  });
+  it('returns structured validation context for invalid node ports', () => {
+    try {
+      validateNodePackageManifest({ ...packageValue().manifest, nodes: [{
+        ...packageValue().manifest.nodes[0], inputs: [{ id: 'bad id', media: ['text'] }],
+      }] });
+      throw new Error('Expected validation rejection');
+    } catch (error) {
+      expect(error).toBeInstanceOf(PluginError);
+      expect(error).toMatchObject({ code: ERRORS.nodePackage, status: 400,
+        context: { protocol: 'nodeSdk', operation: 'validate', path: 'nodes[0].inputs[0]' } });
+    }
   });
 
   it('registers ownership, creates missing placeholders and migrates versions', () => {

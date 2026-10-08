@@ -1,4 +1,4 @@
-import { checkFileLimits, MAX_SOURCE_LINES } from './architecture/fileLimits.mjs';
+import { checkFileLimits } from './architecture/fileLimits.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -91,6 +91,10 @@ for (const file of files) {
       /^(?:node:)?(?:fs|path|child_process)(?:\/|$)/.test(spec)
     )
       failures.push(`${own}: media routers must use storage/processor services`);
+    if (own.startsWith('modules/project/') && /^(?:sqlite3|better-sqlite3|node:sqlite)(?:\/|$)/.test(spec))
+      failures.push(`${own}: project persistence must use ProjectRepository`);
+    if (own === 'modules/asset-media/serverPlugin.js' && /^(?:node:)?(?:fs|path|child_process)(?:\/|$)/.test(spec))
+      failures.push(`${own}: media composition must use storage/processor services`);
     if (!spec.startsWith('.')) {
       if (/^modules\/(contracts|kernel)\//.test(own))
         failures.push(`${own}: package/platform dependency ${spec}`);
@@ -101,6 +105,8 @@ for (const file of files) {
       failures.push(`${own}: unresolved import ${spec}`);
       continue;
     }
+    if (own.startsWith('modules/canvas-ui/') && target.startsWith('modules/local-runtime/'))
+      failures.push(`${own}: canvas must obtain local-runtime capabilities through kernel services`);
     if (moduleOwner(own) && moduleOwner(target) && isBackendSource(own))
       backendEdges.push({ from: moduleOwner(own), to: moduleOwner(target), source: own, target });
     if (
@@ -176,20 +182,7 @@ for (const cycle of findDependencyCycles(backendEdges)) {
     `Backend module dependency cycle: ${cycle.join(' <-> ')}\n${evidence.map((edge) => `  ${edge.source} -> ${edge.target}`).join('\n')}`,
   );
 }
-const limits = checkFileLimits(
-  sources,
-  JSON.parse(fs.readFileSync('config/source-line-debt.json', 'utf8')),
-  {
-    strict: process.argv.includes('--strict-lines'),
-  },
-);
-failures.push(...limits.failures);
-if (limits.debt.length)
-  console.warn(
-    'Source line debt: ' +
-      limits.debt.length +
-      ` existing files exceed ${MAX_SOURCE_LINES}; no new debt or growth allowed (full audit: --strict-lines).`,
-  );
+failures.push(...checkFileLimits(sources).failures);
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exitCode = 1;

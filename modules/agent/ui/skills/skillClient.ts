@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import type { AgentSkill } from '../../../contracts/skillCatalog.js';
 import { SKILL_CATALOG_CHANGED } from '../../../contracts/skillCatalog.js';
@@ -9,7 +10,7 @@ type AgentSkillFile = { path: string; contentBase64: string };
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error(`无法读取 ${file.name}`));
+    reader.onerror = () => reject(new AgentOperationError(`无法读取 ${file.name}`, { operation: 'read-skill-file' }));
     reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
     reader.readAsDataURL(file);
   });
@@ -40,7 +41,7 @@ export function createAgentSkillClient(fetcher: typeof fetch = globalThis.fetch)
     async list(): Promise<AgentSkill[]> {
       const response = await fetcher('/api/agent-skills');
       const body = await response.json() as { skills?: AgentSkill[]; error?: string };
-      if (!response.ok) throw new Error(body.error || '读取 SKILL 社区失败');
+      if (!response.ok) throw new AgentOperationError(body.error || '读取 SKILL 社区失败', { operation: 'list-skills', status: response.status });
       return body.skills || [];
     },
     async importFolders(files: readonly File[], category?: string): Promise<AgentSkill[]> {

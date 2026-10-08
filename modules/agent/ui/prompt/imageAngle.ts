@@ -1,8 +1,5 @@
-export interface ImageAngle {
-  azimuth: number;
-  elevation: number;
-  zoom: number;
-}
+import type { ImageAngle } from '../../../contracts/browserCapabilities';
+export type { ImageAngle } from '../../../contracts/browserCapabilities';
 export const defaultImageAngle: ImageAngle = { azimuth: 0, elevation: 0, zoom: 5 };
 export const angleDirections = [
   '正面',

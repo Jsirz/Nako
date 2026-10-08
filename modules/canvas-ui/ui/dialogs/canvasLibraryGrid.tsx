@@ -2,17 +2,18 @@ import type { Runtime, GridProps, Icons, LibraryItem, AssetFields } from './canv
 import { ASSET_CATEGORIES, assetCategory } from '../../../asset-media/api/ui/media/assetOrganization';
 
 export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons) {
+  const state = useLibraryGridState(React, props);
+  const actions = libraryItemActions(React, props, icons, state);
+  return renderLibraryGrid(React, props, icons, state, actions);
+}
+
+function useLibraryGridState(React: Runtime, props: GridProps) {
   const {
     selectedCategory,
-    setSelectedCategory,
     assets,
-    loading,
     deleting,
     saving,
     workflow,
-    onSelectAsset,
-    onDeleteAsset,
-    onEditAsset,
   } = props;
   const [confirmation, setConfirmation] = React.useState<string | null>(null);
   const [failedImages, setFailedImages] = React.useState<Record<string, string>>({});
@@ -63,9 +64,18 @@ export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons
           .toLocaleLowerCase()
           .includes(query.trim().toLocaleLowerCase())),
   );
-  const { DeleteIcon, ImageIcon, VideoIcon, AudioIcon, WorkflowIcon } = icons;
-  const busy = !!deleting || !!saving;
-  const preview = (item: LibraryItem) => {
+  return { confirmation, setConfirmation, failedImages, setFailedImages, query, setQuery,
+    ownershipFilter, setOwnershipFilter, layout, setLayout, editing, setEditing,
+    editInput, owner, categoryOf, categories, selected, ownerships, effectiveOwnership, filtered,
+    busy: !!deleting || !!saving };
+}
+
+function renderLibraryItemPreview(
+  React: Runtime, workflow: GridProps['workflow'],
+  { WorkflowIcon, AudioIcon, ImageIcon, VideoIcon }: Icons,
+  { failedImages, setFailedImages }: ReturnType<typeof useLibraryGridState>,
+  item: LibraryItem,
+) {
     const source = workflow ? item.coverUrl : item.url;
     const Placeholder = workflow ? WorkflowIcon : item.type === 'audio' ? AudioIcon : ImageIcon;
     if (!workflow && item.type === 'video')
@@ -112,7 +122,14 @@ export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons
         )}
       </div>
     );
-  };
+}
+
+function libraryItemActions(
+  React: Runtime, { workflow, onEditAsset, onDeleteAsset, deleting }: GridProps,
+  { DeleteIcon }: Icons,
+  { busy, categoryOf, setConfirmation, setEditing, confirmation, owner }:
+    ReturnType<typeof useLibraryGridState>,
+) {
   const actions = (item: LibraryItem) => (
     <div className="nako-library-item-actions">
       {!workflow && onEditAsset && (
@@ -169,6 +186,19 @@ export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons
         </button>
       </div>
     );
+  return { actions, confirmDelete };
+}
+
+function renderLibraryGrid(
+  React: Runtime, props: GridProps, icons: Icons,
+  state: ReturnType<typeof useLibraryGridState>,
+  { actions, confirmDelete }: ReturnType<typeof libraryItemActions>,
+) {
+  const { workflow, onSelectAsset, loading, assets } = props;
+  const { categories, selected, query, setQuery, effectiveOwnership, setOwnershipFilter, filtered,
+    layout, setLayout, ownerships, setConfirmation, confirmation, categoryOf } = state;
+  const { setSelectedCategory } = props;
+  const preview = (item: LibraryItem) => renderLibraryItemPreview(React, workflow, icons, state, item);
   return (
     <div className="nako-library-content">
       <div
@@ -250,82 +280,7 @@ export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons
         </div>
       )}
       <div className="nako-library-scroll">
-        {editing && (
-          <form
-            className="nako-library-editor"
-            aria-label="编辑资产信息"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (busy || !editing.name.trim() || !editing.category.trim()) return;
-              const current = editing;
-              void onEditAsset?.(current.id, {
-                name: current.name.trim(),
-                category: current.category.trim(),
-                ownership: current.ownership.trim(),
-              }).then((success) => {
-                if (success && owner.current)
-                  setEditing((value) => (value?.id === current.id ? null : value));
-              });
-            }}
-          >
-            <strong>编辑资产信息</strong>
-            <div className="nako-library-fields">
-              <label>
-                名称
-                <input
-                  ref={editInput}
-                  required
-                  maxLength={200}
-                  value={editing.name}
-                  disabled={busy}
-                  onChange={(event) => setEditing({ ...editing, name: event.target.value })}
-                />
-              </label>
-              <label>
-                分类
-                <input
-                  required
-                  maxLength={80}
-                  value={editing.category}
-                  disabled={busy}
-                  onChange={(event) => setEditing({ ...editing, category: event.target.value })}
-                />
-              </label>
-              <label>
-                归属
-                <input
-                  maxLength={120}
-                  value={editing.ownership}
-                  disabled={busy}
-                  placeholder="项目／短剧名，留空为通用"
-                  onChange={(event) => setEditing({ ...editing, ownership: event.target.value })}
-                />
-              </label>
-            </div>
-            <select aria-label="选择已有分类" disabled={busy} className="w-full rounded-lg border border-neutral-700 bg-[#1a1a1a] px-3 py-2 text-white"
-              value={categories.includes(editing.category) ? editing.category : ''}
-              onChange={(event) => { if (event.target.value) setEditing({ ...editing, category: event.target.value }); }}>
-              <option value="" disabled>选择已有分类</option>
-              {categories
-                .filter((value) => value !== 'All')
-                .map((value) => (
-                  <option key={value} value={value}>{value}</option>
-                ))}
-            </select>
-            <div className="nako-library-editor-actions">
-              <button type="button" disabled={busy} onClick={() => setEditing(null)}>
-                取消
-              </button>
-              <button
-                type="submit"
-                className="is-primary"
-                disabled={busy || !editing.name.trim() || !editing.category.trim()}
-              >
-                {saving ? '保存中…' : '保存修改'}
-              </button>
-            </div>
-          </form>
-        )}
+        {renderLibraryAssetEditor(React, props, state)}
         {loading ? (
           <div className="nako-library-empty" role="status">
             加载中...
@@ -420,5 +375,62 @@ export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons
           : `${filtered.length} 项${filtered.length !== assets.length ? ` / 共 ${assets.length} 项` : ''}`}
       </div>
     </div>
+  );
+}
+
+function renderLibraryAssetEditor(
+  React: Runtime, { onEditAsset, saving }: GridProps,
+  { editing, setEditing, busy, owner, editInput, categories }: ReturnType<typeof useLibraryGridState>,
+) {
+  return editing && (
+    <form
+      className="nako-library-editor"
+      aria-label="编辑资产信息"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (busy || !editing.name.trim() || !editing.category.trim()) return;
+        const current = editing;
+        void onEditAsset?.(current.id, {
+          name: current.name.trim(), category: current.category.trim(), ownership: current.ownership.trim(),
+        }).then((success) => {
+          if (success && owner.current)
+            setEditing((value) => (value?.id === current.id ? null : value));
+        });
+      }}
+    >
+      <strong>编辑资产信息</strong>
+      <div className="nako-library-fields">
+        <label>
+          名称
+          <input ref={editInput} required maxLength={200} value={editing.name} disabled={busy}
+            onChange={(event) => setEditing({ ...editing, name: event.target.value })} />
+        </label>
+        <label>
+          分类
+          <input required maxLength={80} value={editing.category} disabled={busy}
+            onChange={(event) => setEditing({ ...editing, category: event.target.value })} />
+        </label>
+        <label>
+          归属
+          <input maxLength={120} value={editing.ownership} disabled={busy}
+            placeholder="项目／短剧名，留空为通用"
+            onChange={(event) => setEditing({ ...editing, ownership: event.target.value })} />
+        </label>
+      </div>
+      <select aria-label="选择已有分类" disabled={busy} className="w-full rounded-lg border border-neutral-700 bg-[#1a1a1a] px-3 py-2 text-white"
+        value={categories.includes(editing.category) ? editing.category : ''}
+        onChange={(event) => { if (event.target.value) setEditing({ ...editing, category: event.target.value }); }}>
+        <option value="" disabled>选择已有分类</option>
+        {categories.filter((value) => value !== 'All').map((value) => (
+          <option key={value} value={value}>{value}</option>
+        ))}
+      </select>
+      <div className="nako-library-editor-actions">
+        <button type="button" disabled={busy} onClick={() => setEditing(null)}>取消</button>
+        <button type="submit" className="is-primary" disabled={busy || !editing.name.trim() || !editing.category.trim()}>
+          {saving ? '保存中…' : '保存修改'}
+        </button>
+      </div>
+    </form>
   );
 }

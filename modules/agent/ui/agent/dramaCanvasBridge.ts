@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 export type DramaCanvasRecord = { id: string; type: string; [key: string]: unknown };
 type NodeUpdater = (update: (nodes: DramaCanvasRecord[]) => DramaCanvasRecord[]) => void;
@@ -43,25 +44,25 @@ export function createDramaCanvasBridge(): DramaCanvasBridge {
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async commit(projectId, transform, { select = true } = {}) {
       if (!projectId || projectId !== activeProject || !binding) {
-        throw new Error('当前画布已切换，请回到这份制作计划所属的项目后继续。');
+        throw new AgentOperationError('当前画布已切换，请回到这份制作计划所属的项目后继续。', { operation: 'commit-drama-canvas', projectId });
       }
       const captured = binding;
       const epoch = generation;
       let addedIds: string[] = [];
       const result = await new Promise<DramaCanvasRecord[]>((resolve, reject) => {
         let timedOut = false;
-        const timer = window.setTimeout(() => { timedOut = true; reject(new Error('画布未确认本次写入，请查看画布后重试。')); }, 10_000);
+        const timer = window.setTimeout(() => { timedOut = true; reject(new AgentOperationError('画布未确认本次写入，请查看画布后重试。', { operation: 'commit-drama-canvas', projectId, reason: 'timeout' })); }, 10_000);
         captured.update((current) => {
           if (timedOut) return current;
           if (epoch !== generation || activeProject !== projectId) {
             window.clearTimeout(timer);
-            reject(new Error('画布已切换，本次结果未写入其他项目。'));
+            reject(new AgentOperationError('画布已切换，本次结果未写入其他项目。', { operation: 'commit-drama-canvas', projectId }));
             return current;
           }
           try {
             const next = transform(current);
             if (!Array.isArray(next) || new Set(next.map((node) => node.id)).size !== next.length) {
-              throw new Error('画布节点标识重复，已停止写入。');
+              throw new AgentOperationError('画布节点标识重复，已停止写入。', { operation: 'commit-drama-canvas', projectId });
             }
             const oldIds = new Set(current.map((node) => node.id));
             addedIds = next.filter((node) => !oldIds.has(node.id)).map((node) => node.id);

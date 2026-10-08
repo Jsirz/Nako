@@ -1,6 +1,8 @@
-import { ERRORS, PluginError } from '../../contracts/index.js';
+import { DESKTOP_ERRORS, desktopError } from '../../contracts/desktopErrors.js';
+import { createModuleLogger } from '../../kernel/logger.js';
 
 const PERIODIC_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const logger = createModuleLogger('desktop-shell-observability');
 
 /** Update state stays in the desktop process and survives settings/window remounts. */
 export function createUpdateController({ updater, version, disabledReason, publish, beforeInstall,
@@ -22,7 +24,7 @@ export function createUpdateController({ updater, version, disabledReason, publi
     publish(snapshot());
   }
   function fail(error) {
-    if (error) console.error('Desktop update failed', error);
+    if (error) logger.error('Desktop update failed', { moduleId: 'desktop-shell-observability', operation: 'update.controller', error, phase: state.phase });
     const restoreBackend = !disposed && state.phase === 'installing';
     change({ phase: 'error', percent: undefined, message: '更新失败，请检查网络或稍后重试' });
     if (restoreBackend) void Promise.resolve().then(onInstallFailure).catch(() => {});
@@ -62,7 +64,7 @@ export function createUpdateController({ updater, version, disabledReason, publi
       try {
         if (disposed) return snapshot();
         const result = await updater.checkForUpdates();
-        if (!result) throw new PluginError(ERRORS.desktopUpdate, 'Update check unavailable');
+        if (!result) throw desktopError(DESKTOP_ERRORS.update, 'Update check unavailable', 'update.check', 503);
         if (!disposed && state.phase === 'available') cancellation = result.cancellationToken;
       } catch { fail(); }
       finally {

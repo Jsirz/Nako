@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js';
 import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
 import { SKILL_CATEGORIES } from '../../../contracts/skillCatalog.js';
@@ -9,7 +10,7 @@ const SKILL_FILE = /(?:^|\/)SKILL\.md$/i;
 function relative(file: ImportFile) { return file.webkitRelativePath || file.name; }
 function readText(file: File) {
   return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader(); reader.onerror = () => reject(new Error(`无法读取 ${file.name}`));
+    const reader = new FileReader(); reader.onerror = () => reject(new AgentOperationError(`无法读取 ${file.name}`, { operation: 'read-skill-import' }));
     reader.onload = () => resolve(String(reader.result || '')); reader.readAsText(file);
   });
 }

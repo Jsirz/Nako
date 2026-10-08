@@ -1,64 +1,8 @@
-import { browserServices } from '../../../kernel/browser';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { browserServices, promptComposition } from '../../../kernel/browser';
 import { declaredNodeOutput } from '../../../contracts/nodeValues.js';
-import { composeCreativePrompt } from '../../../agent/api/ui/prompt/creativePresets';
-import { imageAnglePrompt } from '../../../agent/api/ui/prompt/imageAngle';
-
-export type GenerationTaskStatus =
-  | 'idle'
-  | 'queued'
-  | 'loading'
-  | 'success'
-  | 'error'
-  | 'cancelled'
-  | 'timed-out';
-
-export interface GenerationTaskState {
-  nodeId: string;
-  status: GenerationTaskStatus;
-  queuedAt?: number;
-  startedAt?: number;
-  finishedAt?: number;
-  resultUrl?: string;
-  error?: string;
-  generationDiagnosticCode?: string;
-  generationDurationMs?: number;
-  generationEstimatedCost?: number;
-  generationProviderName?: string;
-}
-
-export type GenerationTaskEvent =
-  | { type: 'enqueue'; at: number }
-  | { type: 'start'; at: number }
-  | { type: 'succeed'; at: number; resultUrl?: string }
-  | { type: 'fail'; at: number; error: string }
-  | { type: 'cancel'; at: number }
-  | { type: 'timeout'; at: number };
-
-export interface GenerationPromptNode {
-  id: string;
-  type: string;
-  x?: number;
-  y?: number;
-  parentIds?: string[];
-  prompt?: unknown;
-  textContent?: unknown;
-  [key: string]: unknown;
-}
-
-export interface GenerationSchedulerAdapter {
-  acquire(nodeId: string): boolean;
-  release(nodeId: string, attemptId?: string): void;
-  isInFlight(nodeId: string): boolean;
-  currentAttempt(nodeId: string): string | null;
-  decorateRequest<T extends Record<string, unknown>>(request: T): T & {
-    generationAttemptId?: string;
-  };
-  subscribe(listener: () => void): () => void;
-  version(): number;
-  buildPrompt(nodes: readonly GenerationPromptNode[], node: GenerationPromptNode): string;
-  transition(task: GenerationTaskState, event: GenerationTaskEvent): GenerationTaskState;
-  getDiagnostics(): { acquired: number; rejected: number; active: number; promptBuilds: number };
-}
+import type { GenerationTaskStatus, GenerationTaskEvent, GenerationTaskState, GenerationPromptNode, GenerationSchedulerAdapter } from '../../../contracts/generationScheduler';
+export type { GenerationTaskStatus, GenerationTaskEvent, GenerationTaskState, GenerationPromptNode, GenerationSchedulerAdapter } from '../../../contracts/generationScheduler';
 
 declare global {
   interface Window {
@@ -159,11 +103,12 @@ export function createGenerationScheduler(): GenerationSchedulerAdapter {
       // Text 节点的大画布区是「正文」，下方生成面板是「转换模板」。
       // 两者必须分开保存，只在发起大模型请求时组合，否则模板会反向覆盖正文。
       const ownText = node.type.toLowerCase() === 'text' ? text(node.textContent) : '';
-      return [composeCreativePrompt([...upstreamText, ownText, independentTemplate(node)].filter(Boolean).join('\n'), node.creativePresets, node.type), node.type === 'Image' ? imageAnglePrompt(node.imageAngle) : ''].filter(Boolean).join('\n');
+      const prompts = promptComposition();
+      return [prompts.compose([...upstreamText, ownText, independentTemplate(node)].filter(Boolean).join('\n'), node.creativePresets, node.type), node.type === 'Image' ? prompts.imageAngle(node.imageAngle) : ''].filter(Boolean).join('\n');
     },
     transition(task, event) {
       if (!ALLOWED_EVENTS[task.status].includes(event.type)) {
-        throw new Error(`invalid generation transition: ${task.status} -> ${event.type}`);
+        throw new PluginError(ERRORS.generationState, `invalid generation transition: ${task.status} -> ${event.type}`, { context: { moduleId: 'generation-core', nodeId: task.nodeId, status: task.status, event: event.type } });
       }
       switch (event.type) {
         case 'enqueue':

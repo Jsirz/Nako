@@ -1,3 +1,6 @@
+import { desktopNodeError as nodeError } from '../contracts/desktopErrors.js';
+import { NODE_ERROR } from '../contracts/nodeExecution.js';
+import { createModuleLogger } from '../kernel/logger.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { executeIsolatedNode } from './nodeSandbox.js';
@@ -34,13 +37,14 @@ async function packageDirectories(root) {
 }
 
 async function loadExecutors(directory, manifest, logger) {
+  const moduleLogger = createModuleLogger('desktop-shell-observability', logger);
   const entryName = typeof manifest.entry === 'string' ? manifest.entry : 'index.mjs';
   const entry = path.resolve(directory, entryName);
-  if (!inside(directory, entry) || !entry.endsWith('.mjs')) throw new Error('Node entry must be an .mjs file inside its package directory');
+  if (!inside(directory, entry) || !entry.endsWith('.mjs')) throw nodeError(NODE_ERROR.INVALID, 'Node entry must be an .mjs file inside its package directory');
   const sources = await readNodeSources(directory);
-  if (!sources[entryName]) throw new Error('Node entry is missing');
+  if (!sources[entryName]) throw nodeError(NODE_ERROR.MISSING, 'Node entry is missing');
   const declarations = manifest.nodes.flatMap(node => node.executor ? [node.executor] : []);
-  logger?.info?.(`Loaded isolated node package: ${manifest.id}`);
+  moduleLogger.info('Loaded isolated node package', { moduleId: 'desktop-shell-observability', operation: 'nodes.load', pluginId: manifest.id });
   return Object.fromEntries(declarations.map(declaration => [declaration.method, (input, context) => executeIsolatedNode({
     sources, entry: entryName, method: declaration.method, logger, pluginId: manifest.id,
     timeoutMs: Math.min(1800000, Math.max(1000, Number(declaration.timeoutMs) || 120000)),
@@ -48,7 +52,7 @@ async function loadExecutors(directory, manifest, logger) {
 }
 
 export function createNodeDirectoryLoader({ directory, builtinDirectory, registry, logger = console } = {}) {
-  if (!directory || !registry) throw new TypeError('Node directory and registry are required');
+  if (!directory || !registry) throw nodeError(NODE_ERROR.INVALID, 'Node directory and registry are required');
   const loaded = new Map();
   let errors = [];
   let queue = Promise.resolve();
@@ -69,11 +73,11 @@ export function createNodeDirectoryLoader({ directory, builtinDirectory, registr
         const manifest = validateNodePackageManifest(JSON.parse(await readNodePackageFile(packageDirectory, path.basename(manifestFile), MAX_MANIFEST_BYTES)));
         const builtin = builtinDirectory && path.resolve(packageDirectory) === path.resolve(builtinDirectory);
         if (!builtin && (manifest.id === 'nako.canvas-core' || manifest.nodes.some(node => node.render.kind === 'native')))
-          throw new Error('原生渲染器只供宿主基础节点使用；自定义节点请使用 generic 或 iframe');
+          throw nodeError(NODE_ERROR.DENIED, '原生渲染器只供宿主基础节点使用；自定义节点请使用 generic 或 iframe');
         const executors = await loadExecutors(packageDirectory, manifest, logger);
         const registryId = manifest.id;
         const packageId = `user.nodes.${registryId}`;
-        if (next.has(registryId)) throw new Error(`Duplicate node package: ${manifest.id}`);
+        if (next.has(registryId)) throw nodeError(NODE_ERROR.CONFLICT, `Duplicate node package: ${manifest.id}`);
         next.set(registryId, { registryId, packageId, directory: packageDirectory, manifest, executors });
       } catch (error) {
         nextErrors.push({ directory: packageDirectory, message: error instanceof Error ? error.message : String(error) });
@@ -111,7 +115,7 @@ export function createNodeDirectoryLoader({ directory, builtinDirectory, registr
   async function ui(packageId, nodeType) {
     const record = loaded.get(packageId);
     const renderer = record?.manifest.nodes.find(node => node.type === nodeType)?.render;
-    if (renderer?.kind !== 'iframe') throw new Error('Node UI is not available');
+    if (renderer?.kind !== 'iframe') throw nodeError(NODE_ERROR.INVALID, 'Node UI is not available');
     return readNodePackageFile(record.directory, renderer.entry);
   }
   return Object.freeze({ directory, reload, list, ui });

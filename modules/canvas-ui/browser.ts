@@ -1,4 +1,5 @@
-import type { NakoPlugin } from '../contracts/index.js';
+import type { PluginDefinition } from '../contracts/index.js';
+import { definePlugin } from '../kernel/plugin.js';
 import { activateBrowserModule, trackBrowserResource } from '../kernel/browser';
 import { installStableCanvasClipboard } from './ui/canvas/canvasClipboard';
 import { installStableCanvasConnections } from './ui/canvas/canvasConnections';
@@ -12,8 +13,14 @@ import { installStableDesignSystem } from './ui/design/designSystem';
 import { installNodeFramework } from './ui/nodes/nodeFramework';
 import { loadNodeDirectoryPackages } from './ui/nodes/nodeDirectoryClient';
 import { nodeGenerationClient } from './ui/nodes/nodeGenerationClient';
+import type { CanvasProjectUiService } from '../contracts/projectWorkflow';
+import { instantiateWorkflowPreset } from './ui/canvas/canvasWorkflowPresets';
+import { cleanupCanvasGroups } from './ui/canvas/canvasGroups';
+import { createToast } from './ui/design/designSystem';
+import { activateModal } from './ui/design/modalFocus';
+import { observeStableEnhancement } from './ui/lifecycle/enhancementLifecycle';
 
-const plugin: NakoPlugin = {
+const plugin: PluginDefinition = {
   manifest: {
     id: 'ui.canvas-ui',
     version: '1.0.0',
@@ -22,10 +29,14 @@ const plugin: NakoPlugin = {
     reloadRequired: true,
     dependencies: { 'ui.asset-media': '^1.0.0' },
     capabilities: ['ui.canvas-ui'],
-    services: { provides: ['node.registry', 'nodes.client'] },
+    services: { provides: ['node.registry', 'nodes.client', 'ui.canvas.project'], requires: ['ui.media.recovery'] },
   },
   async activate(context) {
     await activateBrowserModule(context, async () => {
+      context.services.register<CanvasProjectUiService>('ui.canvas.project', Object.freeze({
+        instantiateWorkflowPreset, cleanupCanvasGroups, createToast, activateModal,
+        observeStableEnhancement,
+      }));
       trackBrowserResource(context, installStableCanvasClipboard());
       trackBrowserResource(context, installStableCanvasConnections());
       trackBrowserResource(context, installStableCanvasContextActions());
@@ -45,4 +56,4 @@ const plugin: NakoPlugin = {
     });
   },
 };
-export default plugin;
+export default definePlugin(plugin);

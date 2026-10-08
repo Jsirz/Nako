@@ -1,18 +1,9 @@
-import { browserServices } from '../../../kernel/browser';
+import { accountUi, generationUi, localRuntimeUi, mediaSettings } from '../../../kernel/browser';
 /** @jsxRuntime classic */
 /** @jsx React.createElement */
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
-import { mountSourceSettings } from '../../../generation-core/api/ui/generation/sourceSettings';
-import { createSourceSettingsClient } from '../../../generation-core/api/ui/generation/sourceSettingsClient';
-import { mountLocalRuntimeSettings } from '../../../local-runtime/api/ui/local/localRuntimeSettings';
-import { createLocalRuntimeClient } from '../../../local-runtime/api/ui/local/localRuntimeClient';
-import { mountMediaDownloadSettings } from '../../../asset-media/api/ui/media/mediaDownloadSettings';
-import { installMediaDownloadFileName } from '../../../asset-media/api/ui/media/mediaDownloadFileName';
-import { installLocalProfile } from '../../../identity-account/api/ui/profile/localProfile';
-import { applyStoredAvatar } from '../../../identity-account/api/ui/profile/localProfile';
-import { CanvasAppearanceSettings } from '../../../identity-account/api/ui/appearance/CanvasAppearanceSettings';
 
 type Runtime = Pick<
   typeof ReactTypes,
@@ -42,7 +33,7 @@ const sections = [
 type Section = (typeof sections)[number][0];
 
 /** Same settings surface; one owner for navigation, focus and mounted page lifetimes. */
-export function CanvasSettings(
+function useCanvasSettingsState(
   React: Runtime,
   props: CanvasSettingsProps,
   dependencies: Dependencies,
@@ -73,7 +64,7 @@ export function CanvasSettings(
           closeRef.current();
         })
       : () => {};
-    installLocalProfile();
+    accountUi().applyAvatar();
     return () => {
       avatarReadRef.current?.abort();
       pageDisposeRef.current?.();
@@ -85,17 +76,16 @@ export function CanvasSettings(
     if (!props.isOpen) return;
     const host = hostRef.current;
     setMessage('');
-    applyStoredAvatar();
+    accountUi().applyAvatar();
     if (host) {
       if (section === 'models')
-        pageDisposeRef.current = mountSourceSettings(host, createSourceSettingsClient());
+        pageDisposeRef.current = generationUi().mountSettings(host);
       else if (section === 'storage')
-        pageDisposeRef.current = mountMediaDownloadSettings(host, installMediaDownloadFileName());
+        pageDisposeRef.current = mediaSettings().mountSettings(host);
+      else if (section === 'appearance')
+        pageDisposeRef.current = accountUi().mountAppearance(host);
       else if (section === 'local-service')
-        pageDisposeRef.current = mountLocalRuntimeSettings(
-          host,
-          browserServices.__NAKO_LOCAL_RUNTIME__ ?? createLocalRuntimeClient(),
-        );
+        pageDisposeRef.current = localRuntimeUi().mountSettings(host);
     }
     return () => {
       avatarReadRef.current?.abort();
@@ -104,11 +94,8 @@ export function CanvasSettings(
     };
   }, [props.isOpen, section]);
   React.useEffect(() => {
-    if (props.isOpen) applyStoredAvatar();
+    if (props.isOpen) accountUi().applyAvatar();
   }, [props.isOpen, props.localUserName, section]);
-  if (!props.isOpen) return null;
-  const name = props.localUserName || '协作者',
-    { CloseIcon } = dependencies;
   const select = (next: Section) => {
     if (next === section) return;
     avatarReadRef.current?.abort();
@@ -122,13 +109,26 @@ export function CanvasSettings(
     avatarReadRef.current = controller;
     setMessage('正在读取头像…');
     try {
-      await installLocalProfile().setAvatarFile(file, { signal: controller.signal });
+      await accountUi().setAvatarFile(file, { signal: controller.signal });
       if (!controller.signal.aborted) setMessage('头像已更新。');
     } catch (error) {
       if (!controller.signal.aborted)
         setMessage(error instanceof Error ? error.message : '头像读取失败。');
     }
   };
+  return { section, message, dialogRef, hostRef, avatarReadRef, close, select, upload, setMessage };
+}
+
+export function CanvasSettings(React: Runtime, props: CanvasSettingsProps, dependencies: Dependencies) {
+  const state = useCanvasSettingsState(React, props, dependencies);
+  if (!props.isOpen) return null;
+  return renderCanvasSettings(React, props, dependencies, state);
+}
+
+function renderCanvasSettings(React: Runtime, props: CanvasSettingsProps, dependencies: Dependencies,
+  state: ReturnType<typeof useCanvasSettingsState>) {
+  const { section, message, dialogRef, hostRef, avatarReadRef, close, select, upload, setMessage } = state;
+  const name = props.localUserName || '协作者', { CloseIcon } = dependencies;
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[var(--nk-overlay)] backdrop-blur-sm"
@@ -273,7 +273,7 @@ export function CanvasSettings(
                             className="rounded-md px-3 py-1.5 text-xs text-[var(--nk-text-muted)]"
                             onClick={() => {
                               avatarReadRef.current?.abort();
-                              installLocalProfile().clearAvatar();
+                              accountUi().clearAvatar();
                               setMessage('已恢复默认头像。');
                             }}
                           >
@@ -299,8 +299,6 @@ export function CanvasSettings(
                   </p>
                 </div>
               </div>
-            ) : section === 'appearance' ? (
-              <CanvasAppearanceSettings />
             ) : (
               <div ref={hostRef} data-nako-settings-page={section} />
             )}

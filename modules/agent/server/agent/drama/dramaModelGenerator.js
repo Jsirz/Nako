@@ -1,9 +1,8 @@
 import { Agent } from '@earendil-works/pi-agent-core';
 import { createModelAdapter, textContent, imageBlocks } from '../../harness/modelAdapter.js';
-import { resolveModel } from '../../harness/modelConfig.js';
-export { textModelConnection, modelParameters } from '../../harness/modelConfig.js';
+import { AgentTextGenerationError } from '../../../../contracts/agentTextGeneration.js';
+import { ERRORS } from '../../../../contracts/index.js';
 import { setTimeout, clearTimeout } from 'node:timers';
-import { loadModelCatalog } from '../../../../generation-core/api/server/config/modelCatalog.js';
 import {
   classifyGenerationError,
   getUpstreamStatus,
@@ -44,8 +43,7 @@ function normalizeMessages(messages) {
 
 /** Uses the same streaming transport as existing text providers, with role-safe planning messages. */
 export function createDramaModelGenerator({
-  modelCatalog = loadModelCatalog,
-  getCredentials = () => ({}),
+  /** @type {import('../../../../contracts/agentTextGeneration.js').AgentTextGenerationService} */
   textTransport,
   defaultModels,
   readImages,
@@ -63,11 +61,9 @@ export function createDramaModelGenerator({
     onToken,
     signal,
   }) {
-    const model = resolveModel(
+    const model = await textTransport.resolveModel(
       defaultModels ? await defaultModels.resolve('text', requested) : requested,
-      typeof modelCatalog === 'function' ? modelCatalog() : modelCatalog,
     );
-    const endpoint = model.endpoint['multimodal-chat'];
     const inputMessages = normalizeMessages(messages);
     requireDramaProjectId(projectId);
     const images = await readImages(media, {
@@ -79,8 +75,7 @@ export function createDramaModelGenerator({
     const adapter = createModelAdapter({
       modelConfig: model,
       modelParams,
-      getCredentials,
-      textTransport,
+      textGeneration: textTransport,
     });
     const agent = new Agent({
       streamFn: adapter.streamFn,
@@ -118,7 +113,7 @@ export function createDramaModelGenerator({
       controller.signal.throwIfAborted();
       const answer = agent.state.messages.at(-1);
       if (answer?.stopReason !== 'stop')
-        throw adapter.error || new Error('Incomplete planning response');
+        throw adapter.error || new AgentTextGenerationError(ERRORS.providerRequest, '文本规划响应未完整结束');
       const result = { text: textContent(answer.content) };
       if (
         typeof result?.text !== 'string' ||
@@ -136,7 +131,7 @@ export function createDramaModelGenerator({
       const cancelled =
         !timedOut && (controller.signal.aborted || classified.code === 'GENERATION_CANCELLED');
       const safe =
-        error instanceof DramaPlanError
+        error instanceof DramaPlanError || error instanceof AgentTextGenerationError
           ? error
           : new DramaPlanError(
               cancelled

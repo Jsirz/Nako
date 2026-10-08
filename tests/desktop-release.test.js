@@ -47,6 +47,21 @@ it('rejects missing platforms before publishing', async () => {
   await expect(prepareRelease(directory, '1.5.5')).rejects.toThrow('Missing release asset');
 });
 
+it('publishes checksummed delta assets for both Mac architectures', async () => {
+  const directory = await fixture();
+  for (const arch of ['arm64', 'x64']) {
+    const source = path.join(directory, `Nako-mac-${arch}`);
+    const name = `Nako-1.5.5-mac-${arch}-from-1.5.4.delta`;
+    await writeFile(path.join(source, name), 'signed-delta-fixture');
+    const checksums = path.join(source, `SHA256SUMS-mac-${arch}.txt`);
+    await writeFile(checksums, await readFile(checksums, 'utf8') + `${await sha256(path.join(source, name))}  ${name}\n`);
+    const feed = path.join(source, 'appcast.xml');
+    await writeFile(feed, await readFile(feed, 'utf8') + `\n${name}`);
+  }
+  const assets = await prepareRelease(directory, '1.5.5');
+  expect(assets.filter(file => file.endsWith('.delta'))).toHaveLength(2);
+});
+
 it('rejects modified installers before publishing', async () => {
   const directory = await fixture();
   await writeFile(path.join(directory, 'Nako-win-x64/Nako-1.5.5-windows-x64-setup.exe'), 'corrupted');

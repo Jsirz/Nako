@@ -31,21 +31,21 @@ function TagDot({ color }: { color: TextTagColor }) {
   return <span className="af-text-tags-dot" data-tag-color={color} aria-hidden="true" />;
 }
 
-function TextTagsPopover({
-  id,
-  trigger,
-  tags,
-  readError,
-  onChange,
-  onClose,
-}: {
+interface TextTagsPopoverProps {
   id: string;
   trigger: RefObject<HTMLButtonElement | null>;
   tags: TextNodeTag[];
   readError: string;
   onChange(tags: TextNodeTag[]): void;
   onClose(restoreFocus?: boolean): void;
-}) {
+}
+
+function TextTagsPopover(props: TextTagsPopoverProps) {
+  const state = useTextTagsPopoverState(props);
+  return renderTextTagsPopover(props, state);
+}
+
+function useTextTagsPopoverState({ trigger, tags, readError, onChange, onClose }: TextTagsPopoverProps) {
   const panel = useRef<HTMLDivElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
@@ -189,6 +189,16 @@ function TextTagsPopover({
     }
   }
 
+  return { panel, nameInput, name, setName, color, setColor, error, setError,
+    customTags, nameError, feedback, update, toggle, addCustomTag, onKeyDown };
+}
+
+function renderTextTagsPopover(
+  { id, tags, onClose }: TextTagsPopoverProps,
+  { panel, nameInput, name, setName, color, setColor, error, setError,
+    customTags, nameError, feedback, update, toggle, addCustomTag, onKeyDown }:
+    ReturnType<typeof useTextTagsPopoverState>,
+) {
   return createPortal(
     <div
       id={id}

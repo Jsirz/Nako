@@ -1,4 +1,5 @@
-import { PluginError, ERRORS, validateProviderDescriptor, validatePluginManifest } from '../contracts/index.js';
+import { ERRORS, validateProviderDescriptor, validatePluginManifest } from '../contracts/index.js';
+import { providerError, wrapProviderError } from '../contracts/providerErrors.js';
 
 const PRIVATE_KEY = /(?:API_KEY|ACCESS_KEY|SECRET_KEY|TOKEN|PASSWORD)$/;
 const REQUEST_CONTEXT = new Set(['LOGS_DIR', 'LIBRARY_DIR', 'LIBRARY_MEDIA_DIR', 'HTTPS_PROXY', 'signal', 'generationSignal',
@@ -12,7 +13,7 @@ export function defineProviderPlugin(manifest, descriptors, loadHandlers) {
     return Object.freeze({ ...value, kinds: Object.freeze([...value.kinds]), requiredSecrets: Object.freeze([...value.requiredSecrets]) });
   });
   if (!manifest.providers || JSON.stringify(manifest.providers) !== JSON.stringify(descriptors))
-    throw new PluginError(ERRORS.invalidManifest, `Provider descriptors must match manifest: ${manifest.id}`);
+    throw providerError(`Provider descriptors must match manifest: ${manifest.id}`, { code: ERRORS.invalidManifest, providerId: manifest.id, operation: 'define-plugin' });
   let active = false;
   let inFlight = 0;
   return {
@@ -25,21 +26,21 @@ export function defineProviderPlugin(manifest, descriptors, loadHandlers) {
       context.onDispose(() => { active = false; });
       for (const descriptor of definitions) {
         const implementation = handlers[descriptor.name];
-        if (!implementation) throw new PluginError(ERRORS.invalidManifest, `Missing provider implementation: ${descriptor.name}`);
+        if (!implementation) throw providerError(`Missing provider implementation: ${descriptor.name}`, { code: ERRORS.invalidManifest, providerId: descriptor.name, operation: 'activate' });
         const handler = { id: descriptor.name, capabilities: () => [{ id: descriptor.name, kinds: descriptor.kinds, execution: descriptor.execution }] };
         const methods = descriptor.kinds.flatMap(kind => {
           const suffix = kind[0].toUpperCase() + kind.slice(1);
           if (typeof implementation[`generate${suffix}`] !== 'function')
-            throw new PluginError(ERRORS.invalidManifest, `Missing generation method: ${descriptor.name}.${kind}`);
+            throw providerError(`Missing generation method: ${descriptor.name}.${kind}`, { code: ERRORS.invalidManifest, providerId: descriptor.name, operation: 'activate' });
           const canRecover = typeof implementation[`canRecover${suffix}`] === 'function';
           const recover = typeof implementation[`recover${suffix}`] === 'function';
-          if (canRecover !== recover) throw new PluginError(ERRORS.invalidManifest, `Incomplete recovery contract: ${descriptor.name}.${kind}`);
+          if (canRecover !== recover) throw providerError(`Incomplete recovery contract: ${descriptor.name}.${kind}`, { code: ERRORS.invalidManifest, providerId: descriptor.name, operation: 'activate' });
           return [`generate${suffix}`, ...(recover ? [`canRecover${suffix}`, `recover${suffix}`] : [])];
         });
         for (const method of methods) {
           const value = implementation[method];
           const invoke = args => {
-            if (!active || context.signal.aborted) throw new PluginError(ERRORS.inactive, `Provider disabled: ${descriptor.name}`);
+            if (!active || context.signal.aborted) throw providerError(`Provider disabled: ${descriptor.name}`, { code: ERRORS.inactive, providerId: descriptor.name, operation: method });
             const contextIndex = /^(?:canRecover|recover)/.test(method) ? 2 : 1;
             const supplied = args[contextIndex] || {};
               // Secrets are selected by host grants, never by caller-supplied provider config.
@@ -59,9 +60,16 @@ export function defineProviderPlugin(manifest, descriptors, loadHandlers) {
               args[contextIndex] = scoped;
               return value.apply(implementation, args);
           };
-          handler[method] = method.startsWith('canRecover') ? (...args) => invoke(args) : async (...args) => {
+          handler[method] = method.startsWith('canRecover')
+            ? (...args) => {
+              try { return invoke(args); }
+              catch (error) { throw wrapProviderError(error, { providerId: descriptor.name, operation: method }); }
+            }
+            : async (...args) => {
             inFlight++;
-            try { return await invoke(args); } finally { inFlight--; }
+            try { return await invoke(args); }
+            catch (error) { throw wrapProviderError(error, { providerId: descriptor.name, operation: method }); }
+            finally { inFlight--; }
           };
         }
         const wrapped = Object.freeze(handler);

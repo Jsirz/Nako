@@ -1,3 +1,4 @@
+import { PluginError } from './errors.js';
 /** Public node execution errors, capability names and supported JSON schema subset. */
 export const NODE_CAPABILITIES = Object.freeze([
   'models.generate', 'media.inspect', 'media.read', 'media.compose', 'workflow.execute', 'project.read', 'storage.get', 'storage.set',
@@ -8,7 +9,14 @@ export const NODE_ERROR = Object.freeze({
   CONFLICT: 'NODE_REQUEST_CONFLICT', REVISION: 'REVISION_CONFLICT', BUDGET: 'NODE_BUDGET_EXCEEDED',
   UNCONFIRMED: 'NODE_CONFIRMATION_REQUIRED', FAILED: 'NODE_EXECUTION_FAILED', NOT_FOUND: 'NODE_RUN_NOT_FOUND',
 });
-export function nodeError(code, message, details) { return Object.assign(new Error(message), { code, details }); }
+export function nodeError(code, message, details) {
+  const status = code === NODE_ERROR.DENIED ? 403 : code === NODE_ERROR.NOT_FOUND ? 404
+    : code === NODE_ERROR.CANCELLED ? 499 : code === NODE_ERROR.TIMEOUT ? 504
+      : code === NODE_ERROR.FAILED ? 500 : 400;
+  return Object.assign(new PluginError(code, message, {
+    status, context: { moduleId: 'contracts', operation: 'nodeExecution' },
+  }), { details });
+}
 export const jsonClone = value => JSON.parse(JSON.stringify(value));
 export const isNodeRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 

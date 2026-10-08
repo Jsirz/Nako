@@ -4,6 +4,7 @@ import { USER_PROVIDER_SECRET_KEYS } from '../../modules/contracts/providerSecre
 import express from 'express';
 import crypto from 'crypto';
 import path from 'path';
+import { mkdirSync } from 'node:fs';
 import {
   createLocalRuntimeLifecycle,
   describeListenTarget,
@@ -63,6 +64,7 @@ const parentChannel = createParentChannel();
 const authenticationConfiguration = inspectLocalAuthenticationConfiguration({
   runtimePaths: RUNTIME_PATHS,
   port: PORT,
+  directories: { ensureDirectory: (directory) => mkdirSync(directory, { recursive: true }) },
 });
 
 function runtimeInstanceMatches(candidate) {

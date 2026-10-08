@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS, identityError } from '../../../contracts/identityErrors.js';
 import {
   createActiveUserAuthenticationContext,
   UserScopeError,
@@ -22,7 +23,9 @@ function publicError(response, status, code, message) {
 function parseTrustedOrigins(values) {
   const origins = new Set();
   for (const value of values || []) {
-    const parsed = new URL(value);
+    let parsed;
+    try { parsed = new URL(value); }
+    catch { throw identityError(IDENTITY_ERRORS.originInvalid, 'Trusted browser origin is invalid', 'authentication.origins'); }
     if (
       !['http:', 'https:'].includes(parsed.protocol) ||
       parsed.username ||
@@ -31,10 +34,10 @@ function parseTrustedOrigins(values) {
       parsed.search ||
       parsed.hash
     )
-      throw new Error('Trusted browser origin is invalid');
+      throw identityError(IDENTITY_ERRORS.originInvalid, 'Trusted browser origin is invalid', 'authentication.origins');
     origins.add(parsed.origin);
   }
-  if (origins.size === 0) throw new Error('At least one trusted browser origin is required');
+  if (origins.size === 0) throw identityError(IDENTITY_ERRORS.originInvalid, 'At least one trusted browser origin is required', 'authentication.origins');
   return origins;
 }
 
@@ -85,7 +88,7 @@ export function createActiveUserContext({
   clock = () => new Date(),
 } = {}) {
   if (typeof userScopeResolver?.ensureDirectories !== 'function') {
-    throw new Error('User-scope resolver is missing');
+    throw identityError(IDENTITY_ERRORS.authenticationInvalid, 'User-scope resolver is missing', 'authentication.create');
   }
   const issuedAt = Math.floor(clock().getTime() / 1_000);
   const identity = Object.freeze({
@@ -103,7 +106,7 @@ export function createActiveUserContext({
 
 export function attachActiveUserContext(context) {
   if (!context?.identity || !context?.scope) {
-    throw new Error('Active-user context is invalid');
+    throw identityError(IDENTITY_ERRORS.authenticationInvalid, 'Active-user context is invalid', 'authentication.attach');
   }
   return (request, _response, next) => {
     REQUEST_CONTEXTS.set(request, context);
@@ -114,7 +117,9 @@ export function attachActiveUserContext(context) {
 export function getAuthenticatedRequest(request) {
   const context = REQUEST_CONTEXTS.get(request);
   if (!context) {
-    throw new UserScopeError('请求缺少服务端认证上下文', 'SERVER_AUTH_CONTEXT_REQUIRED');
+    const error = new UserScopeError('请求缺少服务端认证上下文', IDENTITY_ERRORS.authenticationRequired, 403);
+    error.context = identityError(IDENTITY_ERRORS.authenticationRequired, error.message, 'authentication.request', error.status).context;
+    throw error;
   }
   return context;
 }

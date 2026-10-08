@@ -25,8 +25,6 @@ export default defineApplicationPlugin({
     const { createDramaPlanStore } = context.services.get('agent.persistence');
     const generationRuntime = context.services.get('generation.runtime');
     const executionWorkflowRuntime = context.services.get('workflow.execution');
-    const getAgentCredentials = (name) =>
-      context.services.get('generation.textTransport').credentials(name);
     const dramaPlanStore = createDramaPlanStore({
       libraryDirectory: getWorkspacePaths().LIBRARY_DIR,
     });
@@ -66,7 +64,6 @@ export default defineApplicationPlugin({
           readImages: context.services.get('media.agent').imageContent,
           textTransport: context.services.get('generation.textTransport'),
           defaultModels: context.services.get('generation.defaults'),
-          getCredentials: getAgentCredentials,
         }),
         executionService: dramaExecutionService,
         applicationContext,

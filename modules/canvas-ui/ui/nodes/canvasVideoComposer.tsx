@@ -18,29 +18,16 @@ import { declaredNodeOutput } from '../../../contracts/nodeValues.js';
 import { externalReferenceMedia } from '../../../generation-core/api/ui/generation/canvasGenerationRequests';
 export function CanvasVideoComposer(
   React: ComposerRuntime,
-  {
-    data: node,
-    isLoading = false,
-    connectedImageNodes: assets = [],
-    onUpdate,
-    onGenerate,
-    onSelect,
-  }: MediaComposerProps,
-  {
-    models,
-    ratios,
-    resolutions,
-    PromptEditor,
-    ConnectedAssets,
-    ModelSelector,
-    Dimensions,
-    AdvancedSettings,
-    Tooltip,
-    CollapseIcon,
-    SettingsIcon,
-    GenerateIcon,
-  }: MediaComposerComponents,
+  props: MediaComposerProps,
+  components: MediaComposerComponents,
 ) {
+  const state = useVideoComposerState(React, props, components);
+  return renderVideoComposer(React, props, components, state);
+}
+
+function useVideoComposerState(React: ComposerRuntime, props: MediaComposerProps, components: MediaComposerComponents) {
+  const { data: node, isLoading = false, connectedImageNodes: assets = [], onUpdate } = props;
+  const { models, ratios, resolutions } = components;
   const [advancedOpen, setAdvancedOpen] = React.useState(false),
     [editing, setEditing] = React.useState(false);
   const model = models.find(
@@ -139,22 +126,17 @@ export function CanvasVideoComposer(
       onUpdate(node.id, changeComposerModel('video', node, next, ratios, resolutions));
   };
 
-  return (
-    <div
-      data-nako-generation-composer={'video'}
-      data-nako-effective-video-mode={effectiveMode}
-      data-nako-video-mode-supported={modeSupported ? 'true' : 'false'}
-      className={
-        'p-2.5 rounded-lg shadow-2xl cursor-default w-full transition-colors duration-300 bg-[var(--nk-surface-raised)] border border-[var(--nk-border)]'
-      }
-      onPointerDown={(J) => {
-        if (J.button !== 1) J.stopPropagation();
-      }}
-      onContextMenu={(J) => J.stopPropagation()}
-      onDoubleClick={(J) => J.stopPropagation()}
-      onClick={() => onSelect(node.id)}
-    >
-      {selectableModes.length > 0 && (
+  return { advancedOpen, setAdvancedOpen, editing, setEditing, model, inputs, videoModes,
+    selectableModes, effectiveMode, modeSupported, modeWarning, modeDefinition, fixedDuration,
+    durationParam, remainingParams, duration, busy, hasInput, checking, blocked, warning,
+    disabled, changeModel };
+}
+
+function renderVideoModeTabs(
+  React: ComposerRuntime, { data: node, onUpdate }: MediaComposerProps,
+  { selectableModes, videoModes, inputs, effectiveMode, busy }: ReturnType<typeof useVideoComposerState>,
+) {
+  return selectableModes.length > 0 && (
         <div
           data-nako-video-mode-tabs={'true'}
           role={'tablist'}
@@ -227,7 +209,31 @@ export function CanvasVideoComposer(
             );
           })}
         </div>
-      )}
+      );
+}
+
+function renderVideoComposer(
+  React: ComposerRuntime, props: MediaComposerProps, components: MediaComposerComponents,
+  state: ReturnType<typeof useVideoComposerState>,
+) {
+  const { data: node, readOnly = false, connectedImageNodes: assets = [], onUpdate, onGenerate, onSelect } = props;
+  const { models, ratios, resolutions, PromptEditor, ConnectedAssets, ModelSelector, Dimensions,
+    AdvancedSettings, Tooltip, CollapseIcon, SettingsIcon, GenerateIcon } = components;
+  const { advancedOpen, setAdvancedOpen, editing, setEditing, model, effectiveMode, modeSupported,
+    modeWarning, modeDefinition, fixedDuration, durationParam, remainingParams, duration, busy,
+    hasInput, checking, blocked, warning, disabled, changeModel } = state;
+  return (
+    <div
+      data-nako-generation-composer={'video'}
+      data-nako-effective-video-mode={effectiveMode}
+      data-nako-video-mode-supported={modeSupported ? 'true' : 'false'}
+      className={'p-2.5 rounded-lg shadow-2xl cursor-default w-full transition-colors duration-300 bg-[var(--nk-surface-raised)] border border-[var(--nk-border)]'}
+      onPointerDown={(event) => { if (event.button !== 1) event.stopPropagation(); }}
+      onContextMenu={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onClick={() => onSelect(node.id)}
+    >
+      {renderVideoModeTabs(React, props, state)}
       {modeDefinition?.referenceVideoDuration && (
         <p className="mb-2 text-xs text-[var(--nk-text-muted)]" role="status">
           编辑模式跟随原视频比例和时长；参考视频须为 {modeDefinition.referenceVideoDuration.min}～
@@ -244,7 +250,7 @@ export function CanvasVideoComposer(
         className={`mb-1 relative group/prompt overflow-hidden prompt-editor-container custom-scrollbar ${editing ? 'is-prompt-editing cursor-text' : 'cursor-pointer'}`}
         onClick={(J) => {
           J.stopPropagation();
-          setEditing(true);
+          if (!readOnly) setEditing(true);
         }}
       >
         <CreativePromptTokens data={node} onUpdate={onUpdate} disabled={busy} />
@@ -254,7 +260,7 @@ export function CanvasVideoComposer(
           onChange={(J) => onUpdate(node.id, { prompt: J })}
           connectedAssets={assets || []}
           isDark={!0}
-          disableDirectEdit={!editing}
+          disableDirectEdit={readOnly || !editing}
           onBlur={() => setEditing(!1)}
           key={`mention-editor-${node.id}`}
         />

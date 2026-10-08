@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import '../apps/canvas/installModelCatalog';
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';

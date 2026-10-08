@@ -1,3 +1,5 @@
+import { PluginError } from '../../../contracts/errors.js';
+import { GENERATION_ERROR_CODES } from '../../../contracts/generationErrors.js';
 import { annotateProviderError } from '../../../desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
 import {
   classifyGenerationError,
@@ -13,19 +15,21 @@ const PROVIDER_METHODS = Object.freeze({
   text: 'generateText',
 });
 
-export class GenerationTaskError extends Error {
+export class GenerationTaskError extends PluginError {
   constructor(details) {
-    super(details.message);
+    super(details.code || GENERATION_ERROR_CODES.failed, details.message, {
+      status: details.status, context: { moduleId: 'generation-core', operation: 'executeGenerationTask', ...details.context },
+    });
     this.name = 'GenerationTaskError';
-    Object.assign(this, details);
+    const { context: _context, ...fields } = details;
+    Object.assign(this, fields);
   }
 }
 
 function createCancelledError() {
-  return Object.assign(new Error('Generation cancelled'), {
-    name: 'AbortError',
-    code: 'GENERATION_CANCELLED',
-  });
+  return Object.assign(new PluginError(GENERATION_ERROR_CODES.cancelled, 'Generation cancelled', {
+    context: { moduleId: 'generation-core', operation: 'executeGenerationTask' },
+  }), { name: 'AbortError' });
 }
 
 function waitForProvider(providerPromise, signal) {
@@ -66,9 +70,10 @@ export async function executeGenerationTask({
   const method = PROVIDER_METHODS[kind];
   if (!method || typeof provider?.[method] !== 'function') {
     throw new GenerationTaskError({
-      code: 'UNSUPPORTED_GENERATION_PROVIDER',
+      code: GENERATION_ERROR_CODES.unsupportedProvider,
       status: 400,
       retryable: false,
+      context: { nodeId, modelName, providerName, kind },
       message: `当前模型不支持${kind || '此类'}生成。`,
     });
   }
@@ -111,9 +116,10 @@ export async function executeGenerationTask({
   if (!lease.ok) {
     throw new GenerationTaskError({
       ...lease,
-      status: 429,
-      retryable: true,
-      message: '模型当前并发已满，请稍后重试。',
+      context: { nodeId, modelName, providerName, attemptId: request.generationAttemptId },
+      status: lease.status ?? 429,
+      retryable: lease.retryable ?? true,
+      message: lease.message || '模型当前并发已满，请稍后重试。',
     });
   }
 
@@ -125,7 +131,8 @@ export async function executeGenerationTask({
     if (request.agentAuthorizationId !== undefined) {
       if (!appContext?.GENERATION_BUDGETS)
         throw new GenerationTaskError({
-          code: 'BUDGET_UNAVAILABLE',
+          code: GENERATION_ERROR_CODES.budgetUnavailable,
+          context: { nodeId: lease.nodeId, attemptId: lease.attemptId, modelName },
           status: 503,
           retryable: false,
           message: '生成授权服务不可用。',
@@ -146,7 +153,8 @@ export async function executeGenerationTask({
         });
       } catch (error) {
         throw new GenerationTaskError({
-          code: error.code || 'BUDGET_UNAVAILABLE',
+          code: error.code || GENERATION_ERROR_CODES.budgetUnavailable,
+          context: { nodeId: lease.nodeId, attemptId: lease.attemptId, modelName },
           status: error.status || 503,
           retryable: false,
           message: error.message || '生成授权未确认。',
@@ -215,84 +223,50 @@ export async function executeGenerationTask({
     coordinator.complete(lease.nodeId, savedResult, lease.attemptId);
     return savedResult;
   } catch (error) {
-    const currentTask = coordinator.getTask(lease.nodeId);
-    const remoteTask =
-      currentTask?.remoteTask ||
-      (currentTask?.remoteTasks?.length === 1 ? currentTask.remoteTasks[0] : null);
-    if (error?.diagnostics && remoteTask?.taskId)
-      annotateProviderError(error, { taskId: remoteTask.taskId });
-    if (
-      error?.submissionUncertain ||
-      (currentTask?.attemptId === lease.attemptId &&
-        currentTask.status === 'unknown' &&
-        currentTask.code === 'GENERATION_SUBMISSION_UNKNOWN')
-    ) {
-      const details = {
-        code: 'GENERATION_SUBMISSION_UNKNOWN',
-        status: 503,
-        retryable: false,
-        message:
-          '生成提交响应中断，无法确认服务商是否已接单。请先核对服务商任务记录，避免重复生成。',
-      };
-      coordinator.finalizeUnknown(
-        lease.nodeId,
-        { ...details, error: details.message },
-        lease.attemptId,
-      );
-      throw new GenerationTaskError({
-        ...details,
-        upstreamStatus: getUpstreamStatus(error),
-        ...(error?.diagnostics ? { diagnostics: error.diagnostics } : {}),
-      });
-    }
-    // Batches still need to recover earlier successful children. A confirmed
-    // single-image failure is already final and does not need another query.
-    const confirmedImageFailure =
-      kind === 'image' && currentTask?.requestedCount === 1 && error?.providerTaskFailed === true;
-    if (
-      remoteSubmitted &&
-      (!error?.providerTaskFailed || (kind === 'image' && !confirmedImageFailure)) &&
-      coordinator.getTask(lease.nodeId)?.attemptId === lease.attemptId &&
-      ['loading', 'unknown'].includes(coordinator.getTask(lease.nodeId)?.status)
-    ) {
-      const details = {
-        code: 'GENERATION_OBSERVATION_INTERRUPTED',
-        status: 503,
-        retryable: false,
-        message: '原生成任务已提交，正在核对结果，请勿重复生成。',
-      };
-      coordinator.finalizeUnknown(
-        lease.nodeId,
-        { ...details, error: details.message },
-        lease.attemptId,
-      );
-      throw new GenerationTaskError({
-        ...details,
-        upstreamStatus: getUpstreamStatus(error),
-        ...(error?.diagnostics ? { diagnostics: error.diagnostics } : {}),
-      });
-    }
-    const classified = confirmedImageFailure
-      ? confirmedGenerationFailure(error)
-      : error instanceof GenerationTaskError
-        ? error
-        : classifyGenerationError(error);
-    coordinator.fail(
-      lease.nodeId,
-      {
-        code: classified.code,
-        error: classified.message,
-        retryable: classified.retryable,
-      },
-      lease.attemptId,
-    );
-    throw new GenerationTaskError({
-      ...classified,
-      message: classified.message,
-      upstreamStatus: getUpstreamStatus(error),
-      ...(error?.diagnostics ? { diagnostics: error.diagnostics } : {}),
-    });
+    handleExecutionFailure({ error, kind, coordinator, lease, remoteSubmitted, modelName, providerName });
   } finally {
     request.signal?.removeEventListener('abort', cancelFromCaller);
   }
+}
+
+function handleExecutionFailure({ error, kind, coordinator, lease, remoteSubmitted, modelName, providerName }) {
+  const currentTask = coordinator.getTask(lease.nodeId);
+  const remoteTask = currentTask?.remoteTask ||
+    (currentTask?.remoteTasks?.length === 1 ? currentTask.remoteTasks[0] : null);
+  if (error?.diagnostics && remoteTask?.taskId)
+    annotateProviderError(error, { taskId: remoteTask.taskId });
+  if (error?.submissionUncertain ||
+    (currentTask?.attemptId === lease.attemptId && currentTask.status === 'unknown' &&
+      currentTask.code === 'GENERATION_SUBMISSION_UNKNOWN')) {
+    rejectUncertainTask({ error, coordinator, lease,
+      code: GENERATION_ERROR_CODES.submissionUnknown,
+      message: '生成提交响应中断，无法确认服务商是否已接单。请先核对服务商任务记录，避免重复生成。' });
+  }
+  // Batch failures still reconcile earlier successful children.
+  const confirmedImageFailure = kind === 'image' && currentTask?.requestedCount === 1 &&
+    error?.providerTaskFailed === true;
+  if (remoteSubmitted &&
+    (!error?.providerTaskFailed || (kind === 'image' && !confirmedImageFailure)) &&
+    coordinator.getTask(lease.nodeId)?.attemptId === lease.attemptId &&
+    ['loading', 'unknown'].includes(coordinator.getTask(lease.nodeId)?.status)) {
+    rejectUncertainTask({ error, coordinator, lease,
+      code: GENERATION_ERROR_CODES.observationInterrupted,
+      message: '原生成任务已提交，正在核对结果，请勿重复生成。' });
+  }
+  const classified = confirmedImageFailure ? confirmedGenerationFailure(error)
+    : error instanceof GenerationTaskError ? error : classifyGenerationError(error);
+  coordinator.fail(lease.nodeId, { code: classified.code, error: classified.message,
+    retryable: classified.retryable }, lease.attemptId);
+  throw new GenerationTaskError({ ...classified, message: classified.message,
+    context: { nodeId: lease.nodeId, attemptId: lease.attemptId, modelName, providerName },
+    upstreamStatus: getUpstreamStatus(error),
+    ...(error?.diagnostics ? { diagnostics: error.diagnostics } : {}) });
+}
+
+function rejectUncertainTask({ error, coordinator, lease, code, message }) {
+  const details = { code, status: 503, retryable: false, message };
+  coordinator.finalizeUnknown(lease.nodeId, { ...details, error: message }, lease.attemptId);
+  throw new GenerationTaskError({ ...details, upstreamStatus: getUpstreamStatus(error),
+    context: { nodeId: lease.nodeId, attemptId: lease.attemptId },
+    ...(error?.diagnostics ? { diagnostics: error.diagnostics } : {}) });
 }

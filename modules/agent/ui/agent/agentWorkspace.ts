@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 
 export interface AgentWorkspace {
@@ -49,9 +50,9 @@ export function createAgentWorkspace(project: string, fetcher: typeof fetch = gl
             signal: AbortSignal.timeout(10000),
           });
           const receipt = await response.json();
-          if (!response.ok) throw new Error(receipt.error || '助手草稿保存失败。');
+          if (!response.ok) throw new AgentOperationError(receipt.error || '助手草稿保存失败。', { operation: 'save-agent-workspace', projectId: project, status: response.status });
           if (receipt.projectId !== project || receipt.revision !== revision + 1)
-            throw new Error('助手草稿保存未得到确认。');
+            throw new AgentOperationError('助手草稿保存未得到确认。', { operation: 'save-agent-workspace', projectId: project, revision });
           revision = receipt.revision;
           emit({ dirty: value !== state.value, error: '' });
         } catch (problem) {
@@ -77,14 +78,14 @@ export function createAgentWorkspace(project: string, fetcher: typeof fetch = gl
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
       });
       const receipt = await response.json();
-      if (!response.ok) throw new Error(receipt.error || '助手草稿读取失败。');
+      if (!response.ok) throw new AgentOperationError(receipt.error || '助手草稿读取失败。', { operation: 'read-agent-workspace', projectId: project, status: response.status });
       if (
         receipt.projectId !== project ||
         !Number.isSafeInteger(receipt.revision) ||
         !receipt.value ||
         typeof receipt.value.prompt !== 'string'
       )
-        throw new Error('助手草稿格式无效。');
+        throw new AgentOperationError('助手草稿格式无效。', { operation: 'read-agent-workspace', projectId: project });
       if (active && !controller.signal.aborted) {
         revision = receipt.revision;
         emit({ value: { ...empty(), ...receipt.value }, ready: true, error: '' });

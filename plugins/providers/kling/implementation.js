@@ -5,6 +5,8 @@
 import crypto from 'crypto';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, inputError, submitError } = providerErrorsFor('kling');
 
 /**
  * 生成可灵 API 所需的 JWT Token
@@ -55,9 +57,9 @@ function buildKlingV3Body({ prompt, mode, duration, aspectRatio, videoMode, allI
     };
 
     if (videoMode === 'motion-control') {
-        if (cleanImages.length < 1) throw new Error('Kling V3 动作控制至少需要 1 张图片。');
+        if (cleanImages.length < 1) throw inputError('Kling V3 动作控制至少需要 1 张图片。');
         // 动作控制模式下，视频输入必须是网络 URL（不接受 Base64）
-        if (!motionVideoUrl) throw new Error('Kling V3 动作控制需要视频网络地址(URL)。');
+        if (!motionVideoUrl) throw inputError('Kling V3 动作控制需要视频网络地址(URL)。');
 
         body.image_url = allImages?.[0] || cleanImages[0];
         body.video_url = motionVideoUrl;
@@ -94,16 +96,16 @@ function buildKlingOmniBody({ prompt, mode, duration, aspectRatio, videoMode, al
     };
 
     if (videoMode === 'omni-image-to-video') {
-        if (omniImageList.length === 0) throw new Error('Kling Omni 图生视频至少需要 1 张图片。');
+        if (omniImageList.length === 0) throw inputError('Kling Omni 图生视频至少需要 1 张图片。');
         body.image_list = omniImageList;
     } else if (videoMode === 'omni-first-last-frame') {
-        if (omniImageList.length < 2) throw new Error('Kling Omni 首尾帧模式需要 2 张图片。');
+        if (omniImageList.length < 2) throw inputError('Kling Omni 首尾帧模式需要 2 张图片。');
         body.image_list = [
             { image_url: omniImageList[0].image_url, type: 'first_frame' },
             { image_url: omniImageList[1].image_url, type: 'end_frame' }
         ];
     } else if (videoMode === 'omni-video-edit' || videoMode === 'omni-video-ref') {
-        if (cleanVideos.length === 0) throw new Error('Kling Omni 视频模式至少需要 1 个视频参考。');
+        if (cleanVideos.length === 0) throw inputError('Kling Omni 视频模式至少需要 1 个视频参考。');
         if (omniImageList.length > 0) body.image_list = omniImageList;
         body.video_list = [{
             video_url: cleanVideos[0],
@@ -124,7 +126,7 @@ export const KlingVideoProvider = {
         } = params;
 
         if (!KLING_ACCESS_KEY || !KLING_SECRET_KEY) {
-            throw new Error("Kling API Key 未配置。");
+            throw credentialError("Kling API Key 未配置。");
         }
 
         const token = generateKlingToken(KLING_ACCESS_KEY, KLING_SECRET_KEY);
@@ -189,7 +191,7 @@ export const KlingVideoProvider = {
             logBody: body
         });
 
-        if (result.code !== 0) throw new Error(`Kling 提交失败: ${result.message}`);
+        if (result.code !== 0) throw submitError(`Kling 提交失败: ${result.message}`, { upstreamCode: result.code });
 
         const taskId = result.data?.task_id;
         

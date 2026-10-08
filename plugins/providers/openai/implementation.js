@@ -6,6 +6,10 @@ import FormData from 'form-data';
 import { getModelDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
+const { credentialError, configError, inputError, responseError } = providerErrorsFor('openai');
+const logger = createModuleLogger('generation-providers');
 
 /**
  * GPT 文本多模态处理器（Chat Completions）
@@ -15,8 +19,8 @@ export const GptTextProvider = {
         const { OPENAI_API_KEY, LOGS_DIR } = config;
         const { nodeId, prompt, textModel, detail, url: finalUrl } = params;
 
-        if (!OPENAI_API_KEY) throw new Error("OpenAI API Key 未配置。");
-        if (!finalUrl) throw new Error(`[GPT-Text-Provider] 模型 ${textModel} 的端点地址未配置。`);
+        if (!OPENAI_API_KEY) throw credentialError("OpenAI API Key 未配置。");
+        if (!finalUrl) throw configError(`[GPT-Text-Provider] 模型 ${textModel} 的端点地址未配置。`);
 
         const { images: allImages, audios: allAudios } = BaseProvider.getAssets(params);
         const content = [];
@@ -98,7 +102,7 @@ export const GptTextProvider = {
                 : '';
 
         if (!text) {
-            throw new Error(`OpenAI 文本响应中未包含内容: ${JSON.stringify(result)}`);
+            throw responseError(`OpenAI 文本响应中未包含内容: ${JSON.stringify(result)}`);
         }
 
         return { text };
@@ -117,7 +121,7 @@ export const GptImageProvider = {
             mappingKey 
         } = params;
 
-        if (!OPENAI_API_KEY) throw new Error("OpenAI API Key 未配置。");
+        if (!OPENAI_API_KEY) throw credentialError("OpenAI API Key 未配置。");
 
         // 获取所有关联资产，并过滤空值/非法值
         const { images: allImages } = BaseProvider.getAssets(params);
@@ -140,7 +144,7 @@ export const GptImageProvider = {
         let finalUrl = passedUrl;
         
         if (!finalUrl) {
-            throw new Error(`[GPT-Provider] 模型 ${imageModel} 的端点地址未配置。请检查设置或模型配置文件。`);
+            throw configError(`[GPT-Provider] 模型 ${imageModel} 的端点地址未配置。请检查设置或模型配置文件。`);
         }
         
         let fetchOptions = {
@@ -155,7 +159,7 @@ export const GptImageProvider = {
 
         if (isEditMode) {
             if (cleanImages.length === 0) {
-                throw new Error('GPT 图生图/遮罩修图至少需要一张参考图片。');
+                throw inputError('GPT 图生图/遮罩修图至少需要一张参考图片。');
             }
 
             // 图像编辑模式必须使用 multipart/form-data，并遵循 OpenAI 官方 image[] 上传格式
@@ -204,7 +208,7 @@ export const GptImageProvider = {
             try {
                 fetchOptions.headers['Content-Length'] = String(form.getLengthSync());
             } catch (error) {
-                console.warn(`[GPT-Provider] Failed to calculate multipart content length: ${error.message}`);
+                logger.warn('Failed to calculate multipart content length.', { providerId: 'openai', operation: 'prepare-image-request', error });
             }
         } else {
             // 文生图模式使用标准 JSON
@@ -233,7 +237,7 @@ export const GptImageProvider = {
 
         const dataList = result.data || [];
         if (dataList.length === 0) {
-            throw new Error("OpenAI 响应中未包含图像数据。");
+            throw responseError("OpenAI 响应中未包含图像数据。");
         }
 
         // 转换返回的结果为 Buffer

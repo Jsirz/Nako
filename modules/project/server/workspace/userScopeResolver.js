@@ -1,4 +1,5 @@
-import fs from 'node:fs';
+import { UserScopeError } from '../../../contracts/projectErrors.js';
+export { UserScopeError } from '../../../contracts/projectErrors.js';
 import path from 'node:path';
 import { DEFAULT_SHARED_RESOURCE_ALLOWLIST } from './resourceOwnership.js';
 
@@ -22,14 +23,6 @@ const RESERVED_NAMES = new Set([
 ]);
 const WINDOWS_RESERVED_NAME = /^(?:aux|com[1-9]|con|lpt[1-9]|nul|prn)(?:\.|$)/;
 
-export class UserScopeError extends Error {
-  constructor(message, code = 'USER_SCOPE_INVALID', status = 403) {
-    super(message);
-    this.name = 'UserScopeError';
-    this.code = code;
-    this.status = status;
-  }
-}
 
 export function assertCanonicalOpaqueUserId(value) {
   if (typeof value !== 'string' || !value) {
@@ -132,6 +125,7 @@ export function createUserScopeResolver({
   usersDirectory,
   globalDirectory,
   sharedResourceAllowlist = DEFAULT_SHARED_RESOURCE_ALLOWLIST,
+  directories,
 } = {}) {
   if (!usersDirectory || !globalDirectory) {
     throw new UserScopeError('用户或全局数据根目录缺失', 'USER_SCOPE_ROOT_MISSING', 500);
@@ -179,6 +173,7 @@ export function createUserScopeResolver({
   function ensureDirectories(authenticationContext) {
     const scope = resolve(authenticationContext);
     const initialized = initializedScopes.get(scope.opaqueUserId);
+    if (!directories?.ensureDirectory) throw new UserScopeError('用户目录适配器未注入', 'USER_SCOPE_DIRECTORY_SERVICE_MISSING', 503);
     if (initialized) return initialized;
     for (const directory of [
       scope.libraryDirectory,
@@ -188,7 +183,7 @@ export function createUserScopeResolver({
       scope.cacheDirectory,
       scope.temporaryDirectory,
     ]) {
-      fs.mkdirSync(directory, { recursive: true });
+      directories.ensureDirectory(directory);
     }
     initializedScopes.set(scope.opaqueUserId, scope);
     return scope;

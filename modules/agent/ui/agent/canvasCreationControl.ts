@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserHost } from '../../../kernel/browser';
 import {
   declaredModel,
@@ -10,10 +11,8 @@ import {
   AUDIO_MODELS,
   TEXT_MODELS,
 } from '../../../generation-core/api/models/catalog';
-import {
-  prepareCanvasGenerationRequest,
-  type GenerationAuthorization,
-} from '../../../generation-core/api/ui/generation/canvasGeneration';
+import { prepareCanvasGenerationRequest } from '../../../generation-core/api/ui/generation/canvasGeneration';
+import type { GenerationAuthorization } from '../../../contracts/generationUi';
 import { createSourceSettingsClient } from '../../../generation-core/api/ui/generation/sourceSettingsClient';
 import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
 import { canvasModels, modelKey, modelParameters } from './canvasModelControl';
@@ -62,10 +61,10 @@ function inputs(nodes: CanvasNode[], id: string): CanvasNode[] {
   const found = new Map<string, CanvasNode>();
   const visiting = new Set<string>();
   const visit = (id: string) => {
-    if (visiting.has(id)) throw new Error('Cyclic input');
+    if (visiting.has(id)) throw new AgentOperationError('Cyclic input', { operation: 'generation-inputs', nodeId: id });
     if (found.has(id)) return;
     const node = nodes.find((item) => item.id === id);
-    if (!node) throw new Error('Missing input');
+    if (!node) throw new AgentOperationError('Missing input', { operation: 'generation-inputs', nodeId: id });
     found.set(id, node);
     visiting.add(id);
     (node.parentIds || []).filter(Boolean).forEach(visit);
@@ -105,15 +104,7 @@ export function createCanvasCreationControl(
   journal?: GenerationPlanClient,
 ) {
   const source = createSourceSettingsClient(fetcher);
-  const entries = new Map<
-    string,
-    {
-      batch: GenerationBatch;
-      signatures: string[];
-      requests: string[];
-      record?: GenerationPlanRecord;
-    }
-  >();
+  const entries: GenerationEntries = new Map();
   const receipts = new Map<string, { signature: string; promise: Promise<CanvasResult> }>();
   const listeners = new Set<() => void>();
   let snapshot: GenerationBatch[] = [];
@@ -126,6 +117,24 @@ export function createCanvasCreationControl(
     execute({ ...request, requestId: crypto.randomUUID(), command: { action: 'read' } });
   const active = (request: CanvasActionRequest) =>
     Date.now() < request.expiresAt && getRuntime()?.projectId === request.projectId;
+  const services = { source, entries, read, active, getRuntime, journal, publish };
+  const handle = createGenerationPreparation(services);
+  const control = createGenerationControl(execute, handle, receipts);
+  const approve = createGenerationApproval(services);
+  return { control, approve, ...createGenerationHistory({ entries, getRuntime, journal, publish,
+    snapshot: () => snapshot, error: () => restoreError, setError: (value: string) => { restoreError = value; }, listeners }) };
+}
+
+type GenerationEntries = Map<string, {
+  batch: GenerationBatch; signatures: string[]; requests: string[]; record?: GenerationPlanRecord;
+}>;
+type GenerationServices = {
+  source: ReturnType<typeof createSourceSettingsClient>; entries: GenerationEntries;
+  read(request: CanvasActionRequest): ReturnType<CanvasActionHandler>;
+  active(request: CanvasActionRequest): boolean; getRuntime(): Runtime | null;
+  journal?: GenerationPlanClient; publish(): void;
+};
+function createGenerationPreparation({ source, entries, read, active, getRuntime, journal, publish }: GenerationServices) {
   async function handle(request: CanvasActionRequest, signal?: AbortSignal): Promise<CanvasResult> {
     if (!active(request) || signal?.aborted) return { ok: false, code: 'UNAVAILABLE' };
     const before = await read(request);
@@ -267,40 +276,7 @@ export function createCanvasCreationControl(
           return { ok: false, code: 'INVALID' };
         signatures.push(JSON.stringify(dependencies));
         requests.push(JSON.stringify(prepared));
-        const labels: Record<string, string> = {
-          prompt: '提示词',
-          resolution: '分辨率',
-          aspectRatio: '比例',
-          duration: '时长（秒）',
-          generateCount: '生成数量',
-          imageMode: '图片模式',
-          videoMode: '视频模式',
-          audioMode: '音频模式',
-          languageMode: '文本模式',
-          quality: '质量',
-          detail: '细节',
-          web_search: '联网搜索',
-          lyrics: '歌词',
-        };
-        modelParameters(node.type, model).forEach((item) => {
-          labels[item.key] = item.label;
-        });
-        const display = Object.entries(prepared)
-          .filter(
-            ([key, value]) =>
-              ![
-                'nodeId',
-                'projectId',
-                'cost',
-                'imageModel',
-                'videoModel',
-                'audioModel',
-                'textModel',
-                'videoUrl',
-              ].includes(key) && ['string', 'number', 'boolean'].includes(typeof value),
-          )
-          .map(([key, value]) => `${labels[key] || key}：${value}`)
-          .join('\n');
+        const display = generationParameterDisplay(prepared, node.type, model);
         batch.items.push({
           nodeId: node.id,
           title: String(node.title || node.id),
@@ -339,6 +315,12 @@ export function createCanvasCreationControl(
       return { ok: false, code: 'UNAVAILABLE' };
     }
   }
+  return handle;
+}
+
+function createGenerationControl(execute: CanvasActionHandler,
+  handle: (request: CanvasActionRequest, signal?: AbortSignal) => Promise<CanvasResult>,
+  receipts: Map<string, { signature: string; promise: Promise<CanvasResult> }>) {
   const control: CanvasActionHandler = (request, signal) => {
     if (!validCanvasControl(request.command)) return { ok: false, code: 'INVALID' };
     if (!['models', 'prepareGeneration'].includes(request.command.action))
@@ -352,6 +334,10 @@ export function createCanvasCreationControl(
     if (receipts.size > 100) receipts.delete(receipts.keys().next().value!);
     return promise;
   };
+  return control;
+}
+
+function createGenerationApproval({ entries, getRuntime, journal, publish }: GenerationServices) {
   // This method is held by the UI only. It is deliberately absent from canvas_control.
   async function approve(
     id: string,
@@ -484,17 +470,23 @@ export function createCanvasCreationControl(
       publish();
     }
   }
+  return approve;
+}
+
+function createGenerationHistory({ entries, getRuntime, journal, publish, snapshot, error, setError, listeners }: {
+  entries: GenerationEntries; getRuntime(): Runtime | null; journal?: GenerationPlanClient;
+  publish(): void; snapshot(): GenerationBatch[]; error(): string; setError(value: string): void;
+  listeners: Set<() => void>;
+}) {
   return {
-    control,
-    approve,
     async restore(projectId: string) {
       if (!journal || getRuntime()?.projectId !== projectId) return;
       let records: GenerationPlanRecord[];
       try {
         records = await journal.list(projectId);
-        restoreError = '';
+        setError('');
       } catch {
-        restoreError = '批次记录读取失败，已保留原任务；请先核对节点状态，勿重复生成。';
+        setError('批次记录读取失败，已保留原任务；请先核对节点状态，勿重复生成。');
         publish();
         return;
       }
@@ -519,8 +511,8 @@ export function createCanvasCreationControl(
       }
       publish();
     },
-    getSnapshot: () => snapshot,
-    getError: () => restoreError,
+    getSnapshot: snapshot,
+    getError: error,
     cancelSession(sessionId: string) {
       for (const entry of entries.values())
         if (
@@ -552,4 +544,17 @@ export function createCanvasCreationControl(
     },
   };
 }
+function generationParameterDisplay(prepared: Record<string, unknown>, type: string, model: string) {
+  const labels: Record<string, string> = {
+    prompt: '提示词', resolution: '分辨率', aspectRatio: '比例', duration: '时长（秒）',
+    generateCount: '生成数量', imageMode: '图片模式', videoMode: '视频模式', audioMode: '音频模式',
+    languageMode: '文本模式', quality: '质量', detail: '细节', web_search: '联网搜索', lyrics: '歌词',
+  };
+  modelParameters(type, model).forEach((item) => { labels[item.key] = item.label; });
+  return Object.entries(prepared).filter(([key, value]) =>
+    !['nodeId', 'projectId', 'cost', 'imageModel', 'videoModel', 'audioModel', 'textModel', 'videoUrl'].includes(key)
+      && ['string', 'number', 'boolean'].includes(typeof value))
+    .map(([key, value]) => `${labels[key] || key}：${value}`).join('\n');
+}
+
 export type CanvasCreationControl = ReturnType<typeof createCanvasCreationControl>;

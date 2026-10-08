@@ -29,6 +29,12 @@ const numberInput =
 
 /** Original diagonal A/B comparison, with one image load and a contained interaction lifetime. */
 export function CanvasComparePreview(React: Runtime, { payload, onClose }: Props) {
+  const state = useComparePreviewState(React, { payload, onClose });
+  if (!payload) return null;
+  return renderComparePreview(React, { payload, onClose }, state);
+}
+
+function useComparePreviewState(React: Runtime, { payload, onClose }: Props) {
   const root = React.useRef<HTMLDivElement>(null),
     viewport = React.useRef<HTMLDivElement>(null),
     surface = React.useRef<HTMLDivElement>(null);
@@ -139,7 +145,6 @@ export function CanvasComparePreview(React: Runtime, { payload, onClose }: Props
       window.removeEventListener('resize', fit);
     };
   }, [leftUrl, update]);
-  if (!payload) return null;
   const geometry = compareGeometry(size.width, size.height, angle, position);
   const moveDivider = (x: number, y: number) => {
     const bounds = surface.current?.getBoundingClientRect();
@@ -169,6 +174,17 @@ export function CanvasComparePreview(React: Runtime, { payload, onClose }: Props
         scale: 1,
       });
   };
+  return { root, viewport, surface, position, setPosition, angle, setAngle, swapped, setSwapped,
+    size, view, current, space, drag, loadError, update, zoom, leftUrl, geometry,
+    moveDivider, releasePointer, resetView };
+}
+
+function renderComparePreview(
+  React: Runtime, { payload, onClose }: Props & { payload: Payload },
+  state: ReturnType<typeof useComparePreviewState>,
+) {
+  const { root, viewport, surface, swapped, size, view, current, space, drag, loadError,
+    update, zoom, leftUrl, geometry, moveDivider, releasePointer, resetView } = state;
   return (
     <div
       ref={root}
@@ -199,77 +215,7 @@ export function CanvasComparePreview(React: Runtime, { payload, onClose }: Props
         if (event.button === 1) event.preventDefault();
       }}
     >
-      <div
-        className="absolute top-4 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2 w-max max-w-[calc(100%-88px)]"
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        <div
-          className="flex min-h-11 items-center gap-1 px-2 py-1.5 rounded-full bg-[var(--nk-surface-raised)] backdrop-blur shadow-lg border border-[var(--nk-border)]"
-          style={{ flexWrap: 'wrap', justifyContent: 'center' }}
-        >
-          <button
-            className="px-3 py-1.5 text-[11px] font-bold text-[var(--nk-info)] bg-[var(--nk-info-bg)] border border-[var(--nk-info)] hover:bg-[var(--nk-info-bg)] rounded-full transition-colors"
-            onClick={() => setSwapped((value) => !value)}
-          >
-            交换 A / B
-          </button>
-          <span className="text-[10px] font-bold text-[var(--nk-text-muted)] whitespace-nowrap">
-            位置
-          </span>
-          <input
-            aria-label="对比线位置"
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={position}
-            onChange={(event) => setPosition(Number(event.target.value))}
-            className="w-24 accent-blue-500 cursor-pointer"
-          />
-          <input
-            aria-label="对比线位置数值"
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            value={Math.round(position)}
-            onChange={(event) => setPosition(clamp(Number(event.target.value), 0, 100))}
-            className={numberInput}
-          />
-          <span className="text-[10px] font-bold text-[var(--nk-text-muted)] whitespace-nowrap">
-            角度
-          </span>
-          <input
-            aria-label="对比线角度"
-            type="range"
-            min={0}
-            max={90}
-            step={1}
-            value={angle}
-            onChange={(event) => setAngle(Number(event.target.value))}
-            className="w-24 accent-blue-500 cursor-pointer"
-          />
-          <input
-            aria-label="对比线角度数值"
-            type="number"
-            min={0}
-            max={90}
-            step={1}
-            value={angle}
-            onChange={(event) => setAngle(clamp(Number(event.target.value), 0, 90))}
-            className={numberInput}
-          />
-          <button
-            className={button}
-            onClick={() => {
-              setPosition(50);
-              setAngle(0);
-            }}
-          >
-            复位
-          </button>
-        </div>
-      </div>
+      {renderCompareToolbar(React, state)}
       <button
         onClick={onClose}
         title="取消"
@@ -416,6 +362,53 @@ export function CanvasComparePreview(React: Runtime, { payload, onClose }: Props
             }}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function renderCompareToolbar(
+  React: Runtime,
+  { position, setPosition, angle, setAngle, setSwapped }: ReturnType<typeof useComparePreviewState>,
+) {
+  return (
+    <div
+      className="absolute top-4 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2 w-max max-w-[calc(100%-88px)]"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div
+        className="flex min-h-11 items-center gap-1 px-2 py-1.5 rounded-full bg-[var(--nk-surface-raised)] backdrop-blur shadow-lg border border-[var(--nk-border)]"
+        style={{ flexWrap: 'wrap', justifyContent: 'center' }}
+      >
+        <button
+          className="px-3 py-1.5 text-[11px] font-bold text-[var(--nk-info)] bg-[var(--nk-info-bg)] border border-[var(--nk-info)] hover:bg-[var(--nk-info-bg)] rounded-full transition-colors"
+          onClick={() => setSwapped((value) => !value)}
+        >
+          交换 A / B
+        </button>
+        <span className="text-[10px] font-bold text-[var(--nk-text-muted)] whitespace-nowrap">位置</span>
+        <input
+          aria-label="对比线位置" type="range" min={0} max={100} step={1} value={position}
+          onChange={(event) => setPosition(Number(event.target.value))}
+          className="w-24 accent-blue-500 cursor-pointer"
+        />
+        <input
+          aria-label="对比线位置数值" type="number" min={0} max={100} step={1} value={Math.round(position)}
+          onChange={(event) => setPosition(clamp(Number(event.target.value), 0, 100))}
+          className={numberInput}
+        />
+        <span className="text-[10px] font-bold text-[var(--nk-text-muted)] whitespace-nowrap">角度</span>
+        <input
+          aria-label="对比线角度" type="range" min={0} max={90} step={1} value={angle}
+          onChange={(event) => setAngle(Number(event.target.value))}
+          className="w-24 accent-blue-500 cursor-pointer"
+        />
+        <input
+          aria-label="对比线角度数值" type="number" min={0} max={90} step={1} value={angle}
+          onChange={(event) => setAngle(clamp(Number(event.target.value), 0, 90))}
+          className={numberInput}
+        />
+        <button className={button} onClick={() => { setPosition(50); setAngle(0); }}>复位</button>
       </div>
     </div>
   );

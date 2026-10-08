@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { browserServices } from '../../../kernel/browser';
 import type { VideoWorkflowRequest } from './videoWorkflows';
 
@@ -366,7 +367,7 @@ export function buildMiniMaxH3Request(
     const source = allTextNodes[Number(ordinal) - 1];
     return String(source?.textContent || source?.prompt || '');
   });
-  if (!text) throw new Error('请填写提示词，或连接一个有内容的文本节点。');
+  if (!text) throw mediaError('请填写提示词，或连接一个有内容的文本节点。');
 
   const request: VideoWorkflowRequest = {
     projectId,
@@ -381,11 +382,11 @@ export function buildMiniMaxH3Request(
 
   if (mode === 'i2va' || mode === 'fl2va') {
     request.firstFrameUrl = nodeUrl(nodesById.get(parentIds[1]));
-    if (!request.firstFrameUrl) throw new Error('请连接首帧图片。');
+    if (!request.firstFrameUrl) throw mediaError('请连接首帧图片。');
   }
   if (mode === 'l2va' || mode === 'fl2va') {
     request.lastFrameUrl = nodeUrl(nodesById.get(parentIds[2]));
-    if (!request.lastFrameUrl) throw new Error('请连接尾帧图片。');
+    if (!request.lastFrameUrl) throw mediaError('请连接尾帧图片。');
   }
   if (mode === 'ref2va') {
     request.referenceImageUrls = nodesForRange(parentIds, nodesById, SLOT_RANGES.referenceImage)
@@ -403,7 +404,7 @@ export function buildMiniMaxH3Request(
         request.referenceAudioUrls.length ===
       0
     )
-      throw new Error('参考模式至少需要连接一个图片、视频或音频素材。');
+      throw mediaError('参考模式至少需要连接一个图片、视频或音频素材。');
   }
   return request;
 }

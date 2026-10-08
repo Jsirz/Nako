@@ -1,3 +1,5 @@
+import { appendWorkflowTestAssets } from './appendWorkflowTestAssets';
+import { appendWorkflowVerificationRecord } from './appendWorkflowVerificationRecord';
 import {
   requestAnchoredConfirmation,
   RUNNINGHUB_PAID_CONFIRMATION_KEY,
@@ -7,9 +9,9 @@ import { appendWorkflowBindingSection } from './appendWorkflowBindingSection';
 import { appendWorkflowRunProgress } from './appendWorkflowRunProgress';
 import { createWorkflowBindingNameEditor } from './createWorkflowBindingNameEditor';
 import { persistWorkflowBindingLabels } from './persistWorkflowBindingLabels';
-import { bindingSource, safeKey } from './workflowManagerBindings';
+import { safeKey } from './workflowManagerBindings';
 import type { BindingSet, WorkflowManagerClient } from './workflowManagerClient';
-import { assetControlPresentation, button, field, messageFor } from './workflowManagerControls';
+import { button, field, messageFor } from './workflowManagerControls';
 import { isRunningHubRunner } from './workflowManagerMetadata';
 import type { WorkflowManagerSession } from './workflowManagerTypes';
 import { ManagerState } from './workflowManagerTypes';
@@ -77,31 +79,7 @@ export function renderWorkflowTest(
         actions,
       ),
     );
-    if (state.attestation) {
-      const record = element('div', 'fwm-summary fwm-verification-record');
-      const recordCopy = element('div');
-      recordCopy.append(
-        element('strong', '', '已验证记录'),
-        element(
-          'span',
-          '',
-          `${new Date(state.attestation.succeededAt || state.attestation.createdAt).toLocaleString('zh-CN', { hour12: false })} · RUN ${state.attestation.runId.slice(0, 12)}`,
-        ),
-      );
-      if (state.verifiedRun) {
-        const view = button('返回已部署结果', 'quiet');
-        view.addEventListener('click', () => {
-          state.run = state.verifiedRun;
-          state.outputCandidates = [...state.verifiedOutputCandidates];
-          state.activeStage = 4;
-          render();
-        });
-        record.append(recordCopy, view);
-      } else {
-        record.append(recordCopy, element('span', 'fwm-chip is-ok', '验证凭证已归档'));
-      }
-      panel.append(record);
-    }
+    appendWorkflowVerificationRecord(state, panel, render);
     const project = element('select', 'fwm-select');
     for (const item of state.projects) {
       const option = new Option(item.title, item.id);
@@ -186,56 +164,7 @@ export function renderWorkflowTest(
     );
     appendBindingSection('生成参数', '尺寸、时长、步数和选项集中排列。', parameterBindings);
 
-    if (assetBindings.length) {
-      const section = element('section', 'fwm-test-section');
-      const sectionHead = element('div', 'fwm-test-section-head');
-      const requiredCount = assetBindings.filter((binding) => binding.control.required).length;
-      const dynamicCount = assetBindings.filter((binding) => binding.control.multiple).length;
-      sectionHead.append(
-        element('strong', 'fwm-test-section-title', '参考素材'),
-        element(
-          'span',
-          'fwm-test-section-copy',
-          dynamicCount
-            ? `${dynamicCount} 个动态素材口；添加几个就接入几个，未使用分支不会提交。`
-            : `${requiredCount} 个必填槽位；每个槽位对应 ComfyUI 中一个独立输入。`,
-        ),
-      );
-      section.append(sectionHead);
-      const groups = new Map<string, BindingSet['bindings']>();
-      for (const binding of assetBindings) {
-        const mediaKind = binding.control.mediaKind || 'image';
-        groups.set(mediaKind, [...(groups.get(mediaKind) || []), binding]);
-      }
-      for (const [mediaKind, groupBindings] of groups) {
-        const presentation = assetControlPresentation(mediaKind);
-        const group = element('div', 'fwm-asset-kind');
-        group.append(
-          element(
-            'div',
-            'fwm-asset-kind-title',
-            groupBindings.length === 1 && groupBindings[0].control.multiple
-              ? `${presentation.label}素材 · ${groupBindings[0].control.minimumItems || 0}–${groupBindings[0].control.maximumItems || 1} 个`
-              : `${presentation.label}素材 · ${groupBindings.length} 个槽位`,
-          ),
-        );
-        const assetGrid = element('div', 'fwm-test-grid');
-        groupBindings.forEach((binding, index) => {
-          const displayLabel =
-            groupBindings.length > 1 ? `${presentation.label} ${index + 1}` : binding.label;
-          assetGrid.append(
-            field(
-              bindingNameEditor(binding, displayLabel),
-              valueControl(binding),
-              bindingSource(candidateFor(binding)),
-            ),
-          );
-        });
-        group.append(assetGrid);
-        section.append(group);
-      }
-      panel.append(section);
-    }
+    appendWorkflowTestAssets(assetBindings, panel, bindingNameEditor, valueControl, candidateFor);
     if (state.run?.status === 'loading') {
       appendWorkflowRunProgress(state, panel);
     }

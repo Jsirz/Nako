@@ -71,6 +71,12 @@ export function CanvasContextMenu(
   props: CanvasContextMenuProps,
   icons: ContextMenuIcons,
 ) {
+  const state = useContextMenuPlacement(React, props);
+  if (!props.state.isOpen) return null;
+  return renderContextMenu(React, props, icons, state);
+}
+
+function useContextMenuPlacement(React: Runtime, props: CanvasContextMenuProps) {
   const { state, onClose } = props;
   const menuRef = React.useRef<HTMLDivElement>(null),
     fileRef = React.useRef<HTMLInputElement>(null);
@@ -107,7 +113,16 @@ export function CanvasContextMenu(
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
   }, [state.isOpen, state.x, state.y, state.type, mode]);
-  if (!state.isOpen) return null;
+  return { menuRef, fileRef, mode, setMode, position };
+}
+
+function renderContextMenu(
+  React: Runtime,
+  props: CanvasContextMenuProps,
+  icons: ContextMenuIcons,
+  { menuRef, fileRef, mode, setMode, position }: ReturnType<typeof useContextMenuPlacement>,
+) {
+  const { state, onClose } = props;
   const finish = (action: (() => unknown) | undefined) => () => {
     if (action) {
       void Promise.resolve(action()).catch((error: unknown) =>
@@ -116,41 +131,7 @@ export function CanvasContextMenu(
       onClose();
     }
   };
-  const item = (entry: MenuItem, large = false) => {
-    const Icon = icons[entry.icon];
-    return (
-      <button
-        key={entry.id || entry.label}
-        role="menuitem"
-        disabled={entry.disabled}
-        onClick={entry.action}
-        className={`group flex items-center gap-3 w-full p-2 rounded-lg text-left transition-colors ${entry.disabled ? 'opacity-30' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)] hover:text-[var(--nk-text)]'}`}
-      >
-        <span
-          className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors bg-[var(--nk-surface-raised)] group-hover:bg-[var(--nk-hover)] ${entry.disabled ? 'bg-transparent' : ''}`}
-        >
-          <Icon size={large ? 18 : 16} />
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="flex items-center justify-between">
-            <span className="font-medium text-sm truncate">{entry.label}</span>
-            <span className="flex items-center gap-2">
-              {entry.shortcut && (
-                <span className="text-xs font-sans text-[var(--nk-text-muted)]">
-                  {entry.shortcut}
-                </span>
-              )}
-              {entry.next &&
-                React.createElement(icons.next, {
-                  size: 14,
-                  className: 'text-[var(--nk-text-muted)]',
-                })}
-            </span>
-          </span>
-        </span>
-      </button>
-    );
-  };
+  const item = (entry: MenuItem, large = false) => renderContextMenuItem(React, icons, entry, large);
   const separator = (key: string) => (
     <div key={key} role="separator" className="my-1 border-t mx-1 border-[var(--nk-border)]" />
   );
@@ -323,5 +304,31 @@ export function CanvasContextMenu(
         )}
       </div>
     </div>
+  );
+}
+
+function renderContextMenuItem(React: Runtime, icons: ContextMenuIcons, entry: MenuItem, large: boolean) {
+  const Icon = icons[entry.icon];
+  return (
+    <button
+      key={entry.id || entry.label}
+      role="menuitem"
+      disabled={entry.disabled}
+      onClick={entry.action}
+      className={`group flex items-center gap-3 w-full p-2 rounded-lg text-left transition-colors ${entry.disabled ? 'opacity-30' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)] hover:text-[var(--nk-text)]'}`}
+    >
+      <span className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors bg-[var(--nk-surface-raised)] group-hover:bg-[var(--nk-hover)] ${entry.disabled ? 'bg-transparent' : ''}`}>
+        <Icon size={large ? 18 : 16} />
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="flex items-center justify-between">
+          <span className="font-medium text-sm truncate">{entry.label}</span>
+          <span className="flex items-center gap-2">
+            {entry.shortcut && <span className="text-xs font-sans text-[var(--nk-text-muted)]">{entry.shortcut}</span>}
+            {entry.next && React.createElement(icons.next, { size: 14, className: 'text-[var(--nk-text-muted)]' })}
+          </span>
+        </span>
+      </span>
+    </button>
   );
 }

@@ -6,6 +6,7 @@ import { lazyPlugin } from '../kernel/lazyPlugin.js';
 import { createCredentialStore } from '../identity-account/api/credentialStore.js';
 import { createNodeRegistry } from '../kernel/nodeRegistry.js';
 import { createNodeDirectoryLoader } from './serverNodeDirectory.js';
+import { ERRORS, PluginError } from '../contracts/index.js';
 
 export async function createServerPluginHost({
   libraryDirectory,
@@ -66,7 +67,7 @@ export async function createServerPluginHost({
   async function register(entries, base) {
     for (const entry of entries) {
       const manifest = JSON.parse(await fs.readFile(new URL(entry.manifest, base), 'utf8'));
-      if (entry.id !== manifest.id) throw new Error(`Catalog identity mismatch: ${entry.id}`);
+      if (entry.id !== manifest.id) throw new PluginError(ERRORS.invalidManifest, `Catalog identity mismatch: ${entry.id}`, { context: { moduleId: 'desktop-shell-observability', pluginId: entry.id } });
       host.register(
         lazyPlugin(manifest, async () => {
           const module = await import(new URL(entry.entry, base));
@@ -105,7 +106,7 @@ export async function createServerPluginHost({
   for (const plugin of selected)
     for (const dependency of Object.keys(plugin.dependencies || {})) {
       if (settings.disabled?.includes(dependency))
-        throw new Error(`Enabled plugin ${plugin.id} requires disabled plugin ${dependency}`);
+        throw new PluginError(ERRORS.dependency, `Enabled plugin ${plugin.id} requires disabled plugin ${dependency}`, { context: { moduleId: 'desktop-shell-observability', pluginId: plugin.id, dependency } });
     }
   await host.start(selected.map((plugin) => plugin.id));
   return host;

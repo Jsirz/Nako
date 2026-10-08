@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { createAgentClient, type AgentClient, type AgentMessageInput, type AgentSession, type AgentSelectedSkill, type DramaConversationAction, type DramaConversationState } from './agentClient';
 import { productionProfileForSkill } from '../../../contracts/officialProductionProfiles.js';
 
@@ -82,37 +83,24 @@ export function createAgentConversation(
     restoring = true; restoringRevision = revision; notify();
     const current = () => revision === readEpoch && generation === epoch && isCurrent(id, project);
     try {
-      if (client.getSession) {
-        const session = await client.getSession(id);
-        if (!current()) return null;
-        if (session.id !== id) throw new Error('读取的对话不匹配，请重新打开当前对话。');
-        if ((session.skillProjectId && session.skillProjectId !== project)
-          || (session.selectedSkill?.projectId && session.selectedSkill.projectId !== project)
-          || (session.workflow?.projectId && session.workflow.projectId !== project)) {
+      return await restoreConversation(client, id, project, current, {
+        readSelection,
+        accept,
+        rejectProject: () => {
           cached = null; selected = null; selectionKnown = true;
-          error = '这段对话属于另一个项目，请返回原项目或新建对话。'; notify(); return null;
-        }
-        readSelection(session); error = null;
-        if (!isDramaSkill(selected) || session.workflow?.id !== 'minimax-drama') {
-          cached = null; notify(); return null;
-        }
-        notify();
-      }
-      if (!client.getDramaConversation) return null;
-      const state = await client.getDramaConversation(id, project);
-      if (!current()) return null;
-      accept(state);
-      return state;
-    } catch (cause) {
-      if (!current()) return null;
-      // A freshly allocated native chat may not have a server record yet.
-      if (Number((cause as { status?: number }).status) === 404 && !selectionKnown && !cached) {
-        selected = null; selectionKnown = true; error = null;
-      } else {
-        error = cause instanceof Error ? cause.message : '对话状态查询中断，请手动查询原任务。';
-      }
-      notify();
-      return null;
+          error = '这段对话属于另一个项目，请返回原项目或新建对话。'; notify();
+        },
+        selection: () => selected,
+        clearPlan: () => { cached = null; notify(); },
+        clearError: () => { error = null; },
+        notify,
+        failed: (cause) => {
+          if (Number((cause as { status?: number }).status) === 404 && !selectionKnown && !cached) {
+            selected = null; selectionKnown = true; error = null;
+          } else error = cause instanceof Error ? cause.message : '对话状态查询中断，请手动查询原任务。';
+          notify();
+        },
+      });
     } finally {
       if (restoringRevision === revision) { restoring = false; notify(); }
     }
@@ -160,9 +148,9 @@ export function createAgentConversation(
     requestContext() { return { projectId: projectId() || undefined }; },
     async selectSkill(slug: string | null) {
       if (disposed || starting || working || restoring || native?.isLoading) return false;
-      if (!native) throw new Error('Agent 尚未就绪，请稍后再试。');
+      if (!native) throw new AgentOperationError('Agent 尚未就绪，请稍后再试。', { operation: 'select-skill' });
       const project = projectId();
-      if (!project) throw new Error('请先打开一个画布项目，再选择 SKILL。');
+      if (!project) throw new AgentOperationError('请先打开一个画布项目，再选择 SKILL。', { operation: 'select-skill' });
       const binding = native;
       const currentId = binding.ensureSession();
       pendingSession = currentId;
@@ -180,7 +168,7 @@ export function createAgentConversation(
       try {
         const session = client.selectSkill ? await client.selectSkill(currentId, project, slug)
           : slug === DEFAULT_AGENT_SKILL.slug && client.startOfficialDrama ? await client.startOfficialDrama(currentId, project)
-          : (() => { throw new Error('SKILL 选择接口尚未就绪。'); })();
+          : (() => { throw new AgentOperationError('SKILL 选择接口尚未就绪。', { operation: 'select-skill' }); })();
         if (!stillCurrent()) return false;
         // Selection is not a chat turn. Never replace native messages, drafts or attachments.
         readSelection(session); cached = null; error = null; readEpoch += 1; notify();
@@ -200,12 +188,12 @@ export function createAgentConversation(
     async ensureDefaultSkill() {
       if (disposed || starting || working || native?.isLoading) return false;
       if (sessionId() && !selectionKnown) await refresh();
-      if (error) throw new Error(error);
-      if (!isDramaSkill(currentSkill())) throw new Error('当前对话选择了其他 SKILL，请先切回剧本文戏。');
+      if (error) throw new AgentOperationError(error, { operation: 'ensure-drama-skill' });
+      if (!isDramaSkill(currentSkill())) throw new AgentOperationError('当前对话选择了其他 SKILL，请先切回剧本文戏。', { operation: 'ensure-drama-skill' });
       if (api.snapshot().state) return true;
       if (!(await api.selectSkill(currentSkill()!.slug))) return false;
-      if (error) throw new Error(error);
-      if (!api.snapshot().state) throw new Error('文戏状态尚未恢复，请重新读取后再添加剧本。');
+      if (error) throw new AgentOperationError(error, { operation: 'ensure-drama-skill' });
+      if (!api.snapshot().state) throw new AgentOperationError('文戏状态尚未恢复，请重新读取后再添加剧本。', { operation: 'ensure-drama-skill' });
       const id = sessionId(); const project = projectId(); const generation = epoch;
       // React may still expose the preceding selection's loading=true binding.
       // Wait only for that UI commit; never retry the selection or attachment.
@@ -213,35 +201,21 @@ export function createAgentConversation(
         await new Promise((resolve) => globalThis.setTimeout(resolve, 16));
         if (!id || !project || !isCurrent(id, project) || epoch !== generation) return false;
       }
-      if (native?.isLoading) throw new Error('请等待当前界面恢复后再添加剧本。');
+      if (native?.isLoading) throw new AgentOperationError('请等待当前界面恢复后再添加剧本。', { operation: 'ensure-drama-skill' });
       return true;
     },
     async withTools<T>(work: (tools: ConversationTools) => Promise<T>): Promise<T> {
       const binding = native; const id = sessionId(); const project = projectId();
       if (!binding || !id || !project || !isDramaSkill(currentSkill()) || cached?.session.id !== id || cached.session.workflow?.projectId !== project || !isCurrent(id, project)) {
-        throw new Error('请在当前项目的文戏对话中操作。');
+        throw new AgentOperationError('请在当前项目的文戏对话中操作。', { operation: 'conversation-tools', sessionId: id, projectId: project });
       }
-      if (starting || working || restoring || binding.isLoading) throw new Error('请等待当前回复或操作完成。');
+      if (starting || working || restoring || binding.isLoading) throw new AgentOperationError('请等待当前回复或操作完成。', { operation: 'conversation-tools' });
       const generation = epoch;
       const current = () => isCurrent(id, project) && epoch === generation && isDramaSkill(currentSkill());
-      const check = () => { if (!current()) throw new Error('对话或项目已经切换；已停止后续操作。'); };
+      const check = () => { if (!current()) throw new AgentOperationError('对话或项目已经切换；已停止后续操作。', { operation: 'conversation-tools', sessionId: id, projectId: project }); };
       working = true; binding.setLoading(true); error = null; notify();
       try {
-        return await work({
-          current,
-          async action(action) {
-            check();
-            if (!client.dramaAction) throw new Error('文戏执行接口尚未就绪。');
-            const state = await client.dramaAction(id, project, action);
-            check(); accept(state, true); return state;
-          },
-          async attachScript(script) {
-            check();
-            if (!client.attachDramaScript) throw new Error('剧本附件接口尚未就绪。');
-            const state = await client.attachDramaScript(id, project, script);
-            check(); accept(state, true); return state;
-          },
-        });
+        return await work(conversationToolOperations(client, id, project, current, check, accept));
       } finally {
         working = false;
         // The same native conversation must unlock on a project switch, but a newer
@@ -254,6 +228,65 @@ export function createAgentConversation(
     dispose() { disposed = true; native = null; epoch += 1; listeners.clear(); },
   };
   return api;
+}
+
+type ConversationRestore = {
+  readSelection(session: AgentSession): void;
+  accept(state: DramaConversationState): boolean;
+  rejectProject(): void;
+  selection(): AgentSelectedSkill | null;
+  clearPlan(): void;
+  clearError(): void;
+  notify(): void;
+  failed(cause: unknown): void;
+};
+async function restoreConversation(client: ConversationClient, id: string, project: string,
+  current: () => boolean, state: ConversationRestore) {
+  try {
+    if (client.getSession) {
+      const session = await client.getSession(id);
+      if (!current()) return null;
+      if (session.id !== id) throw new AgentOperationError('读取的对话不匹配，请重新打开当前对话。', { operation: 'restore-conversation', sessionId: id });
+      if ((session.skillProjectId && session.skillProjectId !== project)
+        || (session.selectedSkill?.projectId && session.selectedSkill.projectId !== project)
+        || (session.workflow?.projectId && session.workflow.projectId !== project)) {
+        state.rejectProject(); return null;
+      }
+      state.readSelection(session); state.clearError();
+      if (!isDramaSkill(state.selection()) || session.workflow?.id !== 'minimax-drama') {
+        state.clearPlan(); return null;
+      }
+      state.notify();
+    }
+    if (!client.getDramaConversation) return null;
+    const result = await client.getDramaConversation(id, project);
+    if (!current()) return null;
+    state.accept(result);
+    return result;
+  } catch (cause) {
+    if (current()) state.failed(cause);
+    return null;
+  }
+}
+
+function conversationToolOperations(client: ConversationClient, id: string, project: string,
+  current: () => boolean, check: () => void,
+  accept: (state: DramaConversationState, synchronize: boolean) => boolean): ConversationTools {
+  return {
+    current,
+    async action(action) {
+      check();
+      if (!client.dramaAction) throw new AgentOperationError('文戏执行接口尚未就绪。', { operation: 'drama-action' });
+      const state = await client.dramaAction(id, project, action);
+      check(); accept(state, true); return state;
+    },
+    async attachScript(script) {
+      check();
+      if (!client.attachDramaScript) throw new AgentOperationError('剧本附件接口尚未就绪。', { operation: 'attach-drama-script' });
+      const state = await client.attachDramaScript(id, project, script);
+      check(); accept(state, true); return state;
+    },
+  };
 }
 
 export type AgentConversation = ReturnType<typeof createAgentConversation>;

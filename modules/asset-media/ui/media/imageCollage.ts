@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { resizeLimit } from '../../../canvas-ui/api/ui/dialogs/imageResizeGeometry';
 export interface CollageItem {
   naturalWidth: number;
@@ -8,7 +9,7 @@ export interface CollageItem {
 }
 /** Preserve the original row grouping and pixel-size placement, without resampling inputs. */
 export function layoutImageCollage<T extends CollageItem>(items: T[]) {
-  if (!items.length) throw new Error('拼图没有可用图片');
+  if (!items.length) throw mediaError('拼图没有可用图片');
   const heights = items.map((item) => item.visualHeight).sort((a, b) => a - b),
     middle = Math.floor(heights.length / 2);
   const median = heights.length % 2 ? heights[middle] : (heights[middle - 1] + heights[middle]) / 2,
@@ -78,29 +79,29 @@ export function loadCollageImage(url: string, signal: AbortSignal): Promise<HTML
         reject(error);
       } else resolve(image);
     };
-    const abort = () => finish(new Error('拼图操作已结束。'));
-    const timeout = setTimeout(() => finish(new Error('拼图图片加载超时，请重试。')), 15000);
+    const abort = () => finish(mediaError('拼图操作已结束。', { operation: 'loadCollageImage' }));
+    const timeout = setTimeout(() => finish(mediaError('拼图图片加载超时，请重试。', { operation: 'loadCollageImage' })), 15000);
     signal.addEventListener('abort', abort, { once: true });
     image.onload = () =>
       finish(
-        image.naturalWidth && image.naturalHeight ? undefined : new Error('拼图图片尺寸无效。'),
+        image.naturalWidth && image.naturalHeight ? undefined : mediaError('拼图图片尺寸无效。'),
       );
-    image.onerror = () => finish(new Error('拼图图片加载失败，请检查原图。'));
+    image.onerror = () => finish(mediaError('拼图图片加载失败，请检查原图。', { operation: 'loadCollageImage' }));
     image.src = url;
   });
 }
 export function renderImageCollage(items: Array<CollageItem & { image: HTMLImageElement }>) {
   const layout = layoutImageCollage(items),
     invalid = resizeLimit(layout);
-  if (invalid) throw new Error(invalid);
+  if (invalid) throw mediaError(invalid);
   const canvas = document.createElement('canvas');
   canvas.width = layout.width;
   canvas.height = layout.height;
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('无法创建拼图画布');
+  if (!context) throw mediaError('无法创建拼图画布');
   for (const { item, x, y } of layout.placements)
     context.drawImage(item.image, x, y, item.naturalWidth, item.naturalHeight);
   const data = canvas.toDataURL('image/png');
-  if (!data.startsWith('data:image/png')) throw new Error('拼图超出当前设备的处理范围。');
+  if (!data.startsWith('data:image/png')) throw mediaError('拼图超出当前设备的处理范围。');
   return { data, width: canvas.width, height: canvas.height };
 }

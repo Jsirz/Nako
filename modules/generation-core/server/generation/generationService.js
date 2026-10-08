@@ -1,3 +1,5 @@
+import { PluginError } from '../../../contracts/errors.js';
+import { GENERATION_ERROR_CODES } from '../../../contracts/generationErrors.js';
 import { PROVIDERS, resolveFinalExecutionContext } from './providerDispatch.js';
 import { executeGenerationTask } from './generationExecution.js';
 import { loadModelCatalog, normalizeModelDuration } from '../config/modelCatalog.js';
@@ -6,7 +8,7 @@ export function createGenerationService(options) {
   const image = createImageGenerationService(options);
   return async (kind, input) => {
     if (kind === 'image') return image(input);
-    if (!['text', 'video', 'audio'].includes(kind)) throw Object.assign(new Error('Unsupported generation kind'), { code: 'UNSUPPORTED_GENERATION_PROVIDER' });
+    if (!['text', 'video', 'audio'].includes(kind)) throw unsupported('Unsupported generation kind', { kind });
     const { applicationContext = {}, mediaService, generationCoordinator, defaultModels } = options;
     const model = await defaultModels.resolve(kind, input[kind + 'Model']);
     const request = { ...input, [kind + 'Model']: model };
@@ -14,7 +16,7 @@ export function createGenerationService(options) {
     const provider = PROVIDERS.get(model);
     const mode = request[kind + 'Mode'] || request.languageMode || request.mode;
     const executionContext = resolveFinalExecutionContext(model, mode);
-    if (!executionContext || !provider) throw Object.assign(new Error('Unsupported model: ' + model), { code: 'UNSUPPORTED_GENERATION_PROVIDER' });
+    if (!executionContext || !provider) throw unsupported('Unsupported model: ' + model, { kind, modelName: model, mode });
     return executeGenerationTask({
       kind, nodeId: request.nodeId, modelName: model, providerName: provider.providerName,
       executionContext, request, appContext: applicationContext, provider, coordinator: generationCoordinator,
@@ -54,17 +56,11 @@ export function createImageGenerationService({
       request;
     const provider = PROVIDERS.get(imageModel);
     if (!provider || !provider.generateImage) {
-      throw Object.assign(new Error(`Unsupported or disabled image model: ${imageModel}`), {
-        status: 400,
-        code: 'UNSUPPORTED_GENERATION_PROVIDER',
-      });
+      throw unsupported(`Unsupported or disabled image model: ${imageModel}`, { kind: 'image', modelName: imageModel, nodeId });
     }
     const concurrencyCtx = resolveFinalExecutionContext(imageModel, imageMode);
     if (!concurrencyCtx) {
-      throw Object.assign(new Error('Cannot resolve image model'), {
-        status: 400,
-        code: 'UNSUPPORTED_GENERATION_PROVIDER',
-      });
+      throw unsupported('Cannot resolve image model', { kind: 'image', modelName: imageModel, nodeId });
     }
     const response = await executeGenerationTask({
       kind: 'image',
@@ -109,4 +105,10 @@ export function createImageGenerationService({
 
     return response;
   };
+}
+
+function unsupported(message, context) {
+  return new PluginError(GENERATION_ERROR_CODES.unsupportedProvider, message, {
+    status: 400, context: { moduleId: 'generation-core', operation: 'resolveGeneration', ...context },
+  });
 }

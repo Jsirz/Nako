@@ -1,6 +1,6 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { flushSync } from 'react-dom';
-import { browserServices } from '../../../kernel/browser';
-import { requestWorkflowNodeRun } from '../../../local-runtime/api/ui/local/workflowNodeSession';
+import { browserServices, localRuntimeUi } from '../../../kernel/browser';
 import './canvasWorkspace.css';
 import type { useCanvasProjectNavigation } from './useCanvasProjectNavigation';
 
@@ -67,7 +67,7 @@ export function useCanvasAgentRuntime(context: ReturnType<typeof useCanvasProjec
           projectId: workflowId,
           async invoke(operation, nodeId) {
             const node = nodeId ? getNodes().find((item) => item.id === nodeId) : undefined;
-            if (nodeId && (!node || node.status === 'loading')) throw Error('节点不可用');
+            if (nodeId && (!node || node.status === 'loading')) throw canvasError('节点不可用', 'agent.node-operation');
             if (operation === 'workflowManager') {
               window.dispatchEvent(new CustomEvent('nako:open-workflow-library'));
               return;
@@ -91,7 +91,7 @@ export function useCanvasAgentRuntime(context: ReturnType<typeof useCanvasProjec
               input.click();
               return;
             }
-            if (!node) throw Error('节点不存在');
+            if (!node) throw canvasError('节点不存在', 'agent.node-operation');
             if (operation === 'saveAsset') {
               handleOpenCreateAsset(node.id);
               return;
@@ -102,7 +102,7 @@ export function useCanvasAgentRuntime(context: ReturnType<typeof useCanvasProjec
             }
             if (operation === 'download') {
               if (typeof node.resultUrl !== 'string' || !browserServices.__NAKO_MEDIA_DOWNLOAD__)
-                throw Error('素材不可用');
+                throw canvasError('素材不可用', 'agent.download');
               const extension = node.type.includes('Video')
                 ? 'mp4'
                 : node.type.includes('Audio')
@@ -113,11 +113,11 @@ export function useCanvasAgentRuntime(context: ReturnType<typeof useCanvasProjec
                 node.resultUrl,
                 extension,
               );
-              if (result?.status === 'failed') throw Error('下载失败');
+              if (result?.status === 'failed') throw canvasError('下载失败', 'agent.download');
               return;
             }
             if (operation === 'runWorkflow') {
-              if (node.kind !== 'workflow') throw Error('不是执行工作流');
+              if (node.kind !== 'workflow') throw canvasError('不是执行工作流', 'agent.run-workflow');
               const epoch = getWorkflowEpoch();
               const configuration = () => {
                 const current = getNodes().find((item) => item.id === node.id);
@@ -141,8 +141,8 @@ export function useCanvasAgentRuntime(context: ReturnType<typeof useCanvasProjec
               await new Promise<void>((resolve) =>
                 requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
               );
-              if (!authorized() || !(await requestWorkflowNodeRun(workflowId, node.id, authorized)))
-                throw Error('请在节点核对原任务');
+              if (!authorized() || !(await localRuntimeUi().requestWorkflowNodeRun(workflowId, node.id, authorized)))
+                throw canvasError('请在节点核对原任务', 'agent.run-workflow-authorization');
             }
           },
         }

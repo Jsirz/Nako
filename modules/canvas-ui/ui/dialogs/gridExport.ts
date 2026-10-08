@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 export type GridOrder = 'row' | 'column' | 'snake' | 'reverse';
 /** Cell IDs always use one-based row-major numbering, independent of export order. */
 export function gridExportIndices(rows: number, columns: number, order: GridOrder, selection = '') {
@@ -7,10 +8,10 @@ export function gridExportIndices(rows: number, columns: number, order: GridOrde
     const chosen = new Set<number>();
     for (const part of selection.replaceAll('，', ',').split(',')) {
       const match = /^\s*(\d+)(?:\s*-\s*(\d+))?\s*$/.exec(part);
-      if (!match) throw new Error('序号请填写为 1,3,5-8');
+      if (!match) throw canvasError('序号请填写为 1,3,5-8', 'grid-export.selection');
       const from = Number(match[1]),
         to = Number(match[2] || match[1]);
-      if (from < 1 || to < from || to > total) throw new Error(`序号范围为 1–${total}`);
+      if (from < 1 || to < from || to > total) throw canvasError(`序号范围为 1–${total}`, 'grid-export.range');
       for (let i = from; i <= to; i++) chosen.add(i - 1);
     }
     indices = indices.filter((i) => chosen.has(i));

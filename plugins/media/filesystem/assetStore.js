@@ -1,3 +1,6 @@
+import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
+import { readRemoteMediaBody } from './remoteMediaBody.js';
 import { buildAssetUrl, normalizeAsset, listMediaAssets } from '../../../modules/asset-media/api/server/media/mediaAssetListing.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -6,7 +9,6 @@ import path from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import sharp from 'sharp';
-import { ExternalUrlPolicyError, fetchExternalUrl } from '../../../modules/identity-account/api/server/security/externalUrlPolicy.js';
 import { MediaArtifactError, resolveMediaArtifact } from '../../../modules/asset-media/api/server/media/mediaArtifact.js';
 import { createMediaMetadataProbe, MediaProbeError } from '../../../modules/asset-media/api/server/media/mediaMetadataProbe.js';
 
@@ -18,12 +20,12 @@ const DEFAULT_UPLOAD_MAX_BYTES = Object.freeze(Object.fromEntries(
   ]),
 ));
 
-class MediaAssetError extends Error {
-  constructor(message, status = 400, code = 'INVALID_MEDIA_ASSET') {
-    super(message);
+class MediaAssetError extends PluginError {
+  constructor(message, status = 400, operationCode = 'INVALID_MEDIA_ASSET') {
+    super(status === 404 ? ERRORS.mediaNotFound : status === 403 ? ERRORS.permission : status >= 500 ? ERRORS.mediaStorage : ERRORS.invalidMedia, message, {
+      status, context: { moduleId: 'media.filesystem', operation: 'assetStorage', operationCode },
+    });
     this.name = 'MediaAssetError';
-    this.status = status;
-    this.code = code;
   }
 }
 
@@ -215,23 +217,6 @@ async function streamUpload(openSource, targetPath, maxBytes, declaredLength = 0
   return { bytes, sha256: hash.digest('hex') };
 }
 
-async function readResponseBody(response, maxBytes) {
-  const declaredLength = Number(response.headers.get('content-length') || 0);
-  if (declaredLength > maxBytes) {
-    throw new MediaAssetError('外部素材超过本地化大小限制', 413, 'REMOTE_ASSET_TOO_LARGE');
-  }
-  const chunks = [];
-  let bytes = 0;
-  for await (const chunk of response.body || []) {
-    const buffer = Buffer.from(chunk);
-    bytes += buffer.length;
-    if (bytes > maxBytes) {
-      throw new MediaAssetError('外部素材超过本地化大小限制', 413, 'REMOTE_ASSET_TOO_LARGE');
-    }
-    chunks.push(buffer);
-  }
-  return Buffer.concat(chunks);
-}
 
 async function findAssetByHash(directory, sha256) {
   if (!fs.existsSync(directory)) return null;
@@ -317,33 +302,29 @@ async function readCleanupManifest(trashDirectory, projectId, batchId) {
   }
 }
 
-export function createFilesystemMediaStore({
-  libraryDirectory,
-  workflowStore,
-  metadataProbe,
-  fetchImpl = globalThis.fetch,
-  resolveHost,
-  maxExternalBytes = 100 * 1024 * 1024,
-  maxUploadBytes = DEFAULT_UPLOAD_MAX_BYTES,
-  logger = console,
-}) {
-  const mediaDirectory = path.join(libraryDirectory, 'media');
-  const trashDirectory = path.join(libraryDirectory, '.trash');
-  const probeBundledMedia = createMediaMetadataProbe();
-  const probeMetadata = metadataProbe || ((filePath, type) => (
-    type === 'images' ? probeImage(filePath, type) : probeBundledMedia(filePath, type)
-  ));
-  const requestExternal = async (value, options) => {
+class FilesystemMediaStore {
+  constructor({ libraryDirectory, workflowStore, metadataProbe, externalUrlFetch,
+    maxExternalBytes = 100 * 1024 * 1024, maxUploadBytes = DEFAULT_UPLOAD_MAX_BYTES,
+    logger = createModuleLogger('media.filesystem') }) {
+    Object.assign(this, { libraryDirectory, workflowStore, externalUrlFetch, maxExternalBytes, maxUploadBytes, logger });
+    this.mediaDirectory = path.join(libraryDirectory, 'media');
+    this.trashDirectory = path.join(libraryDirectory, '.trash');
+    const probeBundledMedia = createMediaMetadataProbe();
+    this.probeMetadata = metadataProbe || ((filePath, type) => (
+      type === 'images' ? probeImage(filePath, type) : probeBundledMedia(filePath, type)
+    ));
+  }
+  requestExternal = async (value, options) => {
+    if (!this.externalUrlFetch?.fetch) throw new MediaAssetError('外部 URL 服务不可用', 503, 'EXTERNAL_URL_SERVICE_UNAVAILABLE');
     try {
-      return await fetchExternalUrl(value, { fetchImpl, resolveHost, ...options });
+      return await this.externalUrlFetch.fetch(value, options);
     } catch (error) {
-      if (error instanceof ExternalUrlPolicyError) {
-        throw new MediaAssetError(error.message, error.status, error.code);
-      }
+      if (error?.status && error?.code) throw new MediaAssetError(error.message, error.status, error.context?.operationCode || error.code);
       throw error;
     }
   };
-  const moveToRecoverableTrash = async (projectId, relativePaths) => {
+  moveToRecoverableTrash = async (projectId, relativePaths) => {
+    const { trashDirectory, mediaDirectory } = this;
     const batchId = `${Date.now()}-${crypto.randomUUID()}`;
     const batchDirectory = path.join(trashDirectory, projectId, batchId);
     const moved = [];
@@ -384,7 +365,8 @@ export function createFilesystemMediaStore({
 
   // One pipeline for request bodies and local files: same size limit, content probe,
   // quarantine and response.
-  async function storeUploadedAsset({ type, projectId, nodeId, originalName, prompt, openSource, declaredLength }) {
+  async storeUploadedAsset({ type, projectId, nodeId, originalName, prompt, openSource, declaredLength }) {
+    const { mediaDirectory, maxUploadBytes, probeMetadata } = this;
     let temporaryPath = null;
     let quarantinedPath = null;
     let quarantinedMetadataPath = null;
@@ -408,7 +390,7 @@ export function createFilesystemMediaStore({
       } catch (error) {
         if (error instanceof MediaAssetError) throw error;
         if (error instanceof MediaProbeError) {
-          throw new MediaAssetError(error.message, error.status, error.code);
+          throw new MediaAssetError(error.message, error.status, error.context.operationCode);
         }
         throw new MediaAssetError('上传文件内容无法识别', 415, 'INVALID_MEDIA_CONTENT');
       }
@@ -440,13 +422,13 @@ export function createFilesystemMediaStore({
     }
   }
 
-  function sendUploadError(error) {
-    const status = error instanceof MediaAssetError ? error.status : 500;
-    if (status >= 500) logger.error('Binary upload error:', error);
+  sendUploadError(error) {
+    const status = error instanceof PluginError ? error.status : 500;
+    if (status >= 500) this.logger.error('Binary upload failed', { operation: 'upload', code: error.code });
     return { status, body: { error: error?.message || 'Failed to save asset', code: error?.code } };
   }
 
-  async function upload(req) {
+  async upload(req) {
     try {
       const type = req.params.type;
       assertMediaType(type);
@@ -454,7 +436,7 @@ export function createFilesystemMediaStore({
       const nodeId = req.headers['x-node-id'] ? String(req.headers['x-node-id']) : null;
       assertUploadContentType(req.headers['content-type'], type);
       const originalName = decodeUploadFilename(req.headers['x-filename'], type);
-      return { status: 200, body: await storeUploadedAsset({
+      return { status: 200, body: await this.storeUploadedAsset({
         type,
         projectId,
         nodeId,
@@ -464,14 +446,14 @@ export function createFilesystemMediaStore({
         declaredLength: Number(req.headers['content-length'] || 0),
       }) };
     } catch (error) {
-      return sendUploadError(error);
+      return this.sendUploadError(error);
     }
   
   }
 
   // The desktop page names a local file instead of sending its bytes: Electron's protocol
   // handler would read a request body into the main process in one piece (ADR-0035).
-  async function importFile(req) {
+  async importFile(req) {
     try {
       const type = req.params.type;
       assertMediaType(type);
@@ -479,7 +461,7 @@ export function createFilesystemMediaStore({
       const nodeId = req.body?.nodeId ? String(req.body.nodeId) : null;
       const source = await statImportSource(req.body?.path);
       const originalName = assertUploadFilename(req.body?.filename ?? path.basename(source.path));
-      return { status: 200, body: await storeUploadedAsset({
+      return { status: 200, body: await this.storeUploadedAsset({
         type,
         projectId,
         nodeId,
@@ -488,12 +470,13 @@ export function createFilesystemMediaStore({
         declaredLength: source.size,
       }) };
     } catch (error) {
-      return sendUploadError(error);
+      return this.sendUploadError(error);
     }
   
   }
 
-  async function repairMetadata(req) {
+  async repairMetadata(req) {
+    const { mediaDirectory, probeMetadata, logger } = this;
     try {
       const projectId = assertSafeSegment(String(req.body?.projectId || ''), '项目标识');
       let scanned = 0;
@@ -549,13 +532,14 @@ export function createFilesystemMediaStore({
       return { status: 200, body: { success: true, scanned, repaired, failed, errors } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Repair asset metadata error:', error);
+      if (status >= 500) logger.error('Repair asset metadata failed', { operation: 'repairMetadata', code: error.code });
       return { status: status, body: { error: error?.message || 'Repair metadata failed', code: error?.code } };
     }
   
   }
 
-  async function checkExternal(req) {
+  async checkExternal(req) {
+    const { requestExternal } = this;
     try {
       const { response } = await requestExternal(req.body?.url, {
         method: 'HEAD',
@@ -578,7 +562,8 @@ export function createFilesystemMediaStore({
 
   // Copies stay inside the authenticated user's media root. Imported documents
   // cannot use arbitrary paths, symlinks or Windows alternate data streams.
-  async function copy(req) {
+  async copy(req) {
+    const { mediaDirectory } = this;
     try {
       const segment = (value) => {
         assertSafeSegment(value, '素材路径');
@@ -646,7 +631,10 @@ export function createFilesystemMediaStore({
   
   }
 
-  async function localize(req) {
+  async localize(req) {
+    const { mediaDirectory, requestExternal, maxExternalBytes, probeMetadata, logger } = this;
+    let pendingFile = null;
+    let pendingMetadata = null;
     try {
       const projectId = assertSafeSegment(String(req.body?.projectId || ''), '项目标识');
       const type = String(req.body?.type || '');
@@ -662,7 +650,7 @@ export function createFilesystemMediaStore({
           'REMOTE_ASSET_UNAVAILABLE',
         );
       }
-      const buffer = await readResponseBody(response, maxExternalBytes);
+      const buffer = await readRemoteMediaBody(response, maxExternalBytes);
       const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
       const directory = path.join(mediaDirectory, projectId, type);
       await mkdir(directory, { recursive: true });
@@ -688,7 +676,10 @@ export function createFilesystemMediaStore({
       const filename = `${id}${extension}`;
       const filePath = path.join(directory, filename);
       await writeFile(filePath, buffer, { flag: 'wx' });
+      pendingFile = filePath;
+      pendingMetadata = metadataPath(directory, id);
       const probed = await probeMetadata(filePath, type);
+      assertProbedMediaType(probed, type);
       const metadata = {
         id,
         filename,
@@ -709,15 +700,19 @@ export function createFilesystemMediaStore({
         ...probed,
       };
       await writeAssetMetadata(directory, metadata);
+      pendingFile = null;
+      pendingMetadata = null;
       return { status: 201, body: {
         success: true,
         deduplicated: false,
         asset: normalizeAsset(metadata, projectId, type),
       } };
     } catch (error) {
-      const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500 && !(error instanceof MediaAssetError)) {
-        logger.error('Localize external asset error:', error);
+      if (pendingFile) await rm(pendingFile, { force: true });
+      if (pendingMetadata) await rm(pendingMetadata, { force: true });
+      const status = error instanceof PluginError ? error.status || 500 : 500;
+      if (status >= 500) {
+        logger.error('External media localization failed', { operation: 'localize', code: error.code });
       }
       return { status: status, body: {
         error: error?.message || '外部素材本地化失败',
@@ -727,7 +722,8 @@ export function createFilesystemMediaStore({
   
   }
 
-  async function list(req) {
+  async list(req) {
+    const { libraryDirectory, logger } = this;
     try {
       const type = req.params.type;
       assertMediaType(type);
@@ -742,13 +738,14 @@ export function createFilesystemMediaStore({
       }) };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('List assets error:', error);
+      if (status >= 500) logger.error('List assets failed', { operation: 'list', code: error.code });
       return { status: status, body: { error: error?.message || 'List assets failed', code: error?.code } };
     }
   
   }
 
-  async function favorite(req) {
+  async favorite(req) {
+    const { mediaDirectory, logger } = this;
     try {
       const type = req.params.type;
       assertMediaType(type);
@@ -764,13 +761,14 @@ export function createFilesystemMediaStore({
       return { status: 200, body: { success: true, asset: normalizeAsset(nextMetadata, projectId, type) } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Favorite asset error:', error);
+      if (status >= 500) logger.error('Favorite asset failed', { operation: 'favorite', code: error.code });
       return { status: status, body: { error: error?.message || 'Favorite asset failed', code: error?.code } };
     }
   
   }
 
-  async function deleteAsset(req) {
+  async deleteAsset(req) {
+    const { mediaDirectory, logger } = this;
     try {
       const type = req.params.type;
       assertMediaType(type);
@@ -810,13 +808,14 @@ export function createFilesystemMediaStore({
       return { status: 200, body: { success: true } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Delete asset error:', error);
+      if (status >= 500) logger.error('Delete asset failed', { operation: 'deleteAsset', code: error.code });
       return { status: status, body: { error: error?.message || 'Delete asset failed', code: error?.code } };
     }
   
   }
 
-  async function trash(req) {
+  async trash(req) {
+    const { mediaDirectory, moveToRecoverableTrash, logger } = this;
     try {
       const type = req.params.type;
       assertMediaType(type);
@@ -845,19 +844,20 @@ export function createFilesystemMediaStore({
       } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Trash asset error:', error);
+      if (status >= 500) logger.error('Trash asset failed', { operation: 'trash', code: error.code });
       return { status: status, body: { error: error?.message || 'Trash asset failed', code: error?.code } };
     }
   
   }
 
-  async function cleanupProject(req) {
+  async cleanupProject(req) {
+    const { workflowStore, mediaDirectory, moveToRecoverableTrash, logger } = this;
     try {
       if (!workflowStore) {
         throw new MediaAssetError('工作流存储不可用', 503, 'WORKFLOW_STORE_UNAVAILABLE');
       }
       const projectId = assertSafeSegment(req.params.id, '项目标识');
-      const workflow = await workflowStore.getWorkflowById(projectId);
+      const workflow = await workflowStore.get(projectId);
       if (!workflow) return { status: 404, body: { error: 'Workflow not found' } };
       const items = await scanOrphanedProjectMedia(mediaDirectory, projectId, workflow);
       const pendingDelete = items.flatMap((item) =>
@@ -879,13 +879,14 @@ export function createFilesystemMediaStore({
       return { status: 200, body: { success: true, deletedCount: moved.length, batchId, recoverable: true } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Cleanup project error:', error);
+      if (status >= 500) logger.error('Cleanup project failed', { operation: 'cleanupProject', code: error.code });
       return { status: status, body: { error: error?.message || 'Cleanup project failed', code: error?.code } };
     }
   
   }
 
-  async function listTrash(req) {
+  async listTrash(req) {
+    const { trashDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(req.params.id, '项目标识');
       const projectTrash = path.join(trashDirectory, projectId);
@@ -909,13 +910,14 @@ export function createFilesystemMediaStore({
       return { status: 200, body: batches };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('List cleanup trash error:', error);
+      if (status >= 500) logger.error('List cleanup trash failed', { operation: 'listTrash', code: error.code });
       return { status: status, body: { error: error?.message || 'List cleanup trash failed', code: error?.code } };
     }
   
   }
 
-  async function restoreTrash(req) {
+  async restoreTrash(req) {
+    const { trashDirectory, mediaDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(req.params.id, '项目标识');
       const batchId = assertSafeSegment(String(req.body?.batchId || ''), '清理批次');
@@ -939,13 +941,14 @@ export function createFilesystemMediaStore({
       return { status: 200, body: { success: true, restoredCount } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Restore cleanup trash error:', error);
+      if (status >= 500) logger.error('Restore cleanup trash failed', { operation: 'restoreTrash', code: error.code });
       return { status: status, body: { error: error?.message || 'Restore cleanup failed', code: error?.code } };
     }
   
   }
 
-  async function purgeTrash(req) {
+  async purgeTrash(req) {
+    const { trashDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(req.params.id, '项目标识');
       const batchId = assertSafeSegment(req.params.batchId, '清理批次');
@@ -954,13 +957,18 @@ export function createFilesystemMediaStore({
       return { status: 200, body: { success: true } };
     } catch (error) {
       const status = error instanceof MediaAssetError ? error.status : 500;
-      if (status >= 500) logger.error('Purge cleanup trash error:', error);
+      if (status >= 500) logger.error('Purge cleanup trash failed', { operation: 'purgeTrash', code: error.code });
       return { status: status, body: { error: error?.message || 'Purge cleanup failed', code: error?.code } };
     }
   
   }
 
-  return Object.freeze({ upload, importFile, repairMetadata, checkExternal, copy, localize, list, favorite, deleteAsset, trash, cleanupProject, listTrash, restoreTrash, purgeTrash });
+}
+
+export function createFilesystemMediaStore(options) {
+  const store = new FilesystemMediaStore(options);
+  const operations = ['upload', 'importFile', 'repairMetadata', 'checkExternal', 'copy', 'localize', 'list', 'favorite', 'deleteAsset', 'trash', 'cleanupProject', 'listTrash', 'restoreTrash', 'purgeTrash'];
+  return Object.freeze(Object.fromEntries(operations.map(name => [name, store[name].bind(store)])));
 }
 
 export { MediaAssetError };

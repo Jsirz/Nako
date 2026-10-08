@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 export interface CropSize {
   width: number;
   height: number;
@@ -195,7 +196,7 @@ export function cropOutputRects(
   const pixels = (segment: { start: number; size: number }, limit: number) => {
     const start = clamp(Math.round(segment.start), 0, limit),
       end = clamp(Math.round(segment.start + segment.size), 0, limit);
-    if (end <= start) throw new Error('裁切范围太小，无法为每个分块保留至少一个像素。');
+    if (end <= start) throw canvasError('裁切范围太小，无法为每个分块保留至少一个像素。', 'image-crop.geometry');
     return { start, size: end - start };
   };
   return {

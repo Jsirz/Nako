@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { useEffect, useRef, useState } from 'react';
 import type { NodeRunReceipt } from '../../../contracts/nodeExecution.js';
 
@@ -15,7 +16,7 @@ export function NodeCustomUi({ packageId, type, parameters, run, onChange, onRun
     const abort = new AbortController();
     setHtml(''); setError(''); channel.current = crypto.randomUUID();
     fetch(`/api/node-packages/${encodeURIComponent(packageId)}/ui/${encodeURIComponent(type)}`, { signal: abort.signal })
-      .then(async response => { const body = await response.json(); if (!response.ok) throw new Error(body.error); return body.html; })
+      .then(async response => { const body = await response.json(); if (!response.ok) throw canvasError(body.error, 'node-custom-ui.load'); return body.html; })
       .then(source => { if (!abort.signal.aborted) setHtml(`<meta http-equiv="Content-Security-Policy" content="${policy}">${source}`); })
       .catch(cause => { if (!abort.signal.aborted) setError(String(cause.message)); });
     return () => abort.abort();

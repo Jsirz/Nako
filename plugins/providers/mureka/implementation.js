@@ -4,6 +4,8 @@
  */
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, submitError } = providerErrorsFor('mureka');
 
 /**
  * Mureka 音频生成处理器
@@ -14,7 +16,7 @@ export const MurekaAudioProvider = {
         const { nodeId, prompt, lyrics, audioMode, audioModel, generateCount, url: finalUrl } = params;
 
         // 校验 API Key
-        if (!MUREKA_API_KEY) throw new Error('MUREKA_API_KEY 未配置。');
+        if (!MUREKA_API_KEY) throw credentialError('MUREKA_API_KEY 未配置。');
 
         // 根据模式选择提交地址（纯音乐固定走 instrumental）
         const submitUrl = audioMode === 'instrumental'
@@ -51,7 +53,7 @@ export const MurekaAudioProvider = {
         // 提取任务 ID
         const taskId = submitResult?.id;
         if (!taskId) {
-            throw new Error(`Mureka 提交失败: ${submitResult?.error?.message || submitResult?.message || '未返回任务ID'}`);
+            throw submitError(`Mureka 提交失败: ${submitResult?.error?.message || submitResult?.message || '未返回任务ID'}`);
         }
 
         // 轮询任务状态

@@ -1,8 +1,8 @@
 # Skill 主题封面
 
-当前 19 个用户 Skill 与 3 个内置业务 Skill 均已匹配主题图片；15 个随应用分发的预设也包含封面。图片在 Skill 自身目录保存为 `cover.webp`，同时保存 `COVER-SOURCE.md`。用户库封面由 `metadata.json` 的 `coverFile` 指定，新导入/初始化的包自动识别 `cover.webp`。
+随应用分发的预设与内置业务 Skill 在自己的目录保存 `cover.webp` 和 `COVER-SOURCE.md`。用户库封面由 `metadata.json` 的 `coverFile` 指定，新导入或初始化时识别 `cover.webp`；本文不记录开发机用户库内容或路径。
 
-当前用户库：`.desktop-dev/data/users/e1db36a6-c638-4602-a1dd-3d309b9987c5/private/agent-skills`。内置目录：`modules/agent/server/agent/builtin`。已有用户副本已直接更新；以后新用户通过正常预设初始化得到封面，不覆盖其他用户已经修改的内容。
+预设源位于 `modules/agent/server/agent/builtin/presets`，已有用户正文不因应用更新被覆盖。目录、授权来源和运行读取逻辑以存储适配器及附带声明为准。
 
 ### 安装版与开发版的封面来源
 

@@ -32,13 +32,13 @@ export async function inspectWorkflowMedia(options) {
       try {
         const metadata = await probeMediaMetadata(filePath, kind === 'video' ? 'videos' : 'audios');
         return artifact(kind, kind === 'video' ? '.source-video' : '.source-audio', 'application/octet-stream', metadata);
-      } catch (error) { if (error.code !== 'MEDIA_STREAM_NOT_FOUND') throw error; }
+      } catch (error) { if (error.context?.operationCode !== 'MEDIA_STREAM_NOT_FOUND') throw error; }
     }
   }
   // Ogg can contain Theora video even when a node labels it as audio.
   if (ascii.startsWith('OggS')) {
     try { return artifact('video', '.source-video', 'video/ogg', await probeMediaMetadata(filePath, 'videos')); }
-    catch (error) { if (error.code !== 'MEDIA_STREAM_NOT_FOUND') throw error; }
+    catch (error) { if (error.context?.operationCode !== 'MEDIA_STREAM_NOT_FOUND') throw error; }
   }
   return inspectMediaArtifact(options);
 }

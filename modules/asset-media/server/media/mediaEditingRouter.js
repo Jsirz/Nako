@@ -1,8 +1,9 @@
 import express from 'express';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 
 /** HTTP translation only. Storage/processing is supplied by the plugin host. */
 export function createMediaEditingRouter({ mediaProcessor }) {
-  if (!mediaProcessor) throw new Error('mediaProcessor is required');
+  if (!mediaProcessor) throw new PluginError(ERRORS.serviceMissing, 'mediaProcessor is required', { context: { moduleId: 'asset-media', service: 'media.editing' } });
   const router = express.Router();
   router.post("/media/images/crop", async (request, response) => {
     const result = await mediaProcessor.crop({ params: request.params, query: request.query, headers: request.headers, body: request.body, stream: request });

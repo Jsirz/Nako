@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as ReactTypes from 'react';
 import type { CanvasGroup } from './canvasGroups';
 import { canvasVisibleScene,createCanvasSceneProjector } from './canvasSceneData';
@@ -53,7 +54,7 @@ export function useCanvasProjectNavigation(context: ReturnType<typeof useCanvasP
 
   const switchProject = async (id: string) => {
     const loaded = await openProject(id);
-    if (!loaded) throw new Error('目标项目加载失败，请重试');
+    if (!loaded) throw canvasError('目标项目加载失败，请重试', 'project.switch');
   };
 
   const { handleOpenProjectFile, handleMergeProjectFile } = useProjectFiles({
@@ -96,7 +97,7 @@ export function useCanvasProjectNavigation(context: ReturnType<typeof useCanvasP
       if (!alreadySaved && !readOnly) {
         const receipt = await save({ manual: true, reportFailure: true });
         if (!receipt || receipt.unchanged === false)
-          throw new Error('当前项目尚未保存完成，请保存后再退出');
+          throw canvasError('当前项目尚未保存完成，请保存后再退出', 'project.leave');
       }
       navigationRef.current++;
       resetWorkflowId();

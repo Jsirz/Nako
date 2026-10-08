@@ -21,6 +21,7 @@ export function CanvasLegacyWorkflowNode(
     Frame,
     {
       data: props.data,
+      readOnly: props.readOnly,
       selected: props.selected,
       onNodePointerDown: props.onNodePointerDown,
       onContextMenu: props.onContextMenu,
@@ -31,7 +32,7 @@ export function CanvasLegacyWorkflowNode(
       onMouseEnter: props.onMouseEnter,
       onMouseLeave: props.onMouseLeave,
     },
-    <Header data={props.data} selected={props.selected} onUpdate={props.onUpdate} />,
+    <Header data={props.data} selected={props.selected} readOnly={props.readOnly} onUpdate={props.onUpdate} />,
     <div className="relative w-full h-full rounded-lg overflow-hidden bg-[var(--nk-surface)] flex flex-col p-4 gap-3">
       <div className="text-sm font-bold text-[var(--nk-text)]">
         {props.data.title || '旧版内置工作流'}
@@ -40,7 +41,7 @@ export function CanvasLegacyWorkflowNode(
         此内置工作流已停用。原节点参数、连接与已有结果仍保留在项目中。请导入对应的 ComfyUI API JSON
         后运行。
       </div>
-      <button
+      {!props.readOnly && <button
         type="button"
         className="self-start rounded-lg border border-[var(--nk-border-control)] bg-[var(--nk-surface-raised)] px-3 py-2 text-xs text-[var(--nk-text)] hover:bg-[var(--nk-selected)]"
         onPointerDown={(event) => event.stopPropagation()}
@@ -50,7 +51,7 @@ export function CanvasLegacyWorkflowNode(
         }}
       >
         打开工作流
-      </button>
+      </button>}
     </div>,
   );
 }

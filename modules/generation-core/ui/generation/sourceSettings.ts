@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 /**
  * 设置页按来源管理密钥，固定模型目录默认折叠。
  * 来源读取失败保留草稿并提供重试；模型 ID 是否允许覆盖由目录契约声明。
@@ -21,6 +22,8 @@ import { createSettingsScope, type SettingsScope } from './sourceSettingsScope';
 import { mountDefaultModelsSettings } from './defaultModelsSettings';
 import { libTvCliVendor } from './libTvCliSettings';
 import { visibleSourceBlocks } from './hiddenProviderPolicy';
+import { badge, disclosureButton, vendorLink } from './sourceSettingsDom';
+import { dreaminaCliVendor } from './dreaminaCliSettings';
 
 const PANEL_ATTRIBUTE = 'data-nako-source-settings';
 const MEDIA_LABELS: Record<MediaKind, string> = {
@@ -49,8 +52,6 @@ function blockNote(block: SourceBlock) {
 }
 
 const DIRECT_VENDOR_ORDER = ['豆包', 'Kimi', 'DeepSeek', '智谱 GLM', 'OpenAI'] as const;
-const DREAMINA_CLI_INSTALL_COMMAND = 'curl -fsSL https://jimeng.jianying.com/cli | bash';
-import { isOfficialDreaminaLoginUrl } from './dreaminaLoginUrl';
 
 /**
  * 密钥的展示信息。后端只给键名，中文厂商名与取密钥的链接属于界面知识。
@@ -134,26 +135,6 @@ function secretMeta(key: string) {
   return SECRET_META[key] ?? { vendor: key, label: key };
 }
 
-function vendorLink(href: string) {
-  const link = document.createElement('a');
-  link.textContent = '获取密钥';
-  link.href = href;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.className = 'nako-button is-primary nako-key-link';
-  link.setAttribute('aria-label', '获取密钥（在浏览器打开）');
-  return link;
-}
-
-function badge(text: string, tone: 'on' | 'off' | 'accent') {
-  const styles = {
-    on: 'bg-[var(--nk-success-bg)] text-[var(--nk-success)]',
-    off: 'bg-[var(--nk-surface-raised)] text-[var(--nk-text-muted)]',
-    accent: 'bg-[var(--nk-info-bg)] text-[var(--nk-info)]',
-  };
-  return textElement('span', text, `text-xs px-2 py-0.5 rounded-full font-bold ${styles[tone]}`);
-}
-
 /** 同一家厂商的多个密钥（Access Key + Secret Key）必须画在一起，否则填漏一个而不自知。 */
 function groupByVendor(secrets: SourceSecret[]) {
   const groups = new Map<string, { vendor: string; link?: string; secrets: SourceSecret[] }>();
@@ -171,31 +152,6 @@ function groupByVendor(secrets: SourceSecret[]) {
     const rightOrder = vendorOrder.get(right.vendor) ?? DIRECT_VENDOR_ORDER.length;
     return leftOrder - rightOrder;
   });
-}
-
-function disclosureButton(
-  label: HTMLElement,
-  body: HTMLElement,
-  attribute: string,
-  className: string,
-) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = className;
-  button.setAttribute(attribute, 'true');
-  button.setAttribute('aria-expanded', 'false');
-
-  const affordance = textElement('span', '展开', 'text-xs font-medium text-[var(--nk-text-muted)]');
-  affordance.setAttribute('data-nako-disclosure-affordance', 'true');
-  button.append(label, affordance);
-  body.hidden = true;
-  button.addEventListener('click', () => {
-    const expanded = button.getAttribute('aria-expanded') === 'true';
-    button.setAttribute('aria-expanded', String(!expanded));
-    body.hidden = expanded;
-    affordance.textContent = expanded ? '展开' : '收起';
-  });
-  return button;
 }
 
 function secretField(secret: SourceSecret, onDirty: (key: string, value: string) => void) {
@@ -311,345 +267,6 @@ function modelCatalogDisclosure(
   );
   wrapper.append(toggle, body);
   return wrapper;
-}
-
-function dreaminaCliVendor(client: SourceSettingsClient, scope: SettingsScope) {
-  const vendor = document.createElement('section');
-  vendor.className =
-    'rounded-lg border border-[var(--nk-border)] bg-[var(--nk-surface-raised)] overflow-hidden';
-  vendor.setAttribute('data-nako-source-vendor', '即梦 CLI');
-
-  const title = document.createElement('span');
-  title.className = 'flex min-w-0 items-center gap-3 text-left';
-  const statusBadge = badge('检测中', 'off');
-  title.append(
-    textElement('span', '即梦 CLI', 'text-lg font-bold text-[var(--nk-text)]'),
-    statusBadge,
-  );
-
-  const body = document.createElement('div');
-  body.className = 'space-y-4 border-t border-[var(--nk-border)] px-5 py-5';
-  body.setAttribute('data-nako-vendor-body', 'true');
-  body.append(
-    textElement(
-      'p',
-      'Nako 会从即梦官方源安装到当前账号的本机私有目录，无需 Git Bash，也不会申请管理员权限。',
-      'text-sm leading-6 text-[var(--nk-text-secondary)]',
-    ),
-  );
-
-  const state = textElement(
-    'p',
-    '正在检测本机安装状态…',
-    'text-sm leading-6 text-[var(--nk-text-secondary)]',
-  );
-  state.setAttribute('role', 'status');
-  state.setAttribute('aria-live', 'polite');
-
-  const actions = document.createElement('div');
-  actions.className = 'flex flex-wrap items-center gap-3';
-  const install = document.createElement('button');
-  install.type = 'button';
-  install.textContent = '检测中…';
-  install.disabled = true;
-  install.setAttribute('data-nako-dreamina-install', 'true');
-  install.className =
-    'rounded-lg bg-[var(--nk-primary)] px-5 py-3 text-sm font-bold text-[var(--nk-on-primary)] hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nk-focus)] disabled:cursor-not-allowed disabled:opacity-40';
-  const login = document.createElement('button');
-  login.type = 'button';
-  login.textContent = '登录即梦';
-  login.hidden = true;
-  login.setAttribute('data-nako-dreamina-login', 'true');
-  login.className =
-    'rounded-lg border border-[var(--nk-border-control)] px-5 py-3 text-sm font-medium text-[var(--nk-text)] hover:border-[var(--nk-border-control)] hover:text-[var(--nk-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40';
-  const browser = document.createElement('select');
-  browser.setAttribute('aria-label', '即梦授权浏览器');
-  browser.className =
-    'rounded-lg border border-[var(--nk-border-control)] bg-[var(--nk-input)] px-3 py-3 text-sm text-[var(--nk-text)]';
-  for (const [value, label] of [
-    ['default', '默认浏览器'],
-    ['edge', 'Microsoft Edge'],
-    ['chrome', 'Google Chrome'],
-  ]) {
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = label;
-    browser.append(option);
-  }
-  const refresh = document.createElement('button');
-  refresh.type = 'button';
-  refresh.textContent = '刷新账号';
-  refresh.className = login.className;
-  refresh.setAttribute('data-nako-dreamina-refresh', 'true');
-  let authenticated = false;
-  actions.append(browser, login, refresh, install);
-
-  const loginDetails = document.createElement('div');
-  loginDetails.hidden = true;
-  loginDetails.className =
-    'space-y-3 rounded-lg border border-[var(--nk-info)] bg-[var(--nk-info-bg)] p-4';
-  loginDetails.setAttribute('data-nako-dreamina-login-details', 'true');
-  const loginInstruction = textElement(
-    'p',
-    '在即梦官方页面核对下方用户码，授权完成后 Nako 会自动确认。',
-    'text-xs leading-5 text-[var(--nk-text-secondary)]',
-  );
-  const loginCode = textElement(
-    'code',
-    '',
-    'block select-all break-all rounded-md border border-[var(--nk-border)] bg-[var(--nk-input)] px-3 py-2 text-sm text-[var(--nk-text)]',
-  );
-  loginCode.setAttribute('data-nako-dreamina-user-code', 'true');
-  const loginLink = document.createElement('a');
-  loginLink.target = '_blank';
-  loginLink.rel = 'noopener noreferrer';
-  loginLink.textContent = '打开即梦官方授权页';
-  loginLink.className =
-    'inline-flex text-sm font-medium text-[var(--nk-info)] hover:text-[var(--nk-info)]';
-  loginLink.setAttribute('data-nako-dreamina-login-link', 'true');
-  loginDetails.append(loginInstruction, loginCode, loginLink);
-
-  const fallback = document.createElement('div');
-  fallback.hidden = true;
-  fallback.className =
-    'space-y-3 rounded-lg border border-[var(--nk-border)] bg-[var(--nk-input)] p-4';
-  fallback.setAttribute('data-nako-dreamina-fallback', 'true');
-  fallback.append(
-    textElement(
-      'p',
-      '自动安装未完成。你可以重试，或使用即梦官方命令手动安装。',
-      'text-xs leading-5 text-[var(--nk-text-muted)]',
-    ),
-  );
-  const commandRow = document.createElement('div');
-  commandRow.className = 'flex items-center gap-3';
-  const command = textElement(
-    'code',
-    DREAMINA_CLI_INSTALL_COMMAND,
-    'min-w-0 flex-1 overflow-x-auto text-xs text-[var(--nk-text-secondary)]',
-  );
-  const copy = document.createElement('button');
-  copy.type = 'button';
-  copy.textContent = '复制备用命令';
-  copy.className =
-    'shrink-0 rounded-lg border border-[var(--nk-border-control)] px-3 py-2 text-xs font-medium text-[var(--nk-text-secondary)] hover:border-[var(--nk-border-control)] hover:text-[var(--nk-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400';
-  copy.addEventListener('click', () => {
-    if (!navigator.clipboard) {
-      copy.textContent = '请手动复制';
-      return;
-    }
-    void navigator.clipboard
-      .writeText(DREAMINA_CLI_INSTALL_COMMAND)
-      .then(() => {
-        copy.textContent = '已复制';
-      })
-      .catch(() => {
-        copy.textContent = '请手动复制';
-      });
-  });
-  commandRow.append(command, copy);
-  const installLink = vendorLink('https://jimeng.jianying.com/cli');
-  installLink.textContent = '查看即梦官方安装入口';
-  fallback.append(commandRow, installLink);
-  body.append(state, actions, loginDetails, fallback);
-
-  let loginPollTimer: number | null = null;
-  let loginDeadline = 0;
-  const stopLoginPolling = () => {
-    if (loginPollTimer !== null) window.clearTimeout(loginPollTimer);
-    loginPollTimer = null;
-  };
-  scope.onDispose(stopLoginPolling);
-  const showLoginDetails = (
-    result: Awaited<ReturnType<SourceSettingsClient['loginDreaminaCli']>>,
-  ) => {
-    const validLink = isOfficialDreaminaLoginUrl(result.verificationUri, result.userCode);
-    loginDetails.hidden = !(validLink && result.userCode);
-    loginCode.textContent = result.userCode || '';
-    if (validLink) loginLink.href = result.verificationUri!;
-    else loginLink.removeAttribute('href');
-  };
-  const applyLoginResult = (
-    result: Awaited<ReturnType<SourceSettingsClient['loginDreaminaCli']>>,
-    refreshIdentity = true,
-  ) => {
-    if (!scope.active()) return;
-    state.textContent = result.message;
-    if (result.status === 'awaiting-authorization') {
-      login.disabled = true;
-      login.textContent = '等待授权…';
-      showLoginDetails(result);
-      const remoteDeadline = Date.parse(result.expiresAt || '');
-      loginDeadline = Number.isFinite(remoteDeadline)
-        ? remoteDeadline
-        : Date.now() + 5 * 60 * 1_000;
-      return;
-    }
-    stopLoginPolling();
-    loginDetails.hidden = true;
-    if (result.status === 'authenticated') {
-      authenticated = true;
-      login.disabled = false;
-      login.textContent = '切换账号';
-      if (refreshIdentity) void refreshAccount();
-      window.dispatchEvent(new CustomEvent('nako:model-sources-changed'));
-      return;
-    }
-    authenticated = false;
-    login.disabled = false;
-    login.textContent = result.status === 'idle' ? '登录即梦' : '重试登录';
-  };
-  const pollLogin = async () => {
-    if (!scope.active() || !vendor.isConnected) {
-      stopLoginPolling();
-      return;
-    }
-    if (loginDeadline > 0 && Date.now() >= loginDeadline) {
-      applyLoginResult({
-        status: 'expired',
-        loginRunning: false,
-        retryable: true,
-        message: '即梦登录已超时，请重新发起登录。',
-      });
-      return;
-    }
-    try {
-      const result = await client.checkDreaminaCliLogin();
-      if (!scope.active()) return;
-      applyLoginResult(result);
-      if (result.status === 'awaiting-authorization') {
-        const delay = Math.min(5_000, Math.max(1_000, Number(result.pollAfterMs) || 1_000));
-        loginPollTimer = window.setTimeout(() => {
-          void pollLogin();
-        }, delay);
-      }
-    } catch (error: unknown) {
-      if (!scope.active()) return;
-      stopLoginPolling();
-      login.disabled = false;
-      login.textContent = '重试登录';
-      state.textContent = error instanceof Error ? error.message : '检测即梦登录失败。';
-    }
-  };
-
-  const applyStatus = (
-    status: Awaited<ReturnType<SourceSettingsClient['getDreaminaCliStatus']>>,
-  ) => {
-    if (!scope.active()) return;
-    install.disabled = !status.installable;
-    login.hidden = status.status !== 'installed';
-    login.disabled = Boolean(status.loginRunning);
-    fallback.hidden = true;
-    if (status.status === 'installed') {
-      statusBadge.textContent = '已安装';
-      statusBadge.className = badge('已安装', 'on').className;
-      install.textContent = '检查更新';
-      login.textContent = status.loginRunning ? '登录进行中…' : '登录即梦';
-      state.textContent =
-        `即梦 CLI ${status.version || ''} 已就绪。登录后即可在 Nako 中使用。`.replace(
-          '  ',
-          ' ',
-        );
-      if (status.login) {
-        applyLoginResult(status.login, false);
-        if (status.account)
-          state.textContent = `${status.account.nickname || '即梦账号'} · UID ${status.account.uid}`;
-        if (status.login.status === 'awaiting-authorization') void pollLogin();
-      }
-      return;
-    }
-    statusBadge.textContent = status.status === 'unsupported' ? '不支持' : '未安装';
-    statusBadge.className = badge('未安装', 'off').className;
-    install.textContent = status.status === 'invalid' ? '重新安装' : '一键安装';
-    state.textContent =
-      status.message ||
-      (status.status === 'unsupported'
-        ? '当前系统不支持自动安装。'
-        : '尚未安装。点击一次即可完成，不需要打开终端。');
-  };
-
-  install.addEventListener('click', () => {
-    if (install.disabled || !scope.active()) return;
-    install.disabled = true;
-    login.hidden = true;
-    fallback.hidden = true;
-    install.textContent = '正在安装…';
-    state.textContent = '正在从即梦官方源下载并校验，请保持网络连接。';
-    void client
-      .installDreaminaCli()
-      .then(applyStatus)
-      .catch((error: unknown) => {
-        if (!scope.active()) return;
-        statusBadge.textContent = '安装失败';
-        statusBadge.className = badge('未安装', 'off').className;
-        install.disabled = false;
-        install.textContent = '重试安装';
-        state.textContent = error instanceof Error ? error.message : '安装即梦 CLI 失败。';
-        fallback.hidden = false;
-      });
-  });
-
-  const openLogin = (force: boolean) => {
-    if (login.disabled || !scope.active()) return;
-    stopLoginPolling();
-    login.disabled = true;
-    login.textContent = '正在打开…';
-    state.textContent = '正在打开即梦官方 OAuth 登录…';
-    void client
-      .loginDreaminaCli({ force, browser: browser.value as 'default' | 'edge' | 'chrome' })
-      .then((result) => {
-        applyLoginResult(result);
-        if (result.status === 'awaiting-authorization') void pollLogin();
-      })
-      .catch((error: unknown) => {
-        if (!scope.active()) return;
-        login.disabled = false;
-        login.textContent = '重新登录';
-        state.textContent = error instanceof Error ? error.message : '启动即梦登录失败。';
-      });
-  };
-  login.addEventListener('click', () => openLogin(authenticated));
-  loginLink.addEventListener('click', (event) => {
-    event.preventDefault();
-    openLogin(false);
-  });
-
-  const refreshAccount = async () => {
-    refresh.disabled = true;
-    try {
-      const status = await client.getDreaminaCliStatus();
-      if (scope.active()) applyStatus(status);
-    } catch (error) {
-      if (scope.active())
-        state.textContent = error instanceof Error ? error.message : '检测账号失败，请重试。';
-    } finally {
-      if (scope.active()) refresh.disabled = false;
-    }
-  };
-  refresh.addEventListener('click', () => {
-    void refreshAccount();
-  });
-  void client
-    .getDreaminaCliStatus()
-    .then(applyStatus)
-    .catch((error: unknown) => {
-      if (!scope.active()) return;
-      statusBadge.textContent = '检测失败';
-      statusBadge.className = badge('未安装', 'off').className;
-      install.disabled = false;
-      install.textContent = '重试安装';
-      state.textContent = error instanceof Error ? error.message : '检测即梦 CLI 失败。';
-      fallback.hidden = false;
-    });
-
-  const toggle = disclosureButton(
-    title,
-    body,
-    'data-nako-vendor-toggle',
-    'flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-[var(--nk-input)] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400',
-  );
-  vendor.append(toggle, body);
-  return vendor;
 }
 
 function directVendorDisclosure(
@@ -875,7 +492,9 @@ function renderBlock(
   };
   let saving = false;
   const saveConfiguration = async (values: Record<string, string>, keys?: string[]) => {
-    if (saving) throw new Error('配置正在保存，请稍候。');
+    if (saving) throw new PluginError(ERRORS.busy, '配置正在保存，请稍候。', {
+      context: { moduleId: 'generation-core', operation: 'saveConfiguration', source: block.source },
+    });
     const snapshot = new Map([...dirty].filter(([key]) => !keys || keys.includes(key)));
     saving = true;
     try {

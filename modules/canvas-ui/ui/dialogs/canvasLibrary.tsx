@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
 import { CanvasLibraryGrid } from './canvasLibraryGrid';
@@ -89,7 +90,7 @@ function useLibraryCollection(React: Runtime, isOpen: boolean, endpoint: string)
       controllers.add(controller);
       let onAbort!: () => void;
       const aborted = new Promise<never>((_, reject) => {
-        onAbort = () => reject(Error('操作未确认，请刷新列表核对。'));
+        onAbort = () => reject(canvasError('操作未确认，请刷新列表核对。', 'library.cancel'));
         controller.signal.addEventListener('abort', onAbort, { once: true });
       });
       const timer = window.setTimeout(() => controller.abort(), 15_000);
@@ -104,12 +105,13 @@ function useLibraryCollection(React: Runtime, isOpen: boolean, endpoint: string)
                 : {}),
             });
             if (!response.ok)
-              throw Error(
+              throw canvasError(
                 method === 'DELETE'
                   ? '删除失败，请重试或刷新列表核对。'
                   : method === 'PATCH'
                     ? '保存失败，请重试或刷新列表核对。'
                     : '加载失败，请重试。',
+                'library.request',
               );
             return (await response.json()) as T;
           })(),
@@ -124,7 +126,7 @@ function useLibraryCollection(React: Runtime, isOpen: boolean, endpoint: string)
     setStored(initial(epoch));
     void read<LibraryItem[]>(endpoint)
       .then((assets) => {
-        if (!Array.isArray(assets)) throw Error('列表格式不正确，请重试。');
+        if (!Array.isArray(assets)) throw canvasError('列表格式不正确，请重试。', 'library.collection');
         update({ assets });
       })
       .catch((error) => update({ error: error.message }))
@@ -145,7 +147,7 @@ function useLibraryCollection(React: Runtime, isOpen: boolean, endpoint: string)
           );
           if (!active()) return false;
           if (receipt.success !== true || receipt.asset?.id !== id)
-            throw Error('未收到保存成功回执，请刷新列表核对。');
+            throw canvasError('未收到保存成功回执，请刷新列表核对。', 'library.edit');
           update((old) => ({
             ...old,
             assets: old.assets.map((item) => (item.id === id ? receipt.asset! : item)),
@@ -171,7 +173,7 @@ function useLibraryCollection(React: Runtime, isOpen: boolean, endpoint: string)
             'DELETE',
           );
           if (!active()) return false;
-          if (receipt.success !== true) throw Error('未收到删除成功回执，请刷新列表核对。');
+          if (receipt.success !== true) throw canvasError('未收到删除成功回执，请刷新列表核对。', 'library.delete');
           update((old) => ({ ...old, assets: old.assets.filter((item) => item.id !== id) }));
           return true;
         } catch (error) {

@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as React from 'react';
 import type { CanvasNode } from '../nodes/canvasNodeOperations';
 import type { CanvasViewport } from './canvasNavigation';
@@ -32,9 +33,9 @@ const defaults: Runtime = {
       body: JSON.stringify({ id, projectId }),
     });
     const body = await response.json();
-    if (!response.ok) throw Error(typeof body?.error === 'string' ? body.error : '导入资产失败');
+    if (!response.ok) throw canvasError(typeof body?.error === 'string' ? body.error : '导入资产失败', 'asset.import-request');
     if (!body?.asset || typeof body.asset !== 'object' || Array.isArray(body.asset))
-      throw Error('导入资产返回无效');
+      throw canvasError('导入资产返回无效', 'asset.import-response');
     return body.asset;
   },
   inspect: (url, kind) =>
@@ -139,7 +140,7 @@ export function createCanvasAssetInsertion(get: () => Options, runtime: Runtime 
       const cancelled = new Promise<never>((_, reject) => {
         controller.signal.addEventListener(
           'abort',
-          () => reject(Error('素材导入已取消或等待超时。')),
+          () => reject(canvasError('素材导入已取消或等待超时。', 'asset.import-cancel')),
           { once: true },
         );
         timer = setTimeout(() => controller.abort(), 30_000);
@@ -147,7 +148,7 @@ export function createCanvasAssetInsertion(get: () => Options, runtime: Runtime 
       const asset = await Promise.race([read(controller.signal), cancelled]);
       if (!current()) return;
       if (!text(asset.url) || !['images', 'videos', 'audios'].includes(text(asset.type)))
-        throw Error('导入资产返回无效');
+        throw canvasError('导入资产返回无效', 'asset.import-result');
       const metadata = await Promise.race([
         runtime.inspect(text(asset.url), text(asset.type)),
         cancelled,

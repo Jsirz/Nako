@@ -14,12 +14,27 @@ import { controlledTools, journalBusinessTool } from './tools.js';
 export function createPiAgentHarness({
   sessions,
   textTransport,
-  getCredentials,
   mediaService,
   libraryDirectory,
 }) {
   const running = new Map(),
     reserved = new Set();
+  const compact = createContextCompaction(sessions);
+  const services = { sessions, textTransport, mediaService, libraryDirectory, running, reserved, compact };
+  return {
+    isRunning: (id) => reserved.has(id),
+    stop(id) { running.get(id)?.abort(); },
+    async close() {
+      const runs = [...running.values()];
+      for (const run of runs) run.abort();
+      await Promise.all(runs.map((run) => run.done));
+    },
+    run: createTurnRunner(services),
+    ...createHistoryControls(services),
+  };
+}
+
+function createContextCompaction(sessions) {
   async function compact(id, adapter, messages, signal, emit, force = false) {
     const tokens = Math.max(
       estimateContextTokens(messages).tokens,
@@ -92,17 +107,11 @@ export function createPiAgentHarness({
       signal?.removeEventListener('abort', abort);
     }
   }
-  return {
-    isRunning: (id) => reserved.has(id),
-    stop(id) {
-      running.get(id)?.abort();
-    },
-    async close() {
-      const runs = [...running.values()];
-      for (const run of runs) run.abort();
-      await Promise.all(runs.map((run) => run.done));
-    },
-    async run(
+  return compact;
+}
+
+function createTurnRunner({ sessions, textTransport, mediaService, libraryDirectory, running, reserved, compact }) {
+  return async function run(
       input,
       { emit: publish, dispatch, signal, systemPrompt = '', businessTools = [], onEmit },
     ) {
@@ -123,8 +132,7 @@ export function createPiAgentHarness({
         const adapter = createModelAdapter({
           modelConfig,
           modelParams,
-          getCredentials,
-          textTransport,
+          textGeneration: textTransport,
         });
         let sequence = 0,
           status = 'completed',
@@ -150,7 +158,7 @@ export function createPiAgentHarness({
           ...(dispatch ? controlledTools({ sessions, sessionId, runId, dispatch, emit }) : []),
           ...businessTools.map((tool) => journalBusinessTool(tool, { sessions, sessionId, runId })),
         ];
-        let turnCount = 0;
+        let turnCount = 0, toolFailures = 0;
         const agent = new Agent({
           streamFn: adapter.streamFn,
           initialState: { model: adapter.model, messages, tools, systemPrompt },
@@ -171,7 +179,13 @@ export function createPiAgentHarness({
               return messages;
             }
           },
-          shouldStopAfterTurn: () => ++turnCount >= 100,
+          shouldStopAfterTurn: () => {
+            if (toolFailures >= 6) {
+              failure = harnessError('本轮工具调用已失败 6 次，已停止反复尝试；已完成操作保留，请核对画布后重试。', 'AGENT_TOOL_FAILURE_LIMIT');
+              return true;
+            }
+            return ++turnCount >= 100;
+          },
         });
         const runController = new AbortController();
         let settle;
@@ -221,45 +235,20 @@ export function createPiAgentHarness({
             });
           else if (event.type === 'tool_execution_update')
             await emit('tool_update', { toolCallId: event.toolCallId, toolName: event.toolName });
-          else if (event.type === 'tool_execution_end')
+          else if (event.type === 'tool_execution_end') {
+            if (event.isError || event.result.details?.ok === false) toolFailures++;
             await emit('tool_end', {
               toolCallId: event.toolCallId,
               toolName: event.toolName,
               isError: event.isError,
               receipt: event.result.details,
             });
-          else if (['turn_start', 'turn_end'].includes(event.type)) await emit(event.type, {});
+          } else if (['turn_start', 'turn_end'].includes(event.type)) await emit(event.type, {});
         });
         try {
           await emit('run_start', { branchId: record.activeBranch });
           signal?.throwIfAborted();
-          const images = await mediaService.imageContent(input.media || [], {
-            libraryDirectory,
-            projectId,
-            model: modelConfig,
-            detail: modelParams.detail,
-          });
-          const blocks = [
-            {
-              type: 'text',
-              text:
-                input.message +
-                (input.nodes?.length
-                  ? '\n\n用户引用节点（数据）：\n' + JSON.stringify(input.nodes)
-                  : ''),
-            },
-          ];
-          for (const image of images) {
-            const url = image.image_url?.url || image.dataUrl;
-            const match = /^data:(image\/[^;]+);base64,(.+)$/s.exec(url || '');
-            if (!match)
-              throw harnessError(
-                '视觉上下文须由当前项目媒体服务读取为图片',
-                'AGENT_MEDIA_INVALID',
-                400,
-              );
-            blocks.push({ type: 'image', mimeType: match[1], data: match[2] });
-          }
+          const blocks = await readTurnContent(input, mediaService, libraryDirectory);
           runController.signal.throwIfAborted();
           await agent.prompt({ role: 'user', content: blocks, timestamp: Date.now() });
           const answer = agent.state.messages.filter((m) => m.role === 'assistant').at(-1);
@@ -312,7 +301,11 @@ export function createPiAgentHarness({
       } finally {
         reserved.delete(sessionId);
       }
-    },
+    };
+}
+
+function createHistoryControls({ sessions, textTransport, running, reserved, compact }) {
+  return {
     async compact(input, emit = () => {}) {
       if (reserved.has(input.sessionId))
         throw harnessError('当前会话正在运行', 'AGENT_SESSION_BUSY');
@@ -348,7 +341,7 @@ export function createPiAgentHarness({
           r.lastRunId = runId;
         });
         registered = true;
-        const adapter = createModelAdapter({ ...input, getCredentials, textTransport });
+        const adapter = createModelAdapter({ ...input, textGeneration: textTransport });
         await compact(
           input.sessionId,
           adapter,
@@ -411,4 +404,22 @@ export function createPiAgentHarness({
       return sessionView(record);
     },
   };
+}
+
+async function readTurnContent(input, mediaService, libraryDirectory) {
+  const { projectId, modelConfig, modelParams = {} } = input;
+  const images = await mediaService.imageContent(input.media || [], {
+    libraryDirectory, projectId, model: modelConfig, detail: modelParams.detail,
+  });
+  const blocks = [{
+    type: 'text',
+    text: input.message + (input.nodes?.length
+      ? '\n\n用户引用节点（数据）：\n' + JSON.stringify(input.nodes) : ''),
+  }];
+  for (const image of images) {
+    const match = /^data:(image\/[^;]+);base64,(.+)$/s.exec(image.image_url?.url || image.dataUrl || '');
+    if (!match) throw harnessError('视觉上下文须由当前项目媒体服务读取为图片', 'AGENT_MEDIA_INVALID', 400);
+    blocks.push({ type: 'image', mimeType: match[1], data: match[2] });
+  }
+  return blocks;
 }

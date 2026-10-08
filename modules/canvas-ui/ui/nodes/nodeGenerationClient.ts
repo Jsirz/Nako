@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { NodeGenerationClient, NodeRunRequest } from '../../../contracts/nodeExecution.js';
 import { executeNodeGraph } from './nodeGraphClient';
 import type { NodeRunReceipt } from '../../../contracts/nodeExecution.js';
@@ -8,7 +9,7 @@ export const nodeGenerationClient: NodeGenerationClient = {
     let url = '/api/node-runs/find?' + query;
     if (!requestId) {
       const history = await fetch('/api/node-runs?' + new URLSearchParams({ projectId }), { signal, cache: 'no-store' });
-      if (!history.ok) throw new Error('无法读取节点运行记录');
+      if (!history.ok) throw canvasError('无法读取节点运行记录', 'node-generation.observe-history');
       const runs = await history.json() as NodeRunReceipt[];
       const latest = runs.filter(run => run.projectId === projectId && run.nodes?.length === 1 &&
         run.nodes[0].id === nodeId && run.nodes[0].pluginId === 'nako.canvas-core')
@@ -21,7 +22,7 @@ export const nodeGenerationClient: NodeGenerationClient = {
       url = '/api/node-runs/' + encodeURIComponent(latest.id);
     }
     const response = await fetch(url, { signal, cache: 'no-store' });
-    if (!response.ok) throw new Error('无法读取节点运行状态');
+    if (!response.ok) throw canvasError('无法读取节点运行状态', 'node-generation.observe');
     const run = await response.json() as NodeRunReceipt | null;
     if (!run) return null;
     const type = run.nodes?.find(node => node.id === nodeId)?.type;

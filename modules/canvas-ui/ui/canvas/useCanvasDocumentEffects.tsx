@@ -4,10 +4,15 @@ import './canvasWorkspace.css';
 import type { useCanvasAgentRuntime } from './useCanvasAgentRuntime';
 
 export function useCanvasDocumentEffects(context: ReturnType<typeof useCanvasAgentRuntime>) {
+  useCanvasSessionEffects(context);
+  useCanvasContentEffects(context);
+  useCanvasWorkspaceEffects(context);
+  return { ...context };
+}
+
+function useCanvasSessionEffects(context: ReturnType<typeof useCanvasAgentRuntime>) {
   const {
     React,
-    NodeStatus,
-    NodeType,
     session,
     navigationRef,
     mountedRef,
@@ -17,35 +22,12 @@ export function useCanvasDocumentEffects(context: ReturnType<typeof useCanvasAge
     folderId,
     setFolderId,
     isMinimapOpen,
-    setMinimapWidth,
-    setSettingsOpen,
-    zoomControlsRef,
-    selectedCoverRef,
-    newProjectPendingRef,
-    canvasTitle,
     viewport,
     setViewport,
-    focusOnNodes,
-    nodes,
-    setNodes,
-    selectedNodeIds,
-    setSelectedNodeIds,
+    zoomControlsRef,
+    setMinimapWidth,
     focusNodes,
-    isDraggingConnection,
-    isDragging,
-    isResizing,
-    isSelecting,
-    groups,
-    cleanupInvalidGroups,
-    pushHistory,
     workflowId,
-    setDirty,
-    firstEditRef,
-    observedContentRef,
-    loadingCountRef,
-    resultCountRef,
-    applyingDocumentRef,
-    save,
     loadProject,
   } = context;
 
@@ -116,6 +98,14 @@ export function useCanvasDocumentEffects(context: ReturnType<typeof useCanvasAge
       });
     }
   }, [view, workflowId, folderId, viewport, session, readOnly]);
+}
+
+function useCanvasContentEffects(context: ReturnType<typeof useCanvasAgentRuntime>) {
+  const {
+    React, NodeStatus, observedContentRef, nodes, groups, canvasTitle, firstEditRef,
+    loadingCountRef, resultCountRef, readOnly, applyingDocumentRef, setDirty,
+    isDragging, isResizing, isDraggingConnection, isSelecting, pushHistory, save,
+  } = context;
   React.useEffect(() => {
     const previous = observedContentRef.current;
     observedContentRef.current = { nodes, groups, title: canvasTitle };
@@ -164,6 +154,14 @@ export function useCanvasDocumentEffects(context: ReturnType<typeof useCanvasAge
     pushHistory,
     save,
   ]);
+}
+
+function useCanvasWorkspaceEffects(context: ReturnType<typeof useCanvasAgentRuntime>) {
+  const {
+    React, selectedNodeIds, nodes, NodeType, selectedCoverRef, view,
+    newProjectPendingRef, save, cleanupInvalidGroups, setNodes, setView,
+    setSettingsOpen, focusOnNodes, setSelectedNodeIds,
+  } = context;
   React.useEffect(() => {
     if (selectedNodeIds.length === 1) {
       const ke = nodes.find((st) => st.id === selectedNodeIds[0]);
@@ -218,5 +216,4 @@ export function useCanvasDocumentEffects(context: ReturnType<typeof useCanvasAge
       () => window.removeEventListener('nako:open-settings', ke)
     );
   }, [setSettingsOpen]);
-  return { ...context };
 }

@@ -16,7 +16,7 @@ function sparkleBuild(feed) {
       SUEnableInstallerLauncherService: false,
       SUVerifyUpdateBeforeExtraction: true,
       SURequireSignedFeed: true,
-      SUDeltaChainHistory: 0,
+      SUDeltaChainHistory: 0, // Use direct signed deltas; no historical multi-hop chain is published.
       SUEnableAutomaticChecks: false,
       CFBundleLocalizations: ['en', 'zh_CN', 'zh_TW'],
     },

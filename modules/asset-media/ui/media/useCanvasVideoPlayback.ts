@@ -4,7 +4,7 @@ import type { MediaMetadata } from './generationMediaMetadata';
 import type { StableVideoPlayback } from './videoPlayback';
 export type VideoRuntime = Pick<
   typeof ReactTypes,
-  'createElement' | 'useRef' | 'useState' | 'useEffect' | 'useLayoutEffect' | 'useCallback'
+  'createElement' | 'Fragment' | 'useRef' | 'useState' | 'useEffect' | 'useLayoutEffect' | 'useCallback'
 >;
 export interface VideoNode {
   id: string;
@@ -186,16 +186,7 @@ export function useCanvasVideoPlayback(
       setVolume(next);
     }
   };
-  const seek = (value: number) => {
-    const video = videoRef.current;
-    if (!video || !Number.isFinite(value) || !Number.isFinite(video.duration)) return;
-    try {
-      video.currentTime = Math.min(video.duration, Math.max(0, value));
-      setTime(video.currentTime);
-    } catch {
-      setError('视频定位失败，请稍后重试');
-    }
-  };
+  const seek = (value: number) => seekVideo(videoRef.current, value, setTime, setError);
   const retry = () => {
     const video = videoRef.current;
     if (video) {
@@ -219,4 +210,15 @@ export function useCanvasVideoPlayback(
     seek,
     retry,
   };
+}
+
+function seekVideo(video: HTMLVideoElement | null, value: number,
+  setTime: (value: number) => void, setError: (message: string) => void) {
+  if (!video || !Number.isFinite(value) || !Number.isFinite(video.duration)) return;
+  try {
+    video.currentTime = Math.min(video.duration, Math.max(0, value));
+    setTime(video.currentTime);
+  } catch {
+    setError('视频定位失败，请稍后重试');
+  }
 }

@@ -17,11 +17,8 @@ import path from 'node:path';
 import express from 'express';
 import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
 import { loadModelNames as loadCatalogModelNames } from '../config/modelCatalog.js';
-import {
-  createProviderCredentialStore,
-  createPlatformCredentialProtector,
-  PROVIDER_CREDENTIAL_FILE_NAME,
-} from '../../../identity-account/api/server/credentials/providerCredentialStore.mjs';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 
 const DEFAULT_ENV_PATH = RUNTIME_PATHS.ENV_PATH;
 const DEFAULT_MODEL_CONFIG_PATH = path.join(
@@ -59,33 +56,15 @@ function writePrivateFile(filePath, content) {
   }
 }
 
-function defaultCredentialStore() {
-  const helperPath =
-    process.env.NAKO_PROVIDER_CREDENTIAL_HELPER ||
-    path.join(
-      RUNTIME_PATHS.APP_DIR,
-      'modules',
-      'identity-account',
-      'server',
-      'credentials',
-      'providerCredentialBridge.ps1',
-    );
-  return createProviderCredentialStore({
-    filePath:
-      process.env.NAKO_PROVIDER_CREDENTIAL_PATH ||
-      path.join(RUNTIME_PATHS.PRIVATE_DIR, PROVIDER_CREDENTIAL_FILE_NAME),
-    allowedKeys: USER_PROVIDER_SECRET_KEYS,
-    protector: createPlatformCredentialProtector({ helperPath }),
-  });
-}
 
 export function createConfigRouter({
   envPath = DEFAULT_ENV_PATH,
   modelConfigPath = DEFAULT_MODEL_CONFIG_PATH,
   modelNames = loadModelNames(modelConfigPath),
-  credentialStore = defaultCredentialStore(),
-  logger = console,
+  credentialStore,
+  logger = createModuleLogger('generation-core'),
 } = {}) {
+  if (!credentialStore) throw new PluginError(ERRORS.serviceMissing, 'Provider credential manager is required', { context: { moduleId: 'generation-core', service: 'identity.providerCredentials' } });
   const router = express.Router();
   let migrationPromise = null;
 
@@ -163,17 +142,11 @@ export function createConfigRouter({
       const currentContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
       if (currentContent !== nextContent) writePrivateFile(envPath, nextContent);
       for (const [key, value] of Object.entries(next)) process.env[key] = value;
-      for (const [key, value] of Object.entries(secretPatch)) {
-        if (value) process.env[key] = value;
-        else delete process.env[key];
-      }
-      logger.log(
-        `[Config] Updated keys: ${Object.keys(submitted).filter(isAllowedKey).join(', ')}`,
-      );
+      logger.info('Model source configuration updated', { changedKeys: Object.keys(submitted).filter(isAllowedKey).join(', ') });
       response.json({ success: true });
     } catch (error) {
-      logger.error('[Config] Update failed:', error?.name || 'Error');
-      response.status(500).json({ error: 'Failed to update config' });
+      logger.error('Model source configuration update failed', { errorType: error?.name, code: error?.code });
+      response.status(error?.status || 500).json({ error: 'Failed to update config', code: error?.code });
     }
   });
 

@@ -1,3 +1,4 @@
+import type { GenerationModel } from './generationUi';
 export interface CatalogParameter {
   key: string;
   label: string;
@@ -16,12 +17,13 @@ export interface CatalogMode {
   fixedAspectRatio?: string;
   /** Accepted source-video duration in seconds, inclusive. */
   referenceVideoDuration?: { min: number; max: number };
+  requiresVisualReference?: boolean;
   label: string;
   value: string;
   allowedInputs: { text?: number; image?: number; video?: number; audio?: number };
 }
 /** Stable declarative provider contribution, containing no runtime services or secrets. */
-export interface CatalogModel {
+export interface CatalogModel extends GenerationModel {
   [key: string]: unknown;
   kind: 'text' | 'image' | 'video' | 'audio';
   name: string;
@@ -40,7 +42,6 @@ export interface CatalogModel {
   maxInputs: number;
   maxConcurrent: number;
   useProxy: boolean;
-  cost: number;
   resolutions: string[];
   aspectRatios: string[];
   supportedReferenceTypes: string[];
@@ -48,6 +49,7 @@ export interface CatalogModel {
   maxImageSizeMb: number;
   maxResolution: string;
   fixedDuration?: number;
+  durationMinByResolution?: Record<string, number>;
   languageModes?: CatalogMode[];
   imageModes?: CatalogMode[];
   videoModes?: CatalogMode[];

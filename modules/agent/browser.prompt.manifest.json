@@ -7,7 +7,6 @@
   "dependencies": {
     "ui.project": "^1.0.0"
   },
-  "capabilities": [
-    "ui.prompt"
-  ]
+  "capabilities": ["ui.prompt"],
+  "services": { "provides": ["ui.prompt.composition"] }
 }

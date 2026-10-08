@@ -4,6 +4,8 @@
  */
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, inputError, submitError, responseError } = providerErrorsFor('grok');
 
 /**
  * 构建 Grok 视频请求体
@@ -27,7 +29,7 @@ function buildGrokBody(params) {
     const { images: allImages, videos: allVideos } = BaseProvider.getAssets(params);
 
     if (videoMode === 'video-edit') {
-        if (allVideos.length === 0) throw new Error('视频编辑模式需要提供视频参考。');
+        if (allVideos.length === 0) throw inputError('视频编辑模式需要提供视频参考。');
         body.video_url = allVideos[0];
         // 视频编辑通常不需要分辨率和比例参数，由原视频决定
         delete body.aspect_ratio;
@@ -40,7 +42,7 @@ function buildGrokBody(params) {
             // 多图参考模式
             body.reference_images = allImages.map(url => ({ url }));
         } else {
-            throw new Error('图生视频模式至少需要 1 张图片参考。');
+            throw inputError('图生视频模式至少需要 1 张图片参考。');
         }
     }
 
@@ -53,7 +55,7 @@ export const GrokVideoProvider = {
         const { nodeId, videoModel, url: finalUrl, useProxy, projectId } = params;
 
         if (!GROK_API_KEY) {
-            throw new Error("Grok API Key 未配置。");
+            throw credentialError("Grok API Key 未配置。");
         }
 
         const body = buildGrokBody(params);
@@ -77,7 +79,7 @@ export const GrokVideoProvider = {
         // Grok 响应包含 request_id
         const requestId = result.request_id;
         if (!requestId) {
-            throw new Error(`Grok 提交失败: 未返回 request_id`);
+            throw submitError(`Grok 提交失败: 未返回 request_id`);
         }
 
         // 轮询 URL: https://api.x.ai/v1/videos/{request_id}
@@ -121,7 +123,7 @@ export const GrokVideoProvider = {
         });
 
         if (!videoUrl) {
-            throw new Error("Grok 未返回有效的视频地址。");
+            throw responseError("Grok 未返回有效的视频地址。");
         }
 
         // 核心修复：Grok 的视频资源域名 (vidgen.x.ai) 必须翻墙下载

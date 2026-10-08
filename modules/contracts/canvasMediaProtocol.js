@@ -1,3 +1,4 @@
+import { protocolError } from './errors.js';
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 255;
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const exact = (value, keys) => object(value) && Object.keys(value).every(key => keys.includes(key));
@@ -22,13 +23,13 @@ export function validMediaControl(value) {
 }
 export function projectMediaResult(value, result) {
   if (value.analysis !== undefined) {
-    if (typeof value.analysis !== 'string') throw new Error('Invalid media analysis');
+    if (typeof value.analysis !== 'string') throw protocolError('canvasMedia', 'Invalid media analysis');
     result.analysis = value.analysis;
   }
   if (value.images === undefined) return;
-  if (!Array.isArray(value.images) || value.images.length > 20) throw new Error('Invalid image output');
+  if (!Array.isArray(value.images) || value.images.length > 20) throw protocolError('canvasMedia', 'Invalid image output');
   result.images = value.images.map(image => {
-    if (!text(image?.nodeId) || typeof image.dataUrl !== 'string' || image.dataUrl.length > 1500000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(image.dataUrl)) throw new Error('Invalid image output');
+    if (!text(image?.nodeId) || typeof image.dataUrl !== 'string' || image.dataUrl.length > 1500000 || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(image.dataUrl)) throw protocolError('canvasMedia', 'Invalid image output');
     return { nodeId: image.nodeId, dataUrl: image.dataUrl };
   });
 }

@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS, identityError, identityFailure } from '../../../contracts/identityErrors.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { lstat, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
@@ -25,7 +26,7 @@ export function createBackgroundStore(privateDirectory, { normalizeImage = norma
   let queue = Promise.resolve();
   let pending = 0;
   const serialized = action => {
-    if (pending >= 3) return Promise.reject(new BackgroundError('背景正在处理中，请稍后重试。', 429, 'BACKGROUND_BUSY'));
+    if (pending >= 3) return Promise.reject(new BackgroundError('背景正在处理中，请稍后重试。', 429, IDENTITY_ERRORS.backgroundBusy));
     pending += 1;
     const next = queue.catch(() => {}).then(action).finally(() => { pending -= 1; });
     queue = next;
@@ -37,13 +38,13 @@ export function createBackgroundStore(privateDirectory, { normalizeImage = norma
     for (const target of [root, directory]) {
       if (create && target === directory) await mkdir(target, { recursive: true });
       const stat = await lstat(target);
-      if (!stat.isDirectory() || stat.isSymbolicLink()) throw new BackgroundError('背景保存目录不可用。', 409, 'BACKGROUND_STORAGE_UNAVAILABLE');
+      if (!stat.isDirectory() || stat.isSymbolicLink()) throw new BackgroundError('背景保存目录不可用。', 409, IDENTITY_ERRORS.backgroundStorage);
     }
   }
 
   async function regularFile(file, maxBytes) {
     const stat = await lstat(file);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes) throw new Error('Invalid background file');
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maxBytes) throw identityError(IDENTITY_ERRORS.backgroundStorage, 'Invalid background file', 'background.read', 409);
     return readFile(file);
   }
 
@@ -79,9 +80,9 @@ export function createBackgroundStore(privateDirectory, { normalizeImage = norma
       return { image: selected ? imageInfo(selected.record) : null };
     }),
     image: id => serialized(async () => {
-      if (!ID.test(id)) throw new BackgroundError('背景图片不存在。', 404, 'BACKGROUND_NOT_FOUND');
+      if (!ID.test(id)) throw new BackgroundError('背景图片不存在。', 404, IDENTITY_ERRORS.backgroundNotFound);
       const selected = await current();
-      if (!selected || selected.record.id !== id) throw new BackgroundError('背景图片不存在。', 404, 'BACKGROUND_NOT_FOUND');
+      if (!selected || selected.record.id !== id) throw new BackgroundError('背景图片不存在。', 404, IDENTITY_ERRORS.backgroundNotFound);
       return selected.bytes;
     }),
     replace: (bytes, mime) => serialized(async () => {
@@ -109,9 +110,9 @@ export function createBackgroundStore(privateDirectory, { normalizeImage = norma
       await checkedDirectory(true);
       try {
         const stat = await lstat(pointer);
-        if (!stat.isFile() || stat.isSymbolicLink()) throw new BackgroundError('背景设置文件不可用。', 409, 'BACKGROUND_STORAGE_UNAVAILABLE');
+        if (!stat.isFile() || stat.isSymbolicLink()) throw new BackgroundError('背景设置文件不可用。', 409, IDENTITY_ERRORS.backgroundStorage);
         await unlink(pointer);
-      } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      } catch (error) { if (error.code !== 'ENOENT') throw identityFailure(error, IDENTITY_ERRORS.backgroundStorage, '背景设置文件不可用。', 'background.remove'); }
       await cleanup().catch(() => {});
       return { image: null };
     }),

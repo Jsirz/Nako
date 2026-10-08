@@ -1,3 +1,7 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+
 import { discoverComfyInstallations } from './comfyDiscovery.js';
 import crypto from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
@@ -10,7 +14,9 @@ import { ComfyExtensionInstallError } from './comfyExtensionInstaller.js';
 import { detectComfyInstallation } from './comfyProcess.js';
 import { DreaminaCliInstallError } from './dreaminaCliInstaller.js';
 
+const logger = createModuleLogger('local-runtime');
 const MODEL_EXTENSIONS = new Set(['.safetensors', '.pt', '.ckpt', '.bin', '.pth']);
+
 const MODEL_DIRECTORIES = Object.freeze({
   checkpoints: 'image',
   loras: 'lora',
@@ -238,7 +244,7 @@ export function createLocalRuntimeRouter({
   cacheTtlMs = 30_000,
 }) {
   if (!modelsDirectory || !probeGpu || !probeComfy) {
-    throw new Error('modelsDirectory, probeGpu, and probeComfy are required');
+    throw localRuntimeError('modelsDirectory, probeGpu, and probeComfy are required', 'createLocalRuntimeRouter', ERRORS.invalidConfiguration);
   }
   const router = express.Router();
   const workflowRegistryWithRequirements = loadWorkflowRequirements(workflowRegistry);
@@ -259,7 +265,7 @@ export function createLocalRuntimeRouter({
     try {
       return publicProcessState(await comfyProcess.getState());
     } catch (error) {
-      console.error('[Local Runtime] ComfyUI process state failed:', error?.code || error?.name || 'UNKNOWN');
+      logger.error('ComfyUI process state failed', { operation: 'comfyProcessState', error });
       return {
         phase: 'error',
         running: false,
@@ -302,7 +308,7 @@ export function createLocalRuntimeRouter({
       response.status(error.status).json({ error: error.message, code: error.code });
       return;
     }
-    console.error('[Local Runtime] ComfyUI extension operation failed:', error?.code || error?.name || 'UNKNOWN');
+    logger.error('ComfyUI extension operation failed', { operation: 'sendComfyExtensionError', error });
     response.status(500).json({
       error: 'ComfyUI 节点编号扩展操作失败，请查看本机日志。',
       code: 'COMFYUI_EXTENSION_OPERATION_FAILED',
@@ -314,7 +320,7 @@ export function createLocalRuntimeRouter({
       response.status(error.status).json({ error: error.message, code: error.code });
       return;
     }
-    console.error('[Local Runtime] Dreamina CLI operation failed:', error?.code || error?.name || 'UNKNOWN');
+    logger.error('Dreamina CLI operation failed', { operation: 'sendDreaminaCliError', error });
     response.status(500).json({
       error: '即梦 CLI 本机操作失败，请稍后重试。',
       code: 'DREAMINA_CLI_OPERATION_FAILED',
@@ -361,12 +367,24 @@ export function createLocalRuntimeRouter({
   };
 
   const sendStatusError = (response, error) => {
-    console.error('[Local Runtime] Status failed:', error?.code || error?.name || 'UNKNOWN');
+    logger.error('Local runtime status failed', { operation: 'sendStatusError', error });
     response.status(500).json({
       error: '本地运行环境检测失败，请查看本机日志。',
       code: 'LOCAL_RUNTIME_STATUS_FAILED',
     });
   };
+
+  registerRuntimeReadRoutes(router, { getStatus, sendStatusError, dreaminaCliInstaller, requireDreaminaCliInstaller, sendDreaminaCliError });
+  registerComfyProcessRoutes(router, {
+    comfyProcess, comfyProcessState, requireComfyProcess, comfyExtensionInstaller,
+    requireComfyExtensionInstaller, sendComfyExtensionError, getComfyPython, selectComfyDirectory,
+    invalidateStatus: () => { cachedStatus = null; },
+  });
+  registerLocalModelRoutes(router, { getStatus, sendStatusError });
+  return router;
+}
+
+function registerRuntimeReadRoutes(router, { getStatus, sendStatusError, dreaminaCliInstaller, requireDreaminaCliInstaller, sendDreaminaCliError }) {
 
   router.get('/local-runtime/status', async (_request, response) => {
     try {
@@ -420,6 +438,13 @@ export function createLocalRuntimeRouter({
     }
   });
 
+}
+
+function registerComfyProcessRoutes(router, {
+  comfyProcess, comfyProcessState, requireComfyProcess, comfyExtensionInstaller,
+  requireComfyExtensionInstaller, sendComfyExtensionError, getComfyPython, selectComfyDirectory,
+  invalidateStatus,
+}) {
   router.get('/local-runtime/comfyui', async (_request, response) => {
     if (!requireComfyProcess(response)) return;
     response.json(await comfyProcessState());
@@ -437,7 +462,7 @@ export function createLocalRuntimeRouter({
       ]);
       response.json({ state, logs });
     } catch (error) {
-      console.error('[Local Runtime] ComfyUI log read failed:', error?.code || error?.name || 'UNKNOWN');
+      logger.error('ComfyUI log read failed', { operation: 'readLogs', error });
       response.status(500).json({
         error: '读取本机 ComfyUI 日志失败。',
         code: 'COMFYUI_LOG_READ_FAILED',
@@ -506,7 +531,7 @@ export function createLocalRuntimeRouter({
         });
         return;
       }
-      console.error('[Local Runtime] ComfyUI directory selection failed:', error?.code || error?.name || 'UNKNOWN');
+      logger.error('ComfyUI directory selection failed', { operation: 'selectComfyDirectory', error });
       response.status(500).json({
         error: '选择 ComfyUI 目录失败，请稍后重试。',
         code: 'COMFYUI_DIRECTORY_SELECTION_FAILED',
@@ -518,10 +543,10 @@ export function createLocalRuntimeRouter({
     if (!requireComfyProcess(response)) return;
     try {
       const result = await comfyProcess.start();
-      cachedStatus = null;
+      invalidateStatus();
       response.status(result.status === 'failed' ? 409 : 200).json(result);
     } catch (error) {
-      console.error('[Local Runtime] ComfyUI start failed:', error?.code || error?.name || 'UNKNOWN');
+      logger.error('ComfyUI start failed', { operation: 'start', error });
       response.status(500).json({
         error: '启动本机 ComfyUI 失败，请查看本机日志。',
         code: 'COMFYUI_START_FAILED',
@@ -533,10 +558,10 @@ export function createLocalRuntimeRouter({
     if (!requireComfyProcess(response)) return;
     try {
       const result = await comfyProcess.stop();
-      cachedStatus = null;
+      invalidateStatus();
       response.status(result.status === 'failed' ? 409 : 200).json(result);
     } catch (error) {
-      console.error('[Local Runtime] ComfyUI stop failed:', error?.code || error?.name || 'UNKNOWN');
+      logger.error('ComfyUI stop failed', { operation: 'stop', error });
       response.status(500).json({
         error: '停止本机 ComfyUI 失败，请查看本机日志。',
         code: 'COMFYUI_STOP_FAILED',
@@ -544,6 +569,9 @@ export function createLocalRuntimeRouter({
     }
   });
 
+}
+
+function registerLocalModelRoutes(router, { getStatus, sendStatusError }) {
   router.get('/local-models/gpu', async (_request, response) => {
     try {
       response.json((await getStatus()).gpu);

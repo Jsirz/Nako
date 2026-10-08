@@ -1,3 +1,6 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -322,7 +325,8 @@ function readComfyProcessPhase({ running, owned, startable }) {
   return startable ? 'idle' : 'unavailable';
 }
 
-export function createComfyProcessController({
+class ComfyProcessController {
+  constructor({
   probeComfy,
   readConfig = () => readComfyLaunchConfig(),
   spawnProcess = spawn,
@@ -338,36 +342,42 @@ export function createComfyProcessController({
   fileSystem = fs,
   sleep = delay,
   pollIntervalMs = 1_500,
-  logger = console,
-} = {}) {
-  if (typeof probeComfy !== 'function') throw new Error('probeComfy is required');
-  let pendingStart = null;
+  logger = createModuleLogger('local-runtime'),
+  } = {}) {
+    if (typeof probeComfy !== 'function') throw localRuntimeError('probeComfy is required', 'createComfyProcessController', ERRORS.invalidConfiguration);
+    Object.assign(this, {
+      probeComfy, readConfig, spawnProcess, inspectProcess, isProcessAlive,
+      terminateProcess, openLogTargets, openBrowser, readLogTail, logsDirectory,
+      isPortFree, recordPath, fileSystem, sleep, pollIntervalMs, logger,
+    });
+    this.pendingStart = null;
+  }
 
-  async function readRecord() {
+  async readRecord() {
     try {
-      const parsed = JSON.parse(await readFile(recordPath, 'utf8'));
+      const parsed = JSON.parse(await readFile(this.recordPath, 'utf8'));
       return parsed && Number(parsed.pid) > 0 ? parsed : null;
     } catch {
       return null;
     }
   }
 
-  async function writeRecord(record) {
-    await mkdir(path.dirname(recordPath), { recursive: true });
-    const temporary = `${recordPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  async writeRecord(record) {
+    await mkdir(path.dirname(this.recordPath), { recursive: true });
+    const temporary = `${this.recordPath}.${process.pid}.${crypto.randomUUID()}.tmp`;
     await writeFile(temporary, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
-    await rename(temporary, recordPath);
+    await rename(temporary, this.recordPath);
   }
 
-  async function clearRecord() {
-    await rm(recordPath, { force: true });
+  async clearRecord() {
+    await rm(this.recordPath, { force: true });
   }
 
   // 只承认既有记录、又通过命令行核对的进程，避免 PID 复用误伤别的程序。
-  async function ownedRecord() {
-    const record = await readRecord();
+  async ownedRecord() {
+    const record = await this.readRecord();
     if (!record) return null;
-    const details = await inspectProcess(record.pid);
+    const details = await this.inspectProcess(record.pid);
     if (!isOwnedComfyProcess(details, record)) return null;
     return record;
   }
@@ -375,13 +385,13 @@ export function createComfyProcessController({
   // 状态轮询只检查记录 PID 是否仍存在。这里不能反复启动 PowerShell/CIM，
   // 否则前端每次刷新状态都会创建 conhost，造成用户看到 CMD 持续闪烁。
   // 真正执行停止前仍由 ownedRecord() 做完整命令行核验，避免 PID 复用误伤。
-  async function liveRecordedProcess() {
-    const record = await readRecord();
+  async liveRecordedProcess() {
+    const record = await this.readRecord();
     if (!record) return null;
-    return await isProcessAlive(record.pid) ? record : null;
+    return await this.isProcessAlive(record.pid) ? record : null;
   }
 
-  function describeAddress(config) {
+  describeAddress(config) {
     try {
       return resolveComfyAddress(config.serverUrl);
     } catch {
@@ -389,9 +399,9 @@ export function createComfyProcessController({
     }
   }
 
-  async function getState() {
-    const config = readConfig();
-    const resolved = describeAddress(config);
+  async getState() {
+    const config = this.readConfig();
+    const resolved = this.describeAddress(config);
     if (!resolved) {
       return {
         phase: 'unavailable',
@@ -405,8 +415,8 @@ export function createComfyProcessController({
         actions: ['把 ComfyUI 地址改为 127.0.0.1:8188。'],
       };
     }
-    const [probe, record] = await Promise.all([probeComfy(resolved.address), liveRecordedProcess()]);
-    const installation = detectComfyInstallation(config, { fileSystem });
+    const [probe, record] = await Promise.all([this.probeComfy(resolved.address), this.liveRecordedProcess()]);
+    const installation = detectComfyInstallation(config, { fileSystem: this.fileSystem });
     const startupFailure = !probe?.ok ? record?.startupFailure : null;
     const state = {
       autoStart: config.autoStart,
@@ -427,9 +437,9 @@ export function createComfyProcessController({
     return { phase: startupFailure ? 'failed' : readComfyProcessPhase(state), ...state };
   }
 
-  async function runStart({ timeoutMs } = {}) {
-    const config = readConfig();
-    const resolved = describeAddress(config);
+  async runStart({ timeoutMs } = {}) {
+    const config = this.readConfig();
+    const resolved = this.describeAddress(config);
     if (!resolved) {
       return {
         status: 'failed',
@@ -439,14 +449,14 @@ export function createComfyProcessController({
       };
     }
 
-    const alreadyRunning = await probeComfy(resolved.address);
+    const alreadyRunning = await this.probeComfy(resolved.address);
     if (alreadyRunning?.ok) {
-      const record = await ownedRecord();
+      const record = await this.ownedRecord();
       return { status: 'ready', address: resolved.address, owned: Boolean(record), pid: record?.pid };
     }
 
     // 进程还活着但服务未就绪：复用已有状态；若已超时则继续报告失败，绝不重复拉起。
-    const starting = await ownedRecord();
+    const starting = await this.ownedRecord();
     if (starting) {
       if (starting.startupFailure) {
         return {
@@ -460,7 +470,7 @@ export function createComfyProcessController({
       return { status: 'starting', address: resolved.address, owned: true, pid: starting.pid };
     }
 
-    const installation = detectComfyInstallation(config, { fileSystem });
+    const installation = detectComfyInstallation(config, { fileSystem: this.fileSystem });
     if (!installation.ok) {
       return {
         status: 'failed',
@@ -472,7 +482,7 @@ export function createComfyProcessController({
 
     // ComfyUI 探测失败但端口被占：是别的程序占了，直接说清楚，
     // 不要让用户等满三分钟才拿到一个"启动超时"。
-    if (!await isPortFree(resolved.port, resolved.host)) {
+    if (!await this.isPortFree(resolved.port, resolved.host)) {
       return {
         status: 'failed',
         diagnosticCode: 'COMFYUI_PORT_IN_USE',
@@ -493,8 +503,8 @@ export function createComfyProcessController({
     let logTargets = null;
     let child;
     try {
-      logTargets = openLogTargets();
-      child = spawnProcess(installation.python, args, buildComfySpawnOptions({
+      logTargets = this.openLogTargets();
+      child = this.spawnProcess(installation.python, args, buildComfySpawnOptions({
         cwd: installation.cwd,
         stdio: logTargets.stdio,
       }));
@@ -527,27 +537,27 @@ export function createComfyProcessController({
       port: resolved.port,
       startedAt: new Date().toISOString(),
     };
-    await writeRecord(record);
-    logger.log?.(`[ComfyUI] 已启动本机进程 pid=${child.pid} port=${resolved.port}`);
+    await this.writeRecord(record);
+    this.logger.info?.('已启动本机 ComfyUI 进程', { operation: 'start', pid: child.pid, port: resolved.port });
 
     const budget = clampTimeout(timeoutMs ?? config.startTimeoutMs);
-    const attempts = Math.max(1, Math.ceil(budget / pollIntervalMs));
+    const attempts = Math.max(1, Math.ceil(budget / this.pollIntervalMs));
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      await sleep(pollIntervalMs);
-      const probe = await probeComfy(resolved.address);
+      await this.sleep(this.pollIntervalMs);
+      const probe = await this.probeComfy(resolved.address);
       if (probe?.ok) {
         const browserUrl = `http://${resolved.address}/`;
         try {
-          Promise.resolve(openBrowser(browserUrl)).catch(() => {
-            logger.warn?.('[ComfyUI] 网页打开失败，可从本机服务手动打开。');
+          Promise.resolve(this.openBrowser(browserUrl)).catch(() => {
+            this.logger.warn?.('ComfyUI 网页打开失败，可从本机服务手动打开。', { operation: 'openBrowser' });
           });
         } catch {
-          logger.warn?.('[ComfyUI] 网页打开失败，可从本机服务手动打开。');
+          this.logger.warn?.('ComfyUI 网页打开失败，可从本机服务手动打开。', { operation: 'openBrowser' });
         }
         return { status: 'ready', address: resolved.address, owned: true, pid: record.pid };
       }
-      if (!await isProcessAlive(record.pid)) {
-        await clearRecord();
+      if (!await this.isProcessAlive(record.pid)) {
+        await this.clearRecord();
         return {
           status: 'failed',
           diagnosticCode: 'COMFYUI_EXITED_DURING_START',
@@ -562,7 +572,7 @@ export function createComfyProcessController({
       message: '本机 ComfyUI 启动超时。',
       actions: ['首次启动需要加载全部自定义节点，可在设置中延长启动超时后重试。'],
     };
-    await writeRecord({ ...record, startupFailure });
+    await this.writeRecord({ ...record, startupFailure });
     return {
       status: 'failed',
       ...startupFailure,
@@ -571,30 +581,30 @@ export function createComfyProcessController({
     };
   }
 
-  async function waitForExit(pid, attempts = 40) {
+  async waitForExit(pid, attempts = 40) {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      if (!await isProcessAlive(pid)) return true;
-      await sleep(50);
+      if (!await this.isProcessAlive(pid)) return true;
+      await this.sleep(50);
     }
     return false;
   }
 
-  async function stop() {
-    const record = await readRecord();
+  async stop() {
+    const record = await this.readRecord();
     if (!record) return { status: 'not-running' };
-    const details = await inspectProcess(record.pid);
+    const details = await this.inspectProcess(record.pid);
     if (!isOwnedComfyProcess(details, record)) {
       // 记录过期（进程已退出，或 PID 被别的程序复用）：只清记录，绝不终止。
-      await clearRecord();
+      await this.clearRecord();
       return { status: 'not-running' };
     }
 
-    await terminateProcess(record.pid, 'graceful');
-    if (!await waitForExit(record.pid, 20)) {
-      await terminateProcess(record.pid, 'force');
+    await this.terminateProcess(record.pid, 'graceful');
+    if (!await this.waitForExit(record.pid, 20)) {
+      await this.terminateProcess(record.pid, 'force');
     }
 
-    if (!await waitForExit(record.pid)) {
+    if (!await this.waitForExit(record.pid)) {
       return {
         status: 'failed',
         diagnosticCode: 'COMFYUI_STOP_FAILED',
@@ -602,25 +612,29 @@ export function createComfyProcessController({
         actions: ['在任务管理器中手动结束该 ComfyUI 进程。'],
       };
     }
-    await clearRecord();
-    logger.log?.(`[ComfyUI] 已停止本机进程 pid=${record.pid}`);
+    await this.clearRecord();
+    this.logger.info?.('已停止本机 ComfyUI 进程', { operation: 'stop', pid: record.pid });
     return { status: 'stopped', pid: record.pid };
   }
 
-  return {
-    getState,
-    readLogs: ({ lines } = {}) => readLogTail({ logsDirectory, lines, fileSystem: fs }),
-    detect: () => detectComfyInstallation(readConfig(), { fileSystem }),
-    start(options) {
-      if (pendingStart) return pendingStart;
-      pendingStart = runStart(options).finally(() => { pendingStart = null; });
-      return pendingStart;
-    },
-    stop,
-    // 生成链路兜底：未开启自动启动时保持既有行为，不做任何 spawn。
-    async ensureReady(options) {
-      if (!readConfig().autoStart) return { status: 'disabled' };
-      return this.start(options);
-    },
-  };
+  start(options) {
+    if (this.pendingStart) return this.pendingStart;
+    this.pendingStart = this.runStart(options).finally(() => { this.pendingStart = null; });
+    return this.pendingStart;
+  }
+
+  publicApi() {
+    return {
+      getState: this.getState.bind(this),
+      readLogs: ({ lines } = {}) => this.readLogTail({ logsDirectory: this.logsDirectory, lines, fileSystem: fs }),
+      detect: () => detectComfyInstallation(this.readConfig(), { fileSystem: this.fileSystem }),
+      start: this.start.bind(this),
+      stop: this.stop.bind(this),
+      ensureReady: options => this.readConfig().autoStart ? this.start(options) : Promise.resolve({ status: 'disabled' }),
+    };
+  }
+}
+
+export function createComfyProcessController(options = {}) {
+  return new ComfyProcessController(options).publicApi();
 }

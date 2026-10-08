@@ -10,16 +10,7 @@ export function useCanvasConnectionState(context: ReturnType<typeof useCanvasDoc
     useGroups,
     useEdgePan,
     useHistory,
-    useWorkflow,
     view,
-    isMinimapOpen,
-    setMinimapOpen,
-    closeHistoryPanel,
-    closeAssetLibrary,
-    closeWorkflowPresetPanel,
-    canvasTitle,
-    setCanvasTitle,
-    setEditingTitleValue,
     viewport,
     setViewport,
     canvasRef,
@@ -116,25 +107,7 @@ export function useCanvasConnectionState(context: ReturnType<typeof useCanvasDoc
       useProjectFiles,
       useProjectTransfer,
       useSaveFeedback,
-    } = useWorkflow({
-      nodes,
-      groups,
-      viewport,
-      canvasTitle,
-      isMinimapOpen,
-      setNodes,
-      setGroups,
-      setSelectedNodeIds,
-      setCanvasTitle,
-      setEditingTitleValue,
-      setViewport,
-      setIsMinimapOpen: setMinimapOpen,
-      onPanelOpen: () => {
-        closeHistoryPanel();
-        closeAssetLibrary();
-        closeWorkflowPresetPanel();
-      },
-    }),
+    } = useCanvasWorkflowState(context, { groups, setGroups }),
     activeProjectId = view === 'canvas' ? workflowId : null;
   return {
     ...context,
@@ -204,4 +177,28 @@ export function useCanvasConnectionState(context: ReturnType<typeof useCanvasDoc
     useSaveFeedback,
     activeProjectId,
   };
+}
+
+function useCanvasWorkflowState(
+  context: ReturnType<typeof useCanvasDocumentState>,
+  groupState: Pick<ReturnType<ReturnType<typeof useCanvasDocumentState>['useGroups']>, 'groups' | 'setGroups'>,
+) {
+  return context.useWorkflow({
+    nodes: context.nodes,
+    ...groupState,
+    viewport: context.viewport,
+    canvasTitle: context.canvasTitle,
+    isMinimapOpen: context.isMinimapOpen,
+    setNodes: context.setNodes,
+    setSelectedNodeIds: context.setSelectedNodeIds,
+    setCanvasTitle: context.setCanvasTitle,
+    setEditingTitleValue: context.setEditingTitleValue,
+    setViewport: context.setViewport,
+    setIsMinimapOpen: context.setMinimapOpen,
+    onPanelOpen: () => {
+      context.closeHistoryPanel();
+      context.closeAssetLibrary();
+      context.closeWorkflowPresetPanel();
+    },
+  });
 }

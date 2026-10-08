@@ -2,10 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { AgentSkillError } from '../../../modules/contracts/agentSkillError.js';
-import { RUNTIME_PATHS } from '../../../modules/project/api/server/workspace/runtimePaths.js';
+import { BUNDLED_MODULES_DIRECTORY } from './bundledPaths.js';
 
 export const DEFAULT_SKILL_PRESET_DIRECTORY = path.join(
-  RUNTIME_PATHS.MODULES_DIR, 'agent', 'server', 'agent', 'builtin', 'presets',
+  BUNDLED_MODULES_DIRECTORY, 'agent', 'server', 'agent', 'builtin', 'presets',
 );
 const CATEGORIES = {
   'deepwhite-image-prompt-builder': '图像设计',

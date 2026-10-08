@@ -2,6 +2,8 @@ import { mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { remoteTaskReference, matchesRemoteTask } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
 import { materializeInputs } from '../../../modules/generation-providers/api/server/providers/cliMediaInputs.js';
+import { ProviderError, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { cancelledError, submitError, unknownError, wrapError } = providerErrorsFor('dreamina');
 
 const TASK_TIMEOUT_MS = 30 * 60 * 1000;
 const POLL_INTERVAL_MS = 2_000;
@@ -9,13 +11,10 @@ const SUBMIT_ID_PATTERN = /^[A-Za-z0-9_-]{6,128}$/;
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.mpeg', '.mpg']);
 
-class DreaminaCliProviderError extends Error {
+class DreaminaCliProviderError extends ProviderError {
   constructor(code, message, { status = 500, retryable = false } = {}) {
-    super(message);
+    super(message, { code, providerId: 'dreamina', operation: status === 400 ? 'validate-input' : 'execute-cli', status, retryable });
     this.name = 'DreaminaCliProviderError';
-    this.code = code;
-    this.status = status;
-    this.retryable = retryable;
     this.expose = true;
   }
 }
@@ -76,7 +75,7 @@ async function executeChecked(runtime, args, signal) {
 
 function waitForPoll(signal) {
   if (signal?.aborted) {
-    return Promise.reject(Object.assign(new Error('Generation cancelled'), { name: 'AbortError' }));
+    return Promise.reject(Object.assign(cancelledError('Generation cancelled'), { name: 'AbortError' }));
   }
   return new Promise((resolve, reject) => {
     let timer;
@@ -87,7 +86,7 @@ function waitForPoll(signal) {
     const abort = () => {
       clearTimeout(timer);
       signal?.removeEventListener?.('abort', abort);
-      reject(Object.assign(new Error('Generation cancelled'), { name: 'AbortError' }));
+      reject(Object.assign(cancelledError('Generation cancelled'), { name: 'AbortError' }));
     };
     timer = setTimeout(finish, POLL_INTERVAL_MS);
     signal?.addEventListener('abort', abort, { once: true });
@@ -169,25 +168,25 @@ async function runTask(runtime, submitArgs, kind, params, config) {
     try {
       submitted = parseCliState(await executeChecked(runtime, submitArgs, signal));
       if (submitted.status === 'fail') throw taskFailed(submitted);
-      if (!SUBMIT_ID_PATTERN.test(submitted.submitId)) throw new Error('Missing submission receipt');
+      if (!SUBMIT_ID_PATTERN.test(submitted.submitId)) throw submitError('Missing submission receipt');
     } catch (error) {
       const notSubmitted = error.submissionNotStarted === true
         || ['DREAMINA_RUNTIME_ARGUMENT_INVALID', 'DREAMINA_CLI_NOT_INSTALLED'].includes(error.code);
       if (!error.providerTaskFailed && !notSubmitted) error.submissionUncertain = true;
-      throw error;
+      throw wrapError(error, 'submit');
     }
     const reference = remoteTaskReference({ ...identity, taskId: submitted.submitId });
     config.generationTaskSubmitted?.(reference);
     const deadline = Date.now() + TASK_TIMEOUT_MS;
     while (Date.now() < deadline) {
       const result = await queryTask(runtime, submitted.submitId, kind, taskDirectory, signal);
-      if (result.status === 'failed') throw result.error;
+      if (result.status === 'failed') throw wrapError(result.error, 'poll');
       if (result.status === 'success') {
-        if (!(await canRecover(kind, reference, params, config))) throw new Error('Account changed during observation');
+        if (!(await canRecover(kind, reference, params, config))) throw unknownError('Account changed during observation');
         return kind === 'video' ? { buffer: result.buffer, format: result.format }
           : result.results.length === 1 ? result.results[0] : result.results;
       }
-      if (result.status === 'unknown') throw new Error('Original task result is not yet confirmed');
+      if (result.status === 'unknown') throw unknownError('Original task result is not yet confirmed');
       await waitForPoll(signal);
     }
     throw new DreaminaCliProviderError('DREAMINA_TASK_TIMEOUT', '原即梦任务仍待核对，请勿重复生成。', { status: 504 });

@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import type { WorkflowCanvasBlueprint } from '../../../local-runtime/api/ui/local/workflowManagerClient';
 
 export interface DramaAsset {
@@ -34,8 +35,8 @@ export interface DramaComposition {
   }>;
 }
 
-export class DramaClientError extends Error {
-  constructor(message: string, readonly code: string, readonly status: number) { super(message); this.name = 'DramaClientError'; }
+export class DramaClientError extends AgentOperationError {
+  constructor(message: string, readonly code: string, readonly status: number) { super(message, { operation: 'drama-client-request' }, code, status); this.name = 'DramaClientError'; }
 }
 
 export function createDramaClient(fetcher: typeof fetch = globalThis.fetch) {
@@ -56,7 +57,7 @@ export function createDramaClient(fetcher: typeof fetch = globalThis.fetch) {
     async importScript(file: File) {
       const contentBase64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onerror = () => reject(new Error('无法读取剧本文件。'));
+        reader.onerror = () => reject(new AgentOperationError('无法读取剧本文件。', { operation: 'import-drama-script' }));
         reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
         reader.readAsDataURL(file);
       });

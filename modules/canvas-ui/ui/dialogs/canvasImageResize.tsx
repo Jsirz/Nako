@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
@@ -28,9 +29,15 @@ const inputClass =
 /** Keeps the compact original editor; save completion belongs to this editor opening. */
 export function CanvasImageResize(
   React: Runtime,
-  { node, onSave, onClose, projectId }: Props,
-  { Close, Save, Spinner }: Icons,
+  props: Props,
+  icons: Icons,
 ) {
+  const state = useImageResizeState(React, props);
+  if (!props.node) return null;
+  return renderImageResize(React, { ...props, node: props.node }, icons, state);
+}
+
+function useImageResizeState(React: Runtime, { node, onSave, onClose, projectId }: Props) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const imageRef = React.useRef<HTMLImageElement | null>(null);
   const sessionRef = React.useRef(0);
@@ -143,12 +150,12 @@ export function CanvasImageResize(
       canvas.width = dimensions.width;
       canvas.height = dimensions.height;
       const context = canvas.getContext('2d');
-      if (!context) throw new Error('无法创建尺寸处理画布');
+      if (!context) throw canvasError('无法创建尺寸处理画布', 'image-resize.save-canvas');
       context.imageSmoothingEnabled = true;
       context.imageSmoothingQuality = 'high';
       context.drawImage(image, 0, 0, dimensions.width, dimensions.height);
       const data = canvas.toDataURL('image/png');
-      if (!data.startsWith('data:image/png')) throw new Error('图片尺寸超出当前设备的处理范围。');
+      if (!data.startsWith('data:image/png')) throw canvasError('图片尺寸超出当前设备的处理范围。', 'image-resize.export');
       await onSave(id, data, dimensions);
       if (sessionRef.current === session) closeRef.current();
     } catch (cause) {
@@ -161,8 +168,17 @@ export function CanvasImageResize(
       }
     }
   };
-  if (!node) return null;
-  const canSave = !!original && !invalid && !saving;
+  return { rootRef, original, mode, scale, width, height, saving, error, url,
+    dimensions, invalid, ratio, fit, change, save, canSave: !!original && !invalid && !saving };
+}
+
+function renderImageResize(
+  React: Runtime,
+  { node, onClose }: Props & { node: ImageNode },
+  { Close, Save, Spinner }: Icons,
+  { rootRef, original, mode, scale, width, height, saving, error, url,
+    dimensions, invalid, ratio, fit, change, save, canSave }: ReturnType<typeof useImageResizeState>,
+) {
   return (
     <div
       ref={rootRef}

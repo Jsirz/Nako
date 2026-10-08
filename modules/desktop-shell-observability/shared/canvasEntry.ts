@@ -1,3 +1,4 @@
+import { DESKTOP_ERRORS, desktopFailure } from '../../contracts/desktopErrors.js';
 export interface PrepareCanvasResult {
   prepared: boolean;
   message: string;
@@ -56,7 +57,7 @@ export function createCanvasEntry(bridge: CanvasEntryBridge) {
         // A failed warm-up is only an optimization failure; the main process revalidates on open.
         const result = await bridge.open(userInitiated).catch((error: unknown) => {
           if (!accepting || expected !== generation) return null;
-          throw error;
+          throw desktopFailure(error, DESKTOP_ERRORS.canvasOpen, '本机画布打开失败。', 'canvas.open');
         });
         return accepting && expected === generation ? result : null;
       })();
@@ -80,7 +81,7 @@ export function createCanvasEntry(bridge: CanvasEntryBridge) {
         return await signOut();
       } catch (error) {
         if (expected === generation) accepting = true;
-        throw error;
+        throw desktopFailure(error, DESKTOP_ERRORS.canvasLeave, '本机画布退出失败。', 'canvas.leave');
       }
     },
   };

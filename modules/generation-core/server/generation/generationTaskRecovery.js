@@ -1,3 +1,5 @@
+import { PluginError } from '../../../contracts/errors.js';
+import { GENERATION_ERROR_CODES } from '../../../contracts/generationErrors.js';
 import crypto from 'node:crypto';
 import { confirmedGenerationFailure } from './generationErrors.js';
 
@@ -198,7 +200,9 @@ export function createGenerationTaskRecovery({
           new Promise((_, reject) => {
             timer = setTimeout(() => {
               abort.abort();
-              reject(new Error('Recovery observation timed out'));
+              reject(new PluginError(GENERATION_ERROR_CODES.observationInterrupted, 'Recovery observation timed out', {
+                context: { moduleId: 'generation-core', operation: 'recoverTask', nodeId: task.nodeId, attemptId: task.attemptId, timeoutMs },
+              }));
             }, timeoutMs);
           }),
         ]);

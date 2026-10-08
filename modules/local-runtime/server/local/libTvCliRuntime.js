@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError, LOCAL_RUNTIME_ERRORS } from '../../../contracts/localRuntimeErrors.js';
 import { spawn } from 'node:child_process';
 import { mkdir, mkdtemp, rm, stat, readFile, writeFile, rename } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -5,13 +7,13 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import express from 'express';
 
-export const libTvError = (message, code = 'LIBTV_CLI_FAILED', status = 502) =>
-  Object.assign(new Error(message), { code, status, expose: true, retryable: false });
+export const libTvError = (message, code = LOCAL_RUNTIME_ERRORS.libTvCli, status = 502) =>
+  Object.assign(localRuntimeError(message, 'libTvCli', code, status), { expose: true, retryable: false });
 
 // Only the backend selects the executable, config home and command arguments.
 // Never inherit a shared CLI login or a caller-supplied credential environment.
 export function createLibTvCliRuntime({ privateDirectory, executable = path.join(homedir(), '.libtv', process.platform === 'win32' ? 'libtv.exe' : 'libtv'), spawnChild = spawn } = {}) {
-  if (!privateDirectory) throw new Error('privateDirectory is required');
+  if (!privateDirectory) throw localRuntimeError('privateDirectory is required', 'createLibTvCliRuntime', ERRORS.invalidConfiguration);
   const root = path.resolve(privateDirectory);
   const configDirectory = path.join(root, 'auth');
   let cached = null, probedAt = 0, probe = null, login = null, loginError = '', uses = 0;

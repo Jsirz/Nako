@@ -15,7 +15,7 @@ export default defineApplicationPlugin({
     const capabilities = createNodeCapabilities({ generation: context.services.get('generation.runtime'),
       mediaStore: context.services.get('media.store'), mediaAgent: context.services.get('media.agent'), mediaProcessor: context.services.get('media.processor'), workflow: context.services.get('workflow.execution'), projects, store });
     const runs = await createNodeRunService({ registry: context.services.get('node.registry'), store, capabilities,
-      readProject: id => projects.getWorkflowById(id), policy: NODE_CAPABILITIES,
+      readProject: id => projects.get(id), policy: NODE_CAPABILITIES,
       recoverRun: createNodeGenerationRecovery(context.services.get('generation.runtime')) });
     context.services.register('nodes.runtime', runs);
     context.services.get('http.routes').contribute(context, createNodeRunRouter({ runs, packages: context.services.get('node.packages') }), { phase: 30, order: 10 });

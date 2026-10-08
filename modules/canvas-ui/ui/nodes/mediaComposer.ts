@@ -2,7 +2,7 @@ import { browserServices } from '../../../kernel/browser';
 import type { ConnectedAssetsProps } from './canvasConnectedAssets';
 import type * as ReactTypes from 'react';
 import type { CanvasPromptEditor } from '../../../agent/api/ui/prompt/canvasPromptEditor';
-import type { GenerationModel } from '../../../generation-core/api/ui/generation/canvasGenerationRequests';
+import type { GenerationModel } from '../../../contracts/generationUi';
 import type { CatalogMode } from '../../../contracts/modelCatalog';
 export type ComposerRuntime = Pick<
   typeof ReactTypes,
@@ -57,6 +57,7 @@ export interface ComposerModel extends GenerationModel {
 }
 export interface MediaComposerProps {
   data: ComposerNode;
+  readOnly?: boolean;
   isLoading?: boolean;
   connectedImageNodes?: ComposerAsset[];
   onUpdate(id: string, patch: Partial<ComposerNode>): void;

@@ -6,6 +6,7 @@ import {
 import { failure } from './client.js';
 import { connection as resolveConnection } from './connection.js';
 import { readTaskResults } from './taskResults.js';
+import { wrapProviderError, PROVIDER_ERRORS } from '../../../modules/contracts/providerErrors.js';
 export async function queryTask({ kind, reference, params, config, client, fetcher, signal }) {
   const ctx = resolveConnection(kind, params, config);
   if (!matchesRemoteTask(reference, ctx)) return { status: 'unknown', reason: 'settings_changed' };
@@ -110,7 +111,7 @@ export async function runTask({
     taskId = String(created.task_id || created.data?.[0]?.task_id || created.id || '').trim();
   } catch (error) {
     taskId = String(error.publicTaskId || '');
-    if (!taskId || !error.submissionUncertain) throw error;
+    if (!taskId || !error.submissionUncertain) throw wrapProviderError(error, { providerId: 'work-fisher', operation: 'submit' });
   }
   if (!/^[A-Za-z0-9._:-]{1,200}$/.test(taskId))
     throw Object.assign(failure('Work-Fisher 未返回有效任务 ID。'), { submissionUncertain: true });
@@ -143,15 +144,15 @@ export async function runTask({
             });
     } catch (error) {
       if (!params.signal?.aborted && error.retryable) continue;
-      throw error;
+      throw wrapProviderError(error, { providerId: 'work-fisher', operation: 'poll' });
     }
     if (result.status === 'pending') continue;
-    if (result.status === 'failed') throw result.error;
+    if (result.status === 'failed') throw wrapProviderError(result.error, { providerId: 'work-fisher', operation: 'poll' });
     if (result.status === 'success') return result.results;
     throw failure('Work-Fisher 返回了未知任务状态，请保留任务 ID。');
   }
   throw failure('等待 Work-Fisher 结果超时，可稍后查询原任务。', {
-    code: 'WORK_FISHER_TIMEOUT',
+    code: PROVIDER_ERRORS.workFisherTimeout,
     status: 504,
   });
 }

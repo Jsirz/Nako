@@ -1,7 +1,7 @@
 import type * as ReactTypes from 'react';
 import type { DashboardRuntime, DashboardIcon } from './dashboardRuntime';
 import type { DashboardProject, DashboardFolder } from './projectDashboardData';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { canvasProjectUi } from '../projectUiServices';
 export function DashboardErrorStatus(
   _React: DashboardRuntime,
   props: { error: string; busy: boolean; loading: boolean; refresh(): Promise<boolean> },
@@ -29,7 +29,7 @@ export function DashboardModal(React: DashboardRuntime, props: ModalProps) {
   currentRef.current = props;
   React.useEffect(() => {
     if (surface.current)
-      return activateModal(surface.current, () => {
+      return canvasProjectUi().activateModal(surface.current, () => {
         if (!currentRef.current.busy) currentRef.current.onDismiss();
       });
   }, []);

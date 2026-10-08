@@ -19,6 +19,7 @@ export function inspectLocalAuthenticationConfiguration({
   env = process.env,
   runtimePaths,
   port,
+  directories,
 } = {}) {
   const activeOpaqueUserId = runtimePaths?.ACTIVE_OPAQUE_USER_ID;
   if (!activeOpaqueUserId)
@@ -27,6 +28,7 @@ export function inspectLocalAuthenticationConfiguration({
     const userScopeResolver = createUserScopeResolver({
       usersDirectory: runtimePaths.USERS_DATA_DIR,
       globalDirectory: runtimePaths.GLOBAL_DATA_DIR,
+      directories,
     });
     return Object.freeze({
       ready: true,

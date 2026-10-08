@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import type { CanvasNode } from '../nodes/canvasNodeOperations';
 import { useCanvasDeferredFrame,useCanvasSurfaceSize } from './canvasApplicationEvents';
@@ -35,7 +36,7 @@ export function useCanvasSceneBridge(context: ReturnType<typeof useCanvasConnect
           setNodes((current) => {
             const next = transform(current);
             if (!next.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)))
-              throw new Error('文戏节点坐标无效，未写入画布。');
+              throw canvasError('文戏节点坐标无效，未写入画布。', 'scene.drama-node-position');
             return next as CanvasNode[];
           });
         },

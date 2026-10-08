@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { IMAGE_MODELS } from '../../../generation-core/api/models/catalog';
 import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
 import {
@@ -24,14 +25,14 @@ export function createImageAngleDraft(
   projectId: string,
   runtime: Runtime,
 ) {
-  if (!imageToolModel) throw new Error('请先配置支持图生图的第三方模型。');
+  if (!imageToolModel) throw mediaError('请先配置支持图生图的第三方模型。');
   const source = nodes.find((node) => node.id === sourceId);
   if (
     !source?.resultUrl ||
     !['Image', 'Upload Image'].includes(source.type) ||
     source.uploadPending
   )
-    throw new Error('原图尚未准备好，请稍后重试。');
+    throw mediaError('原图尚未准备好，请稍后重试。');
   const settings = normalizeImageAngle(angle),
     description = imageAngleDescription(settings);
   const draft = runtime.create(
@@ -60,6 +61,6 @@ export function createImageAngleDraft(
   });
   const connected = runtime.connect(configured, sourceId, draft.id);
   if (!connected.find((node) => node.id === draft.id)?.parentIds?.includes(sourceId))
-    throw new Error('当前图像模型不支持参考图片，请先选择支持图生图的模型。');
+    throw mediaError('当前图像模型不支持参考图片，请先选择支持图生图的模型。');
   return { nodes: connected, id: draft.id };
 }

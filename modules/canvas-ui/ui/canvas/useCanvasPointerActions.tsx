@@ -1,22 +1,24 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as ReactTypes from 'react';
 import { browserServices } from '../../../kernel/browser';
 import './canvasWorkspace.css';
 import type { useCanvasAssetActions } from './useCanvasAssetActions';
 
 export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAssetActions>) {
+  const pointerActions = useCanvasPointerGestures(context);
+  const editActions = useCanvasImageEditActions(context);
+  const projectActions = useCanvasProjectOpening(context);
+  return { ...context, ...pointerActions, ...editActions, ...projectActions };
+}
+
+function useCanvasPointerGestures(context: ReturnType<typeof useCanvasAssetActions>) {
   const {
     React,
-    media,
     getNodeWidth,
     getNodeHeight,
-    view,
-    setView,
-    setFolderId,
     setContextMenu,
     pointerRef,
-    projectFileRef,
     closeHistoryPanel,
-    handleOpenComposite,
     closeAssetLibrary,
     closeWorkflowPresetPanel,
     batchConnecting,
@@ -25,7 +27,6 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
     setViewport,
     nodes,
     setNodes,
-    getNodes,
     selectedNodeIds,
     setSelectedNodeIds,
     isPendingConnection,
@@ -51,19 +52,18 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
     endSelection,
     updatePointerPos,
     pushHistory,
-    workflowId,
-    importDocument,
-    setReadOnly,
-    setPreviewArchiveUrl,
     readOnly,
     closeWorkflowPanel,
     deferFrame,
-    loadProject,
     handleAddNext,
   } = context;
 
   const onCanvasPointerDown = (ke: ReactTypes.PointerEvent<HTMLDivElement>) => {
       if (readOnly) {
+        if (ke.button === 0 && ke.target instanceof Element && ke.target.id === 'canvas-background') {
+          setSelectedNodeIds(browserServices.__NAKO_CANVAS_SELECTION__?.clearSelection() ?? []);
+          setSelectedConnection(null);
+        }
         if (ke.button === 0 || ke.button === 1) startPanning(ke);
         return;
       }
@@ -200,8 +200,22 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
         batchConnecting,
         selectedNodeIds,
       ],
-    ),
-    saveAnnotation = media.useCanvasImageEditSave(React, {
+    );
+  return {
+    onCanvasPointerDown,
+    onCanvasPointerMove,
+    startBatchConnection,
+    onConnectionCompleted,
+    onCanvasPointerUp,
+  };
+}
+
+function useCanvasImageEditActions(context: ReturnType<typeof useCanvasAssetActions>) {
+  const {
+    React, media, nodes, getNodes, view, readOnly, workflowId, setNodes,
+    setSelectedNodeIds, getNodeWidth, getNodeHeight, handleOpenComposite,
+  } = context;
+  const saveAnnotation = media.useCanvasImageEditSave(React, {
       nodes,
       getNodes,
       enabled: view === 'canvas' && !readOnly,
@@ -242,11 +256,19 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
     }),
     openComposite = React.useCallback(
       (ke: Record<string, unknown>) => {
-        handleOpenComposite({ ...ke, onSave: saveComposite });
+        handleOpenComposite({ ...ke, onSave: saveComposite, readOnly });
       },
-      [handleOpenComposite, saveComposite],
-    ),
-    openProject = async (ke: string) => {
+      [handleOpenComposite, saveComposite, readOnly],
+    );
+  return { saveAnnotation, saveCrop, saveResize, saveComposite, openComposite };
+}
+
+function useCanvasProjectOpening(context: ReturnType<typeof useCanvasAssetActions>) {
+  const {
+    React, loadProject, setReadOnly, setPreviewArchiveUrl, setFolderId, setView,
+    importDocument, readOnly, projectFileRef,
+  } = context;
+  const openProject = async (ke: string) => {
       const st = await loadProject(ke);
       if (st) {
         setReadOnly(false);
@@ -258,7 +280,7 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
     },
     openShowcasePreview = (workflow: Record<string, unknown>, archiveUrl: string) => {
       if (!Array.isArray(workflow.nodes) || !Array.isArray(workflow.groups))
-        throw new Error('案例工作流格式无效');
+        throw canvasError('案例工作流格式无效', 'openShowcasePreview');
       const preview = {
         ...workflow,
         id: crypto.randomUUID(),
@@ -276,16 +298,14 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
     },
     copyShowcaseProject = async () => {
       if (!readOnly || !context.previewArchiveUrl) return;
-      const archive = await fetch(context.previewArchiveUrl);
-      if (!archive.ok) throw new Error('案例文件读取失败');
       const response = await fetch('/api/workflows/restore?copy=true', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: await archive.blob(),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archive: context.previewArchiveUrl }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || typeof result?.id !== 'string')
-        throw new Error(result?.error || '复制项目失败');
+        throw canvasError(result?.error || '复制项目失败', 'copyShowcaseProject');
       await openProject(result.id);
     },
     chooseProjectFile = React.useCallback(() => {
@@ -295,17 +315,6 @@ export function useCanvasPointerActions(context: ReturnType<typeof useCanvasAsse
       }
     }, []);
   return {
-    ...context,
-    onCanvasPointerDown,
-    onCanvasPointerMove,
-    startBatchConnection,
-    onConnectionCompleted,
-    onCanvasPointerUp,
-    saveAnnotation,
-    saveCrop,
-    saveResize,
-    saveComposite,
-    openComposite,
     openProject,
     openShowcasePreview,
     copyShowcaseProject,

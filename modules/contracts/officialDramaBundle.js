@@ -1,3 +1,4 @@
+import { ERRORS, PluginError } from './errors.js';
 import {
   OFFICIAL_PRODUCTION_PROFILES,
   productionProfileForBundle,
@@ -94,7 +95,7 @@ const FIGHT_VIDEO_ROUTE = deepFreeze({
 });
 export function officialProductionBundle(bundleId = OFFICIAL_DRAMA_BUNDLE.id) {
   const profile = productionProfileForBundle(bundleId);
-  if (!profile) throw new Error('官方制作组合不存在');
+  if (!profile) throw new PluginError(ERRORS.invalidConfiguration, '官方制作组合不存在', { context: { moduleId: 'contracts', operation: 'officialProductionBundle', bundleId } });
   if (profile.id === OFFICIAL_DRAMA_BUNDLE.id) return OFFICIAL_DRAMA_BUNDLE;
   return {
     ...OFFICIAL_DRAMA_BUNDLE,

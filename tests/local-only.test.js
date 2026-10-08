@@ -1,3 +1,4 @@
+import '../apps/canvas/installModelCatalog';
 import { it, expect, vi } from 'vitest';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';

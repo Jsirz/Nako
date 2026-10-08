@@ -27,15 +27,17 @@ const modes: [MjInsertMode, string][] = [
   ['vibe', '色调描述'],
 ];
 const PAGE_SIZE = 36;
-export default function MjStyleLibrary({
-  anchor,
-  onClose,
-  onChoose,
-}: {
+type MjLibraryProps = {
   anchor?: import('react').RefObject<HTMLDivElement | null>;
   onClose(): void;
   onChoose(preset: CreativePreset): void;
-}) {
+};
+export default function MjStyleLibrary(props: MjLibraryProps) {
+  const state = useMjLibraryState(props);
+  return renderMjLibrary(state);
+}
+
+function useMjLibraryState({ anchor, onClose, onChoose }: MjLibraryProps) {
   const [items, setItems] = useState<MjStyle[]>([]),
     [error, setError] = useState('');
   const [group, setGroup] = useState('all'),
@@ -104,6 +106,15 @@ export default function MjStyleLibrary({
     if (selected) setDraft(mjStyleText(selected, next));
     setNotice('');
   }
+  return { anchor, onClose, onChoose, items, error, group, setGroup, category, setCategory,
+    expandedCategory, setExpandedCategory, query, setQuery, codeKind, setCodeKind, setPage,
+    selected, setSelected, mode, draft, setDraft, notice, setNotice, panel, categories,
+    filtered, pages, currentPage, choose, changeMode };
+}
+
+type MjLibraryState = ReturnType<typeof useMjLibraryState>;
+function renderMjLibrary(state: MjLibraryState) {
+  const { anchor, onClose, panel, selected, query, setQuery, setPage } = state;
   return createPortal(
     <div
       className={`af-creative-backdrop af-mj-backdrop${anchor ? ' af-node-side-backdrop' : ''}`}
@@ -141,7 +152,17 @@ export default function MjStyleLibrary({
                 />
               </label>)}
         </header>
-        {!selected ? (
+        {!selected ? renderMjBrowser(state) : renderMjDetail(state)}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function renderMjBrowser({ group, setGroup, setCategory, setExpandedCategory, setPage,
+  items, category, categories, expandedCategory, query, codeKind, currentPage, filtered,
+  setCodeKind, error, choose, pages }: MjLibraryState) {
+  return (
           <>
             <div className="af-mj-toolbar">
               <div className="af-mj-tabs">
@@ -291,7 +312,13 @@ export default function MjStyleLibrary({
               </div>
             </footer>
           </>
-        ) : (
+  );
+}
+
+function renderMjDetail({ selected, setSelected, mode, changeMode, draft, setDraft, notice,
+  setNotice, onChoose }: MjLibraryState) {
+  if (!selected) return null;
+  return (
           <>
             <div className="af-mj-detail-top">
               <button type="button" onClick={() => setSelected(null)}>
@@ -365,9 +392,6 @@ export default function MjStyleLibrary({
               </div>
             </footer>
           </>
-        )}
-      </div>
-    </div>,
-    document.body,
-  );
-}
+        );
+      }
+

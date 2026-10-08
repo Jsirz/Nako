@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as ReactTypes from 'react';
 import { useCanvasPageEvents } from './canvasApplicationEvents';
 import { useCanvasAssetInsertion } from './canvasAssetInsertion';
@@ -6,6 +7,12 @@ import './canvasWorkspace.css';
 import type { useCanvasSaveAndReferences } from './useCanvasSaveAndReferences';
 
 export function useCanvasAssetActions(context: ReturnType<typeof useCanvasSaveAndReferences>) {
+  const assets = useCanvasAssetImports(context);
+  const menus = useCanvasAssetMenus(context, assets);
+  return { ...context, ...assets, ...menus };
+}
+
+function useCanvasAssetImports(context: ReturnType<typeof useCanvasSaveAndReferences>) {
   const {
     React,
     NodeStatus,
@@ -15,20 +22,11 @@ export function useCanvasAssetActions(context: ReturnType<typeof useCanvasSaveAn
     useAutoSave,
     useVideoResults,
     useImageResults,
-    useContextMenu,
-    media,
-    getNodeWidth,
-    getNodeHeight,
     view,
     readOnly,
     contextMenu,
     setContextMenu,
     pointerRef,
-    handleHistoryClick,
-    closeHistoryPanel,
-    handleAssetsClick,
-    closeAssetLibrary,
-    openAssetLibraryModal,
     closeWorkflowPresetPanel,
     canvasTitle,
     viewport,
@@ -42,17 +40,13 @@ export function useCanvasAssetActions(context: ReturnType<typeof useCanvasSaveAn
     updateNode,
     deleteNodes,
     clearSelection,
-    handleSelectTypeFromMenu,
     autoAlignNodes,
     selectedConnection,
-    cancelConnectionDrag,
     deleteSelectedConnection,
     clearSelectionBox,
     groups,
     groupNodes,
     workflowId,
-    closeWorkflowPanel,
-    getWorkflowEpoch,
     dirty,
     undo,
     redo,
@@ -135,6 +129,26 @@ export function useCanvasAssetActions(context: ReturnType<typeof useCanvasSaveAn
     paste: handlePaste,
     upload: handleClipboardImagePaste,
   });
+  return {
+    isCreateAssetModalOpen, setIsCreateAssetModalOpen, nodeToSnapshot, assetCategories,
+    handleOpenCreateAsset, handleSaveAssetToLibrary, handleContextUpload,
+    handleClipboardImagePaste, handleReplaceMedia, handleImportWorkflowPreset,
+    handleCopy, handlePaste, hasCopiedNodes,
+  };
+}
+
+function useCanvasAssetMenus(
+  context: ReturnType<typeof useCanvasSaveAndReferences>,
+  assets: ReturnType<typeof useCanvasAssetImports>,
+) {
+  const {
+    React, useContextMenu, nodes, viewport, workflowId, contextMenu, setContextMenu,
+    handleSelectTypeFromMenu, cancelConnectionDrag, handleHistoryClick, closeWorkflowPanel,
+    handleAssetsClick, openAssetLibraryModal, media, getNodes, view, readOnly, setNodes,
+    setSelectedNodeIds, selectedNodeIds, getNodeWidth, getNodeHeight, getWorkflowEpoch,
+    canvasRef, closeHistoryPanel, closeAssetLibrary,
+  } = context;
+  const { handleOpenCreateAsset, handleReplaceMedia } = assets;
   const {
       handleDoubleClick,
       handleGlobalContextMenu,
@@ -173,13 +187,13 @@ export function useCanvasAssetActions(context: ReturnType<typeof useCanvasSaveAn
       const source = nodes.find((node) => node.id === contextMenu.sourceNodeId);
       const resultUrl = typeof source?.resultUrl === 'string' ? source.resultUrl : '';
       if (!source || !['Image', 'Upload Image'].includes(source.type) || !resultUrl)
-        throw new Error('该节点没有可复制的图片。');
+        throw canvasError('该节点没有可复制的图片。', 'asset.copy-image');
       await copyCanvasImageToSystemClipboard(resultUrl);
     }, [contextMenu.sourceNodeId, nodes]),
     createCollage = media.useCanvasCollage(React, {
       nodes,
       getNodes,
-    enabled: view === 'canvas' && !readOnly,
+      enabled: view === 'canvas' && !readOnly,
       projectId: workflowId || undefined,
       setNodes,
       setSelectedNodeIds,
@@ -198,21 +212,7 @@ export function useCanvasAssetActions(context: ReturnType<typeof useCanvasSaveAn
       closeLibrary: closeAssetLibrary,
     });
   return {
-    ...context,
-    isCreateAssetModalOpen,
-    setIsCreateAssetModalOpen,
-    nodeToSnapshot,
-    assetCategories,
-    handleOpenCreateAsset,
-    handleSaveAssetToLibrary,
-    handleContextUpload,
-    handleClipboardImagePaste,
-    handleReplaceMedia,
     handleContextMenuCopyImage,
-    handleImportWorkflowPreset,
-    handleCopy,
-    handlePaste,
-    hasCopiedNodes,
     handleDoubleClick,
     handleGlobalContextMenu,
     handleAddNext,

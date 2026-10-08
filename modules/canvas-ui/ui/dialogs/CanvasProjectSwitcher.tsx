@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { useEffect, useState } from 'react';
 
 interface ProjectItem {
@@ -24,11 +25,11 @@ export function CanvasProjectSwitcher({ currentProjectId, busy, onSwitch }: Prop
     setError('');
     fetch('/api/workflows', { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error('项目列表读取失败');
+        if (!response.ok) throw canvasError('项目列表读取失败', 'project-switcher.load');
         const data: unknown = await response.json();
         if (!Array.isArray(data) || data.some((item) =>
           !item || typeof item.id !== 'string' || typeof item.title !== 'string')) {
-          throw new Error('项目列表数据无效');
+          throw canvasError('项目列表数据无效', 'project-switcher.validate');
         }
         return data as ProjectItem[];
       })

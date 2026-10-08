@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { IMAGE_MODELS, VIDEO_MODELS, AUDIO_MODELS, TEXT_MODELS } from '../../../generation-core/api/models/catalog';
 import { prepareCanvasGenerationRequest } from '../../../generation-core/api/ui/generation/canvasGeneration';
 import { modelKey } from './canvasModelControl';
@@ -18,7 +19,7 @@ export function createCanvasBudgetControl(execute: CanvasActionHandler, creation
   async function api<T>(suffix: string, body?: unknown): Promise<T> {
     const response = await fetcher('/api/agent/budgets' + suffix, { signal: AbortSignal.timeout(15000), ...(body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
     const result = await response.json();
-    if (!response.ok) throw Error(result.error || '预算操作未确认。'); return result;
+    if (!response.ok) throw new AgentOperationError(result.error || '预算操作未确认。', { operation: 'generation-budget-request', status: response.status }); return result;
   }
   const remember = (grant: GenerationBudget) => { snapshot = [...snapshot.filter(item => item.id !== grant.id), grant]; publish(); };
   async function refresh(projectId: string) {

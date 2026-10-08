@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import type { PromptRuntime } from './promptComponents';
 export function usePromptMutation(React: PromptRuntime) {
   const aliveRef = React.useRef(false),
@@ -24,7 +25,7 @@ export function usePromptMutation(React: PromptRuntime) {
       setError('');
       let cancel = () => {};
       const aborted = new Promise<never>((_, reject) => {
-        cancel = () => reject(Error('请求未确认，请重新打开预设列表核对结果'));
+        cancel = () => reject(new AgentOperationError('请求未确认，请重新打开预设列表核对结果', { operation: 'mutate-prompt', reason: 'aborted' }));
         request.signal.addEventListener('abort', cancel, { once: true });
       });
       const timer = setTimeout(() => request.abort(), 60000);
@@ -32,7 +33,7 @@ export function usePromptMutation(React: PromptRuntime) {
         const result = await Promise.race([task(request.signal), aborted]);
         if (!aliveRef.current || activeRef.current !== request) return false;
         if (request.signal.aborted || result?.success !== true)
-          throw Error('未收到操作成功回执，请重新打开预设列表核对结果');
+          throw new AgentOperationError('未收到操作成功回执，请重新打开预设列表核对结果', { operation: 'mutate-prompt', reason: 'unconfirmed' });
         commit();
         return true;
       } catch (cause) {

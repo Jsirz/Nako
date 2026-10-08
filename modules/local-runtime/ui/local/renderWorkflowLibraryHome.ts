@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
 import { browserServices } from '../../../kernel/browser';
 import { UI_FEATURES } from '../../../contracts/uiFeatures';
@@ -23,7 +25,17 @@ export function renderWorkflowLibraryHome(
   enterAdvancedManager: (action?: 'import' | 'directory') => void,
   appendDeployedCards: (deployedRecords?: DeployedWorkflowRecord[]) => HTMLDivElement,
 ) {
-  return () => {
+  const context: Parameters<typeof renderWorkflowLibraryHome> = [
+    session, render, panel, client, loadOfficial, host, setNotice, state,
+    loadDeployedRecords, startQuickImport, enterAdvancedManager, appendDeployedCards,
+  ];
+  return () => renderLibraryHome(...context);
+}
+
+function renderLibraryHome(...[
+  session, render, panel, client, loadOfficial, host, setNotice, state,
+  loadDeployedRecords, startQuickImport, enterAdvancedManager, appendDeployedCards,
+]: Parameters<typeof renderWorkflowLibraryHome>) {
     if (!UI_FEATURES.runningHub) {
       session.librarySection = 'mine';
       session.libraryRunnerScope = 'local';
@@ -117,13 +129,13 @@ export function renderWorkflowLibraryHome(
             return;
           }
           const adapter = browserServices.__NAKO_WORKFLOW_NODES__;
-          if (!adapter) throw new Error('请先打开画布项目，再添加工作流。');
+          if (!adapter) throw localRuntimeError('请先打开画布项目，再添加工作流。', 'addOfficialWorkflow', ERRORS.serviceMissing);
           const app = await client.addOfficialWorkflow(item.id);
           if (!host.isConnected || browserServices.__NAKO_WORKFLOW_NODES__ !== adapter) return;
           const snapshot = await client.getEditorSnapshot(app.definitionId);
           if (!host.isConnected || browserServices.__NAKO_WORKFLOW_NODES__ !== adapter) return;
           if (!snapshot.deployment || !snapshot.bindingSet)
-            throw new Error('工作流配置尚未就绪，请重新加载。');
+            throw localRuntimeError('工作流配置尚未就绪，请重新加载。', 'addOfficialWorkflow', ERRORS.invalidConfiguration);
           const blueprint = await client.createCanvasNode(app.definitionId, {
             deploymentId: snapshot.deployment.id,
             bindingSetId: snapshot.bindingSet.id,
@@ -139,6 +151,14 @@ export function renderWorkflowLibraryHome(
       );
       return;
     }
+  renderPersonalLibrary(session, render, panel, client, loadOfficial, host, setNotice, state,
+    loadDeployedRecords, startQuickImport, enterAdvancedManager, appendDeployedCards);
+}
+
+function renderPersonalLibrary(...[
+  session, render, panel, client, _loadOfficial, _host, setNotice, state,
+  loadDeployedRecords, startQuickImport, enterAdvancedManager, appendDeployedCards,
+]: Parameters<typeof renderWorkflowLibraryHome>) {
     if (session.libraryCloudImport) {
       const importHead = element('div', 'fwm-library-toolbar');
       const importCopy = element('div', 'fwm-library-toolbar-copy');
@@ -279,5 +299,4 @@ export function renderWorkflowLibraryHome(
         ? `${visible} / ${visibleRecords.length}`
         : `${visibleRecords.length} 个工作流`;
     });
-  };
 }

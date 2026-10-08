@@ -1,20 +1,22 @@
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { submitOpenAiChatWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
+import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
 
 function createOfficialTextProvider({ displayName, secretKey }) {
+  const { credentialError, configError, inputError, responseError } = providerErrorsFor(displayName);
   return Object.freeze({
     async generateText(params, config = {}) {
       const apiKey = String(config[secretKey] || '').trim();
       const finalUrl = String(params?.url || '').trim();
       const textModel = String(params?.textModel || '').trim();
-      if (!apiKey) throw new Error(`${displayName} API Key 未配置。`);
+      if (!apiKey) throw credentialError(`${displayName} API Key 未配置。`);
       if (!finalUrl || !textModel) {
-        throw new Error(`[${displayName}-Provider] 模型端点未配置。`);
+        throw configError(`[${displayName}-Provider] 模型端点未配置。`);
       }
 
       const images = BaseProvider.resolveInputImages(params.images || params.imageBase64);
       if (images.length && !['glm-5.3-flash', 'kimi-k3'].includes(textModel)) {
-        throw new Error(`${displayName} 模型 ${textModel} 不支持图片输入。`);
+        throw inputError(`${displayName} 模型 ${textModel} 不支持图片输入。`);
       }
       const content = images.length
         ? [
@@ -24,7 +26,7 @@ function createOfficialTextProvider({ displayName, secretKey }) {
         : String(params.prompt || '');
       if (textModel === 'kimi-k3' && params.reasoning_effort !== undefined
         && !['low', 'high', 'max'].includes(params.reasoning_effort)) {
-        throw new Error('Kimi 不支持所选思考强度。');
+        throw inputError('Kimi 不支持所选思考强度。');
       }
       const body = {
         model: textModel,
@@ -51,7 +53,7 @@ function createOfficialTextProvider({ displayName, secretKey }) {
         logBody: body,
       });
       const text = result.text.trim();
-      if (!text) throw new Error(`${displayName} 响应中未包含文本内容。`);
+      if (!text) throw responseError(`${displayName} 响应中未包含文本内容。`);
       return {
         text,
         ...(result.reasoning

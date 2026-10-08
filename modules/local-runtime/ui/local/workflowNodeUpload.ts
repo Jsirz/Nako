@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import type {
   WorkflowCanvasNodesAdapter,
   WorkflowCanvasUploadedInputNode,
@@ -92,19 +94,19 @@ export function createWorkflowNodeUpload(
         (candidate) => candidate.slotIndex === normalizedSlotIndex,
       );
       if (!slot || slot.source !== 'input-port') {
-        throw new Error('工作流素材入口已经变化，请刷新后重试');
+        throw localRuntimeError('工作流素材入口已经变化，请刷新后重试', 'uploadInputAsset', ERRORS.invalidCanvas);
       }
       const rule = workflowUploadRule(slot.mediaKind);
-      if (!rule) throw new Error(`${slot.label}不支持文件上传`);
-      if (!projectId) throw new Error('请先打开项目，再上传工作流素材');
+      if (!rule) throw localRuntimeError(`${slot.label}不支持文件上传`, 'uploadInputAsset', ERRORS.invalidMedia);
+      if (!projectId) throw localRuntimeError('请先打开项目，再上传工作流素材', 'uploadInputAsset', ERRORS.invalidCanvas);
       if (!file || !rule.extensions.has(fileExtension(file.name))) {
-        throw new Error(`${slot.label}需要上传${rule.label}文件`);
+        throw localRuntimeError(`${slot.label}需要上传${rule.label}文件`, 'uploadInputAsset', ERRORS.invalidMedia);
       }
-      if (file.size <= 0) throw new Error(`${slot.label}选择的文件为空`);
+      if (file.size <= 0) throw localRuntimeError(`${slot.label}选择的文件为空`, 'uploadInputAsset', ERRORS.invalidMedia);
       if (file.size > rule.maximumBytes) {
         const maximum =
           rule.directory === 'videos' ? '2 GB' : rule.directory === 'audios' ? '500 MB' : '50 MB';
-        throw new Error(`${slot.label}文件超过 ${maximum} 上限`);
+        throw localRuntimeError(`${slot.label}文件超过 ${maximum} 上限`, 'uploadInputAsset', ERRORS.invalidMedia);
       }
 
       const sourceNodeId = crypto.randomUUID();
@@ -130,11 +132,12 @@ export function createWorkflowNodeUpload(
       );
       const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
       if (!response.ok) {
-        throw new Error(uploadErrorMessage(body, `${slot.label}上传失败`));
+        throw localRuntimeError(uploadErrorMessage(body, `${slot.label}上传失败`), 'uploadInputAsset',
+          typeof body.code === 'string' ? body.code : ERRORS.mediaStorage, response.status);
       }
       const resultUrl = typeof body.url === 'string' ? body.url : '';
       const reference = localAssetReference(resultUrl, projectId, slot.mediaKind);
-      if (!reference) throw new Error(`${slot.label}上传结果不属于当前项目`);
+      if (!reference) throw localRuntimeError(`${slot.label}上传结果不属于当前项目`, 'uploadInputAsset', ERRORS.invalidMedia);
 
       return {
         id: sourceNodeId,

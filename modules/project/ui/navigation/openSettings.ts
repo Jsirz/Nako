@@ -1,4 +1,4 @@
-import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
+import { canvasProjectUi } from '../projectUiServices';
 
 export type SettingsSection = 'models' | 'local-service' | 'profile';
 
@@ -19,7 +19,7 @@ export function openSettings(section: SettingsSection = 'models') {
     if (timer) clearTimeout(timer);
   };
   window.dispatchEvent(new CustomEvent('nako:open-settings'));
-  subscription.stop = observeStableEnhancement(select);
+  subscription.stop = canvasProjectUi().observeStableEnhancement(select);
   if (selected) subscription.stop();
   else timer = setTimeout(() => subscription.stop?.(), 5_000);
 }

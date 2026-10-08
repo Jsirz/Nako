@@ -24,6 +24,7 @@ export function renderCanvasControls(
     focusOnNodes,
     nodes,
     selectedNodeIds,
+    readOnly,
     gridLayoutNodes,
     getWorkflowEpoch,
   } = context;
@@ -47,7 +48,7 @@ export function renderCanvasControls(
     setGridColumns,
     isCompact,
     setIsCompact: setCompact,
-    onGridLayout: gridLayoutNodes,
+    onGridLayout: readOnly ? () => {} : gridLayoutNodes,
     selectedNodeIds,
   });
 }

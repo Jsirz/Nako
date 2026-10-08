@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DramaExecutionError } from '../../../modules/contracts/dramaExecutionError.js';
-import { assertWorkflowStorageIsPrivate, resolveWorkflowStorageDirectory } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowStoragePaths.js';
+import { assertPrivateStorageDirectory, resolvePrivateStorageDirectory } from './privateStoragePaths.js';
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const MAX_RECORD_BYTES = 4 * 1024 * 1024;
 const COMMIT_RETRY_DELAYS_MS = [10, 25, 50, 100, 200];
@@ -30,7 +30,7 @@ async function commitRecord(temporary, target) {
 
 
 export function createDramaExecutionStore({ libraryDirectory, executionDirectory }) {
-  const root = resolveWorkflowStorageDirectory({ libraryDirectory, storageDirectory: executionDirectory || path.join(path.dirname(libraryDirectory), 'private', 'agent-drama-executions') });
+  const root = resolvePrivateStorageDirectory({ libraryDirectory, storageDirectory: executionDirectory || path.join(path.dirname(libraryDirectory), 'private', 'agent-drama-executions') });
   async function ensureRoot() {
     const userRoot = path.resolve(path.dirname(libraryDirectory));
     const relative = path.relative(userRoot, root);
@@ -45,7 +45,7 @@ export function createDramaExecutionStore({ libraryDirectory, executionDirectory
       const stat = await fs.lstat(cursor);
       if (!stat.isDirectory() || stat.isSymbolicLink()) throw new DramaExecutionError('制作存储不能是链接');
     }
-    await assertWorkflowStorageIsPrivate({ libraryDirectory, storageDirectory: root });
+    await assertPrivateStorageDirectory({ libraryDirectory, storageDirectory: root });
     if ((await fs.lstat(root)).isSymbolicLink()) throw new DramaExecutionError('制作存储不能是链接');
   }
 
@@ -54,10 +54,10 @@ export function createDramaExecutionStore({ libraryDirectory, executionDirectory
     const filename = path.join(root, `${id(planId)}.json`);
     try {
       const stat = await fs.lstat(filename);
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_RECORD_BYTES) throw new Error('Invalid record');
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_RECORD_BYTES) throw new DramaExecutionError('执行记录类型或大小无效', 'DRAMA_EXECUTION_RECORD_INVALID');
       const data = JSON.parse(await fs.readFile(filename, 'utf8'));
       if (data.schemaVersion !== 1 || data.planId !== planId || data.projectId !== projectId || !Array.isArray(data.attempts)) {
-        throw new Error('Invalid record');
+        throw new DramaExecutionError('执行记录与制作任务或项目不匹配', 'DRAMA_EXECUTION_RECORD_INVALID');
       }
       return data;
     } catch (error) {

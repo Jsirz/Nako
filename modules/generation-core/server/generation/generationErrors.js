@@ -112,53 +112,8 @@ export function classifyGenerationError(error) {
         '当前线路内容审核未通过。请调整提示词或参考素材；若使用的是普通 API 线路，也可切换到同模型审核更宽松的“API宽审核”线路后手动重试。',
     };
   }
-  const tokenQuotaInsufficient =
-    ['INSUFFICIENT_TOKEN_QUOTA', 'TOKEN_QUOTA_INSUFFICIENT'].includes(code.toUpperCase()) ||
-    /(?:token quota (?:is )?not enough|insufficient token quota|token quota (?:is )?insufficient|token quota exhausted)/iu.test(
-      normalizedMessage,
-    );
-  if (tokenQuotaInsufficient) {
-    const quotaAmounts = message.match(
-      /token remain quota:\s*[¥￥]?\s*(\d+(?:\.\d+)?).*?need quota:\s*[¥￥]?\s*(\d+(?:\.\d+)?)/iu,
-    );
-    const remaining = formatQuotaAmount(quotaAmounts?.[1]);
-    const required = formatQuotaAmount(quotaAmounts?.[2]);
-    return {
-      code: 'PROVIDER_TOKEN_QUOTA_INSUFFICIENT',
-      status: 402,
-      retryable: false,
-      message:
-        remaining && required
-          ? `API Key可用额度不足：Key 剩余 ¥${remaining}，本次需要约 ¥${required}。该限制独立于钱包余额，请到中转站提高或取消这把 Key 的额度限制。`
-          : 'API Key可用额度不足。该限制独立于钱包余额，请到中转站提高或取消这把 Key 的额度限制。',
-    };
-  }
-  const insufficientBalance =
-    status === 402 ||
-    ['INSUFFICIENT_BALANCE', 'INSUFFICIENT_QUOTA', 'PAYMENT_REQUIRED'].includes(
-      code.toUpperCase(),
-    ) ||
-    /(?:余额不足|用户额度不足|(?:token )?quota (?:is )?not enough|insufficient (?:quota|balance|funds)|not enough wallet)/iu.test(
-      normalizedMessage,
-    ) ||
-    (normalizedMessage.includes('remain quota') && normalizedMessage.includes('need quota'));
-  if (insufficientBalance) {
-    return {
-      code: 'PROVIDER_BALANCE_INSUFFICIENT',
-      status: 402,
-      retryable: false,
-      message:
-        '当前模型服务账号的余额或可用额度不足。请到对应服务商检查余额和 API Key 额度，补足后再手动生成。',
-    };
-  }
-  if (status === 429 || code === 'RATE_LIMITED' || code === 'MODEL_CONCURRENCY_LIMIT') {
-    return {
-      code: 'PROVIDER_RATE_LIMIT',
-      status: 429,
-      retryable: true,
-      message: '当前模型触发请求频率或并发限制。请等待已有任务结束，或稍后手动重试。',
-    };
-  }
+  const quotaFailure = classifyQuotaError({ status, code, message, normalizedMessage });
+  if (quotaFailure) return quotaFailure;
   if (code === 'REFERENCE_UPLOAD_FAILED' && (status === 401 || status === 403)) {
     return {
       code: 'PROVIDER_AUTH_FAILED',
@@ -259,4 +214,34 @@ export function confirmedGenerationFailure(error) {
         ? '服务商已确认原生成任务失败，请核对任务记录后决定是否重新生成。'
         : `原生成任务已失败。${classified.message}`,
   };
+}
+
+function classifyQuotaError({ status, code, message, normalizedMessage }) {
+  const tokenQuotaInsufficient =
+    ['INSUFFICIENT_TOKEN_QUOTA', 'TOKEN_QUOTA_INSUFFICIENT'].includes(code.toUpperCase()) ||
+    /(?:token quota (?:is )?not enough|insufficient token quota|token quota (?:is )?insufficient|token quota exhausted)/iu.test(normalizedMessage);
+  if (tokenQuotaInsufficient) {
+    const quotaAmounts = message.match(/token remain quota:\s*[¥￥]?\s*(\d+(?:\.\d+)?).*?need quota:\s*[¥￥]?\s*(\d+(?:\.\d+)?)/iu);
+    const remaining = formatQuotaAmount(quotaAmounts?.[1]);
+    const required = formatQuotaAmount(quotaAmounts?.[2]);
+    return {
+      code: 'PROVIDER_TOKEN_QUOTA_INSUFFICIENT', status: 402, retryable: false,
+      message: remaining && required
+        ? `API Key可用额度不足：Key 剩余 ¥${remaining}，本次需要约 ¥${required}。该限制独立于钱包余额，请到中转站提高或取消这把 Key 的额度限制。`
+        : 'API Key可用额度不足。该限制独立于钱包余额，请到中转站提高或取消这把 Key 的额度限制。',
+    };
+  }
+  const insufficientBalance = status === 402 ||
+    ['INSUFFICIENT_BALANCE', 'INSUFFICIENT_QUOTA', 'PAYMENT_REQUIRED'].includes(code.toUpperCase()) ||
+    /(?:余额不足|用户额度不足|(?:token )?quota (?:is )?not enough|insufficient (?:quota|balance|funds)|not enough wallet)/iu.test(normalizedMessage) ||
+    (normalizedMessage.includes('remain quota') && normalizedMessage.includes('need quota'));
+  if (insufficientBalance) return {
+    code: 'PROVIDER_BALANCE_INSUFFICIENT', status: 402, retryable: false,
+    message: '当前模型服务账号的余额或可用额度不足。请到对应服务商检查余额和 API Key 额度，补足后再手动生成。',
+  };
+  if (status === 429 || code === 'RATE_LIMITED' || code === 'MODEL_CONCURRENCY_LIMIT') return {
+    code: 'PROVIDER_RATE_LIMIT', status: 429, retryable: true,
+    message: '当前模型触发请求频率或并发限制。请等待已有任务结束，或稍后手动重试。',
+  };
+  return null;
 }

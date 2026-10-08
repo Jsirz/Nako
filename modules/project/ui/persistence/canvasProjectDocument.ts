@@ -1,24 +1,22 @@
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
-import { instantiateWorkflowPreset } from '../../../canvas-ui/api/ui/canvas/canvasWorkflowPresets';
-import { cleanupCanvasGroups } from '../../../canvas-ui/api/ui/canvas/canvasGroups';
-import type { WorkflowRecord } from './workflowMerge';
-
-export interface ProjectDocument extends WorkflowRecord {
-  title: string;
-  nodes: CanvasNode[];
-  groups: WorkflowRecord[];
-}
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
+import { canvasProjectUi } from '../projectUiServices';
+import type { ProjectDocument } from '../../../contracts/projectWorkflow';
+export type { ProjectDocument } from '../../../contracts/projectWorkflow';
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
 /** A project file is a copy, never permission to resume the original paid run. */
 export function parseProjectDocument(text: string, filename: string): ProjectDocument {
-  const value: unknown = JSON.parse(text);
+  let value: unknown;
+  try { value = JSON.parse(text); }
+  catch (cause) {
+    throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目 JSON 格式不正确。', { cause, context: { operation: 'parseProjectDocument', filename } });
+  }
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('项目 JSON 格式不正确。');
+    throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目 JSON 格式不正确。', { context: { operation: 'parseProjectDocument', filename } });
   const doc = value as ProjectDocument;
-  if (!Array.isArray(doc.nodes)) throw new Error('项目 JSON 格式不正确：缺少 nodes 数组。');
+  if (!Array.isArray(doc.nodes)) throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目 JSON 格式不正确：缺少 nodes 数组。', { context: { operation: 'parseProjectDocument', filename, field: 'nodes' } });
   if (doc.groups === undefined) doc.groups = [];
-  if (!Array.isArray(doc.groups)) throw new Error('项目分组数据无效。');
+  if (!Array.isArray(doc.groups)) throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目分组数据无效。', { context: { operation: 'parseProjectDocument', filename, field: 'groups' } });
   for (const collection of [doc.nodes, doc.groups]) {
     const ids = new Set<string>();
     for (const item of collection) {
@@ -30,7 +28,7 @@ export function parseProjectDocument(text: string, filename: string): ProjectDoc
         !item.id ||
         ids.has(item.id)
       )
-        throw new Error('项目节点或分组编号无效。');
+        throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目节点或分组编号无效。', { context: { operation: 'parseProjectDocument', filename, field: 'id' } });
       ids.add(item.id);
     }
   }
@@ -43,14 +41,14 @@ export function parseProjectDocument(text: string, filename: string): ProjectDoc
       (node.parentIds !== undefined &&
         (!Array.isArray(node.parentIds) || !node.parentIds.every((id) => typeof id === 'string')))
     )
-      throw new Error('项目节点数据无效。');
+      throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目节点数据无效。', { context: { operation: 'parseProjectDocument', filename, nodeId: node.id } });
   }
   for (const group of doc.groups) {
     if (
       group.nodeIds !== undefined &&
       (!Array.isArray(group.nodeIds) || !group.nodeIds.every((id) => typeof id === 'string'))
     )
-      throw new Error('项目分组成员无效。');
+      throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目分组成员无效。', { context: { operation: 'parseProjectDocument', filename, groupId: group.id } });
   }
   if (doc.viewport !== undefined) {
     const viewport = doc.viewport as { x: number; y: number; zoom: number };
@@ -59,7 +57,7 @@ export function parseProjectDocument(text: string, filename: string): ProjectDoc
       ![viewport.x, viewport.y, viewport.zoom].every(Number.isFinite) ||
       viewport.zoom <= 0
     )
-      throw new Error('项目视口无效。');
+      throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目视口无效。', { context: { operation: 'parseProjectDocument', filename, field: 'viewport' } });
   }
   doc.title =
     typeof doc.title === 'string' && doc.title.trim()
@@ -92,7 +90,7 @@ export function copyProjectGraph(
   // Use the same graph remapping as SKILL insertion. Zero-sized bounds express
   // the exact old import translation without requiring rendered node geometry.
   const nodes = source.nodes.length
-    ? instantiateWorkflowPreset(
+    ? canvasProjectUi().instantiateWorkflowPreset(
         source.nodes,
         projectId,
         {
@@ -124,7 +122,7 @@ export function copyProjectGraph(
   }));
   // Normalize before recording history, avoiding a second cleanup edit for a
   // collapsed imported group after the document reaches the canvas.
-  return cleanupCanvasGroups({ nodes, groups });
+  return canvasProjectUi().cleanupCanvasGroups({ nodes, groups });
 }
 
 export function freshProjectDocument(document: ProjectDocument, id: string): ProjectDocument {

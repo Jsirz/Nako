@@ -13,7 +13,7 @@ import {
 import { BaseProvider } from '../modules/generation-providers/server/providers/baseProvider.js';
 import { remoteTaskReference } from '../modules/generation-core/server/generation/generationTaskRecovery.js';
 import { loadModelCatalog } from '../modules/generation-core/server/config/modelCatalog.js';
-import { modelParameters } from '../modules/agent/server/agent/drama/dramaModelGenerator.js';
+import { modelParameters } from '../plugins/platform/text-transport/modelConfig.js';
 import { canvasAgentModels } from '../modules/agent/ui/agent/canvasAgentModels';
 import {
   buildVideoRequest,

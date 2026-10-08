@@ -1,4 +1,5 @@
-import type { NakoPlugin } from '../contracts/index.js';
+import type { PluginDefinition } from '../contracts/index.js';
+import { definePlugin } from '../kernel/plugin.js';
 import { activateBrowserModule, trackBrowserResource } from '../kernel/browser';
 import { installAgentClient } from './ui/agent/agentClient';
 import { createAgentConversation } from './ui/agent/agentConversation';
@@ -11,7 +12,7 @@ import { installSkillCommunity } from './ui/skills/skillCommunity';
 
 import { agentSurfaces } from './ui/agent/surfaces';
 
-const plugin: NakoPlugin = {
+const plugin: PluginDefinition = {
   manifest: {
     id: 'ui.agent',
     version: '1.0.0',
@@ -42,4 +43,4 @@ const plugin: NakoPlugin = {
     });
   },
 };
-export default plugin;
+export default definePlugin(plugin);

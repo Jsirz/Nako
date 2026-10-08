@@ -1,6 +1,8 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import crypto from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 import { createCapabilityProjection, analyzeWorkflow, sha256Json } from './workflowFormat.js';
 import {
   deriveBindingCandidates,
@@ -194,17 +196,15 @@ export class WorkflowDeploymentService {
     directoryGrantStore = null,
     clientFactory,
     runningHubClientFactory,
-    credentialResolver = () => null,
   }) {
     if (!definitionStore || !configurationStore) {
-      throw new Error('WorkflowDeploymentService requires definition and configuration stores');
+      throw workflowRuntimeError('WorkflowDeploymentService requires definition and configuration stores', 'createWorkflowDeploymentService');
     }
     this.definitionStore = definitionStore;
     this.configurationStore = configurationStore;
     this.directoryGrantStore = directoryGrantStore;
     this.clientFactory = clientFactory;
     this.runningHubClientFactory = runningHubClientFactory;
-    this.credentialResolver = credentialResolver;
   }
 
   async inspectRuntime(serverUrl, timeoutMs) {
@@ -278,8 +278,7 @@ export class WorkflowDeploymentService {
     if (runner === 'runninghub-webapp') {
       const { definition, apiJson, executionPlanHash } = await this.definitionStore
         .readExecutionPlan(definitionId);
-      const apiKey = await this.credentialResolver(credentialRef);
-      const client = this.runningHubClientFactory({ baseUrl, apiKey, timeoutMs });
+      const client = this.runningHubClientFactory({ baseUrl, credentialRef, timeoutMs });
       const projection = createRunningHubWebAppProjection(
         remoteWebAppId,
         webAppInfo || (client.getWebAppInfoForProtocol
@@ -326,8 +325,7 @@ export class WorkflowDeploymentService {
     if (runner === 'runninghub-workflow') {
       const { definition, apiJson, executionPlanHash } = await this.definitionStore
         .readExecutionPlan(definitionId);
-      const apiKey = await this.credentialResolver(credentialRef);
-      const client = this.runningHubClientFactory({ baseUrl, apiKey, timeoutMs });
+      const client = this.runningHubClientFactory({ baseUrl, credentialRef, timeoutMs });
       const remotePlan = await client.getWorkflowApiFormat(remoteWorkflowId);
       const remoteTemplateHash = sha256Json(remotePlan);
       if (!includeWorkflowJson && remoteTemplateHash !== executionPlanHash) {
@@ -406,10 +404,9 @@ export class WorkflowDeploymentService {
 
   async verifyDeployment(deployment, apiJson) {
     if (deployment.runner === 'runninghub-webapp') {
-      const apiKey = await this.credentialResolver(deployment.connection.credentialRef);
       const client = this.runningHubClientFactory({
         baseUrl: deployment.connection.baseUrl,
-        apiKey,
+        credentialRef: deployment.connection.credentialRef,
         timeoutMs: deployment.timeoutMs,
       });
       let projection = createRunningHubWebAppProjection(
@@ -456,10 +453,9 @@ export class WorkflowDeploymentService {
       return { client, analysis, relevantCapabilities: projection.nodeDefinitions };
     }
     if (deployment.runner === 'runninghub-workflow') {
-      const apiKey = await this.credentialResolver(deployment.connection.credentialRef);
       const client = this.runningHubClientFactory({
         baseUrl: deployment.connection.baseUrl,
-        apiKey,
+        credentialRef: deployment.connection.credentialRef,
         timeoutMs: deployment.timeoutMs,
       });
       const remotePlan = await client.getWorkflowApiFormat(deployment.connection.remoteWorkflowId);
@@ -569,5 +565,7 @@ export function isWorkflowRuntimeDomainError(error) {
   return error instanceof WorkflowDeploymentError
     || error instanceof WorkflowBindingError
     || error instanceof WorkflowConfigurationError
-    || error instanceof RunningHubWorkflowClientError;
+    || error instanceof RunningHubWorkflowClientError
+    || (error instanceof PluginError && [ERRORS.credentialMissing, ERRORS.invalidConfiguration,
+      ERRORS.permission, ERRORS.inactive].includes(error.code));
 }

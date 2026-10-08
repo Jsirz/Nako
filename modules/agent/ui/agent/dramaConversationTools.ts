@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
 import type { AgentConversation, ConversationTools } from './agentConversation';
@@ -47,61 +48,70 @@ export function installDramaConversationTools(
   conversation: AgentConversation,
   importer: Pick<DramaClient, 'importScript'> = createDramaClient(),
 ) {
-  let card: HTMLElement | null = null;
-  let attachment: HTMLElement | null = null;
-  let disposed = false;
-  let context = '';
-  let contextEpoch = 0;
-  let planKey = '';
-  let busy = false;
-  let running = false;
-  let batchEpoch = 0;
-  let paidConsent = false;
-  let compositionConsent = false;
-  let note = '';
-  let noteError = false;
-  let wake: (() => void) | null = null;
-  const selected = new Set<string>();
-  let canvasSignature = '';
-  let canvasQueue = Promise.resolve();
-  let pendingFocus: { control?: string; action?: string; details?: string } | null = null;
-  let renderedPlanKey = '';
+  const local = createDramaToolState();
+  const services = createDramaToolScope(canvas, conversation, local);
+  const actions = createDramaToolActions(canvas, conversation, importer, local, services);
+  const controls = createDramaToolControls(conversation, local, services, actions);
+  local.render = createDramaToolRenderer(canvas, conversation, local, services, actions, controls);
+  return mountDramaTools(canvas, conversation, local, services, actions);
+}
+
+function createDramaToolState() {
+  return {
+    card: null as HTMLElement | null, attachment: null as HTMLElement | null,
+    disposed: false, context: '', contextEpoch: 0, planKey: '', busy: false, running: false,
+    batchEpoch: 0, paidConsent: false, compositionConsent: false, note: '', noteError: false,
+    wake: null as (() => void) | null, selected: new Set<string>(), canvasSignature: '',
+    canvasQueue: Promise.resolve(),
+    pendingFocus: null as { control?: string; action?: string; details?: string } | null,
+    renderedPlanKey: '', render: () => {},
+  };
+}
+type DramaToolState = ReturnType<typeof createDramaToolState>;
+function createDramaToolScope(canvas: DramaCanvasBridge, conversation: AgentConversation, local: DramaToolState) {
   const isDramaSelected = () => {
     const skill = conversation.snapshot().selectedSkill;
     return skill?.source === 'official' && Boolean(productionProfileForSkill(skill.slug));
   };
   const status = (text: string, error = false) => {
-    note = text;
-    noteError = error;
-    render();
+    local.note = text;
+    local.noteError = error;
+    local.render();
   };
   const current = (session: string, project: string) =>
-    !disposed &&
-    Boolean(card?.isConnected) &&
+    !local.disposed &&
+    Boolean(local.card?.isConnected) &&
     isDramaSelected() &&
     conversation.isCurrent(session, project) &&
     canvas.projectId() === project;
   const scope = (session: string, project: string) => {
-    const epoch = contextEpoch;
-    return () => epoch === contextEpoch && current(session, project);
+    const epoch = local.contextEpoch;
+    return () => epoch === local.contextEpoch && current(session, project);
   };
   const stop = (message = true) => {
-    batchEpoch += 1;
-    wake?.();
-    wake = null;
-    paidConsent = false;
-    if (message && running)
+    local.batchEpoch += 1;
+    local.wake?.();
+    local.wake = null;
+    local.paidConsent = false;
+    if (message && local.running)
       status(
         '已停止后续提交；已提交的远端任务可能继续运行。点击“查询原任务”可取回结果，不会重新生成。',
       );
   };
+  return { isDramaSelected, status, current, scope, stop };
+}
+
+type DramaToolScope = ReturnType<typeof createDramaToolScope>;
+function createDramaToolActions(canvas: DramaCanvasBridge, conversation: AgentConversation,
+  importer: Pick<DramaClient, 'importScript'>, local: DramaToolState,
+  { isDramaSelected, status, current, scope }: DramaToolScope) {
   const pause = () =>
     new Promise<void>((resolve) => {
       const timer = window.setTimeout(() => {
-        wake = null;
+        local.wake = null;
         resolve();
       }, 2000);
-      wake = () => {
+      local.wake = () => {
         window.clearTimeout(timer);
         resolve();
       };
@@ -112,11 +122,11 @@ export function installDramaConversationTools(
       return Promise.resolve();
     const active = scope(session.id, plan.projectId);
     const signature = JSON.stringify([session.id, plan.id, plan.revision, execution.assets]);
-    if (signature === canvasSignature) return canvasQueue;
-    canvasQueue = canvasQueue
+    if (signature === local.canvasSignature) return local.canvasQueue;
+    local.canvasQueue = local.canvasQueue
       .catch(() => undefined)
       .then(async () => {
-        if (!active() || signature === canvasSignature) return;
+        if (!active() || signature === local.canvasSignature) return;
         const nodes = buildDramaAssetNodes(plan, execution);
         await canvas.commit(
           plan.projectId,
@@ -129,20 +139,20 @@ export function installDramaConversationTools(
           },
           { select: false },
         );
-        if (active()) canvasSignature = signature;
+        if (active()) local.canvasSignature = signature;
       });
-    return canvasQueue;
+    return local.canvasQueue;
   };
   const action = async (work: (tools: ConversationTools) => Promise<void>) => {
-    if (busy || conversation.snapshot().busy || !isDramaSelected()) return;
+    if (local.busy || conversation.snapshot().busy || !isDramaSelected()) return;
     const snapshot = conversation.snapshot();
     if (!snapshot.sessionId || !snapshot.projectId) return;
     const { sessionId, projectId } = snapshot;
     const active = scope(sessionId, projectId);
-    busy = true;
-    note = '';
-    noteError = false;
-    render();
+    local.busy = true;
+    local.note = '';
+    local.noteError = false;
+    local.render();
     try {
       await conversation.withTools(work);
     } catch (cause) {
@@ -152,40 +162,40 @@ export function installDramaConversationTools(
           true,
         );
     } finally {
-      busy = false;
-      running = false;
-      render();
+      local.busy = false;
+      local.running = false;
+      local.render();
     }
   };
   const uploadScript = async (file: File) => {
     const initial = conversation.snapshot();
-    if (busy || initial.busy || initial.restoring || !initial.projectId || !isDramaSelected())
+    if (local.busy || initial.busy || initial.restoring || !initial.projectId || !isDramaSelected())
       return;
     if (!/\.(txt|md|docx)$/i.test(file.name)) {
       status('支持 TXT、Markdown、DOCX 剧本文件。', true);
       return;
     }
     const project = initial.projectId;
-    const generation = contextEpoch;
+    const generation = local.contextEpoch;
     let active = () =>
-      generation === contextEpoch &&
-      !disposed &&
+      generation === local.contextEpoch &&
+      !local.disposed &&
       isDramaSelected() &&
       canvas.projectId() === project;
-    busy = true;
-    note = '';
-    noteError = false;
-    render();
+    local.busy = true;
+    local.note = '';
+    local.noteError = false;
+    local.render();
     try {
       // A new chat has a default SKILL without a server task yet. Register it only
       // after an explicit attachment action; registration is not a model request.
       if (!initial.state) {
         const registration = conversation.ensureDefaultSkill();
         const intendedSession = conversation.snapshot().sessionId;
-        const registrationEpoch = contextEpoch;
+        const registrationEpoch = local.contextEpoch;
         if (
           !(await registration) ||
-          registrationEpoch !== contextEpoch ||
+          registrationEpoch !== local.contextEpoch ||
           conversation.snapshot().sessionId !== intendedSession
         )
           return;
@@ -203,12 +213,12 @@ export function installDramaConversationTools(
     } catch (cause) {
       if (active()) status(cause instanceof Error ? cause.message : '剧本添加失败，请重试。', true);
     } finally {
-      busy = false;
-      render();
+      local.busy = false;
+      local.render();
     }
   };
   const batch = (plan: DramaPlan, ids: string[]) => {
-    if (!paidConsent || !ids.length || ids.length > MAX_BATCH) return;
+    if (!local.paidConsent || !ids.length || ids.length > MAX_BATCH) return;
     const state = conversation.snapshot().state;
     if (!state || state.plan?.id !== plan.id || state.plan.revision !== plan.revision) return;
     const original = latestAssets(state);
@@ -218,12 +228,12 @@ export function installDramaConversationTools(
       targets.some(({ retry }) => retry && !(retry.status === 'failed' && retry.retryable === true))
     )
       return;
-    paidConsent = false;
-    const generation = ++batchEpoch;
+    local.paidConsent = false;
+    const generation = ++local.batchEpoch;
     void action(async (tools) => {
-      running = true;
+      local.running = true;
       for (const { id, retry } of targets) {
-        if (generation !== batchEpoch || !tools.current() || document.hidden) break;
+        if (generation !== local.batchEpoch || !tools.current() || document.hidden) break;
         status(
           `正在提交「${plan.assets.find((asset) => asset.id === id)?.name || id}」；仅本项图片 1 次，不生成视频。`,
         );
@@ -241,9 +251,9 @@ export function installDramaConversationTools(
         let receipt = latestAssets(result).get(id);
         // Observation is bounded and can always be stopped. It never submits another generation.
         for (let count = 0; receipt?.status === 'pending' && count < 1500; count += 1) {
-          if (generation !== batchEpoch || !tools.current() || document.hidden) return;
+          if (generation !== local.batchEpoch || !tools.current() || document.hidden) return;
           await pause();
-          if (generation !== batchEpoch || !tools.current() || document.hidden) return;
+          if (generation !== local.batchEpoch || !tools.current() || document.hidden) return;
           result = await tools.action({
             action: 'query',
             planId: plan.id,
@@ -255,17 +265,23 @@ export function installDramaConversationTools(
           receipt = latestAssets(result).get(id);
         }
         if (receipt?.status !== 'success') {
-          throw new Error(
+          throw new AgentOperationError(
             receipt?.error || '本项尚未确认成功，已停止后续提交。请查询原任务，不会自动重新生成。',
-          );
+            { operation: 'generate-drama-batch', planId: plan.id, assetId: id });
         }
-        selected.delete(id);
+        local.selected.delete(id);
       }
-      if (generation === batchEpoch && tools.current())
+      if (generation === local.batchEpoch && tools.current())
         status('本批资产已生成并显示在画布。可继续对话调整；检查图像后再创建文戏节点。');
     });
   };
 
+  return { mergeAssets, action, uploadScript, batch };
+}
+
+type DramaToolActions = ReturnType<typeof createDramaToolActions>;
+function createDramaToolControls(conversation: AgentConversation, local: DramaToolState,
+  { isDramaSelected }: DramaToolScope, { uploadScript }: DramaToolActions) {
   function button(label: string, kind: string, handler: () => void, disabled = false) {
     const node = element('button', label);
     node.type = 'button';
@@ -291,33 +307,33 @@ export function installDramaConversationTools(
     control.dataset.nakoDramaControl = key;
     control.addEventListener('change', () => {
       change(control.checked);
-      render();
+      local.render();
     });
     wrapper.append(control, element('span', label));
     return wrapper;
   }
   function renderAttachment() {
-    if (!attachment) return;
+    if (!local.attachment) return;
     const snapshot = conversation.snapshot();
-    attachment.hidden =
+    local.attachment.hidden =
       !snapshot.projectId ||
       !isDramaSelected() ||
       productionProfileForSkill(snapshot.selectedSkill?.slug)?.mode === 'assets';
-    if (attachment.hidden) {
-      attachment.replaceChildren();
+    if (local.attachment.hidden) {
+      local.attachment.replaceChildren();
       return;
     }
-    const focused = attachment.contains(document.activeElement)
+    const focused = local.attachment.contains(document.activeElement)
       ? (document.activeElement as HTMLElement).dataset.nakoDramaAction
       : null;
-    attachment.replaceChildren();
+    local.attachment.replaceChildren();
     const chooser = element('input');
     chooser.type = 'file';
     chooser.accept = '.txt,.md,.docx';
     chooser.hidden = true;
     chooser.dataset.nakoDramaControl = '上传剧本';
     chooser.setAttribute('aria-label', '上传剧本');
-    chooser.disabled = busy || snapshot.busy || snapshot.restoring;
+    chooser.disabled = local.busy || snapshot.busy || snapshot.restoring;
     chooser.addEventListener('change', () => {
       const file = chooser.files?.[0];
       if (file) void uploadScript(file);
@@ -326,58 +342,71 @@ export function installDramaConversationTools(
       '添加剧本',
       'upload-script',
       () => chooser.click(),
-      busy || snapshot.busy || snapshot.restoring,
+      local.busy || snapshot.busy || snapshot.restoring,
     );
     upload.title = '添加 TXT、Markdown 或 DOCX；只在本机解析，不调用模型';
-    attachment.append(upload, chooser);
+    local.attachment.append(upload, chooser);
     const script = snapshot.state?.session.workflow?.script;
     if (script) {
       const name = element('span', script.name);
       name.className = 'nako-drama-attachment-name';
       name.title = `${script.name} · ${script.text.length} 字符`;
-      attachment.append(name);
+      local.attachment.append(name);
     }
-    if (!snapshot.state?.plan && (note || snapshot.error)) {
-      const output = element('p', note || snapshot.error || '');
-      output.setAttribute('role', noteError || snapshot.error ? 'alert' : 'status');
-      attachment.append(output);
+    if (!snapshot.state?.plan && (local.note || snapshot.error)) {
+      const output = element('p', local.note || snapshot.error || '');
+      output.setAttribute('role', local.noteError || snapshot.error ? 'alert' : 'status');
+      local.attachment.append(output);
     }
     if (focused === 'upload-script') upload.focus({ preventScroll: true });
   }
+  return { button, check, renderAttachment };
+}
+
+type DramaToolControls = ReturnType<typeof createDramaToolControls>;
+type DramaRenderServices = {
+  canvas: DramaCanvasBridge; local: DramaToolState; services: DramaToolScope;
+  actions: DramaToolActions; controls: DramaToolControls;
+};
+function createDramaToolRenderer(canvas: DramaCanvasBridge, conversation: AgentConversation,
+  local: DramaToolState, services: DramaToolScope, actions: DramaToolActions, controls: DramaToolControls) {
+  const { isDramaSelected } = services;
+  const { renderAttachment } = controls;
+  const rendering = { canvas, local, services, actions, controls };
   function render() {
     renderAttachment();
-    if (!card) return;
+    if (!local.card) return;
     const snapshot = conversation.snapshot();
     const state = snapshot.state;
     if (!isDramaSelected() || !state?.plan || !snapshot.sessionId || !snapshot.projectId) {
-      card.replaceChildren();
-      card.hidden = true;
-      renderedPlanKey = '';
+      local.card.replaceChildren();
+      local.card.hidden = true;
+      local.renderedPlanKey = '';
       return;
     }
     const nextRenderedPlanKey = `${snapshot.sessionId}:${state.plan.id}:${state.plan.revision}`;
-    const newSummary = renderedPlanKey !== nextRenderedPlanKey || !card.childElementCount;
-    const focused = card.contains(document.activeElement)
+    const newSummary = local.renderedPlanKey !== nextRenderedPlanKey || !local.card.childElementCount;
+    const focused = local.card.contains(document.activeElement)
       ? (document.activeElement as HTMLElement)
       : null;
     if (focused)
-      pendingFocus = {
+      local.pendingFocus = {
         control: focused.dataset.nakoDramaControl,
         action: focused.dataset.nakoDramaAction,
         details: focused.dataset.nakoDramaDetailsSummary,
       };
     else if (document.activeElement && document.activeElement !== document.body)
-      pendingFocus = null;
-    const focusKey = pendingFocus?.control;
-    const focusAction = pendingFocus?.action;
-    const focusDetails = pendingFocus?.details;
+      local.pendingFocus = null;
+    const focusKey = local.pendingFocus?.control;
+    const focusAction = local.pendingFocus?.action;
+    const focusDetails = local.pendingFocus?.details;
     const expanded = new Map(
       Array.from(
-        card.querySelectorAll<HTMLDetailsElement>('details[data-nako-drama-details]'),
+        local.card.querySelectorAll<HTMLDetailsElement>('details[data-nako-drama-details]'),
       ).map((details) => [details.dataset.nakoDramaDetails, details.open]),
     );
     const scrollParent =
-      card.closest<HTMLElement>('[data-nako-agent-scroll]') || card.parentElement;
+      local.card.closest<HTMLElement>('[data-nako-agent-scroll]') || local.card.parentElement;
     const scrollTop = scrollParent?.scrollTop;
     // Follow a newly appended compact summary only if the user was already at the
     // end of the conversation. Status updates and reading history/details stay put.
@@ -386,14 +415,41 @@ export function installDramaConversationTools(
       !expanded.get('plan') &&
       Boolean(scrollParent) &&
       scrollParent!.scrollHeight - scrollParent!.clientHeight - (scrollTop || 0) <= 48;
-    card.hidden = false;
-    card.replaceChildren();
-    const disabled = busy || snapshot.busy;
+    local.card.hidden = false;
+    local.card.replaceChildren();
+    const disabled = local.busy || snapshot.busy;
     const plan = state.plan;
-    if (plan) {
-      const profile = productionProfileForBundle(plan.bundleId);
-      const assetOnly = profile?.mode === 'assets';
-      const latest = latestAssets(state);
+    if (plan) renderDramaPlan(state, plan, disabled, expanded, rendering);
+    const message = local.note || snapshot.error;
+    if (message) {
+      const output = element('p', message);
+      output.className = 'nako-drama-inline-status';
+      output.setAttribute('role', local.noteError || snapshot.error ? 'alert' : 'status');
+      local.card.append(output);
+    }
+    const focus = Array.from(local.card.querySelectorAll<HTMLElement>(
+      '[data-nako-drama-control],[data-nako-drama-action],[data-nako-drama-details-summary]',
+    )).find((node) => (focusKey && node.dataset.nakoDramaControl === focusKey)
+      || (focusAction && node.dataset.nakoDramaAction === focusAction)
+      || (focusDetails && node.dataset.nakoDramaDetailsSummary === focusDetails));
+    focus?.focus({ preventScroll: true });
+    if (document.activeElement === focus) local.pendingFocus = null;
+    if (scrollParent && scrollTop !== undefined) {
+      scrollParent.scrollTop = followSummary
+        ? Math.max(0, scrollParent.scrollHeight - scrollParent.clientHeight) : scrollTop;
+    }
+    local.renderedPlanKey = nextRenderedPlanKey;
+  }
+  return render;
+}
+
+function renderDramaPlan(state: DramaConversationState, plan: DramaPlan, disabled: boolean,
+  expanded: Map<string | undefined, boolean>, rendering: DramaRenderServices) {
+  const { local, controls: { button, check } } = rendering;
+  const card = local.card!;
+  const profile = productionProfileForBundle(plan.bundleId);
+  const assetOnly = profile?.mode === 'assets';
+  const latest = latestAssets(state);
       const title = element('strong', plan.title);
       card.append(title);
       const completed = plan.assets.filter(
@@ -430,11 +486,11 @@ export function installDramaConversationTools(
           check(
             `${asset.name} · ${asset.kind === 'character' ? '人物 RH' : '场景预设线路已移除'}${receipt ? ` · ${LABELS[receipt.status] || receipt.status}` : ''}`,
             `选择资产 ${asset.name}`,
-            selected.has(asset.id),
+            local.selected.has(asset.id),
             (value) => {
-              if (value && selected.size < MAX_BATCH) selected.add(asset.id);
-              else selected.delete(asset.id);
-              paidConsent = false;
+              if (value && local.selected.size < MAX_BATCH) local.selected.add(asset.id);
+              else local.selected.delete(asset.id);
+              local.paidConsent = false;
             },
             disabled || !eligible,
           ),
@@ -470,6 +526,14 @@ export function installDramaConversationTools(
         card.append(
           element('p', `待确认：${questions.join('；')}。请通过对话补充，再确认资产清单。`),
         );
+  renderDramaPaidControls(plan, latest, disabled, questions, details, rendering);
+  card.append(details);
+  renderDramaCompositionControls(plan, latest, disabled, assetOnly, details, rendering);
+}
+
+function renderDramaPaidControls(plan: DramaPlan, latest: Map<string, DramaAssetExecution>,
+  disabled: boolean, questions: string[], details: HTMLDetailsElement,
+  { local, actions: { action, batch }, services: { status }, controls: { button, check } }: DramaRenderServices) {
       const approved = plan.approvedRevision === plan.revision;
       details.append(
         button(
@@ -497,16 +561,16 @@ export function installDramaConversationTools(
           '选择未生成资产',
           'select',
           () => {
-            selected.clear();
-            eligibleIds.forEach((id) => selected.add(id));
-            paidConsent = false;
-            render();
+            local.selected.clear();
+            eligibleIds.forEach((id) => local.selected.add(id));
+            local.paidConsent = false;
+            local.render();
           },
           disabled || !eligibleIds.length,
         ),
       );
       const targets = plan.assets.filter(
-        (asset) => asset.kind === 'character' && selected.has(asset.id),
+        (asset) => asset.kind === 'character' && local.selected.has(asset.id),
       );
       const targetLabel = targets.map((asset) => asset.name).join('、') || '尚未选择';
       details.append(
@@ -519,33 +583,38 @@ export function installDramaConversationTools(
         check(
           `确认本批 ${targets.length} 项图片可能产生费用；不生成视频。失败项再次选择表示确认一次新的尝试。`,
           '确认本批资产调用（不会生成视频）',
-          paidConsent,
+          local.paidConsent,
           (value) => {
-            paidConsent = value;
+            local.paidConsent = value;
           },
           disabled || !approved || !targets.length,
         ),
       );
       details.append(
         button(
-          running ? '正在生成资产…' : `生成所选资产（${targets.length} 项）`,
+          local.running ? '正在生成资产…' : `生成所选资产（${targets.length} 项）`,
           'generate',
           () =>
             batch(
               plan,
               targets.map((asset) => asset.id),
             ),
-          disabled || !approved || !paidConsent || !targets.length,
+          disabled || !approved || !local.paidConsent || !targets.length,
         ),
       );
-      card.append(details);
+}
+
+function renderDramaCompositionControls(plan: DramaPlan, latest: Map<string, DramaAssetExecution>,
+  disabled: boolean, assetOnly: boolean, details: HTMLDetailsElement,
+  { canvas, local, actions: { action, mergeAssets }, services: { stop, status }, controls: { button, check } }: DramaRenderServices) {
+  const card = local.card!;
       const operations = element('div');
       operations.className = 'nako-drama-inline-operations';
-      operations.hidden = !UI_FEATURES.runningHub && !running;
-      const stopButton = button('停止后续', 'stop', () => stop(), !running);
-      stopButton.hidden = !running;
+      operations.hidden = !UI_FEATURES.runningHub && !local.running;
+      const stopButton = button('停止后续', 'stop', () => stop(), !local.running);
+      stopButton.hidden = !local.running;
       operations.append(stopButton);
-      if (running)
+      if (local.running)
         operations.append(
           element('p', '本批运行时暂锁定发送；停止后续并等当前请求返回，即可继续自由对话。'),
         );
@@ -574,9 +643,9 @@ export function installDramaConversationTools(
         check(
           `我已检查当前人物和场景图像，确认将它们连接到${assetOnly ? '武戏' : '文戏'}草稿；不运行视频。`,
           '确认当前资产图像',
-          compositionConsent,
+          local.compositionConsent,
           (value) => {
-            compositionConsent = value;
+            local.compositionConsent = value;
           },
           disabled || !allReady,
         ),
@@ -587,9 +656,9 @@ export function installDramaConversationTools(
           'compose',
           () =>
             void action(async (tools) => {
-              if (!compositionConsent || !browserServices.__NAKO_WORKFLOW_NODES__)
-                throw new Error('请确认资产并等待工作流模块就绪。');
-              compositionConsent = false;
+              if (!local.compositionConsent || !browserServices.__NAKO_WORKFLOW_NODES__)
+                throw new AgentOperationError('请确认资产并等待工作流模块就绪。', { operation: 'compose-drama-canvas', planId: plan.id });
+              local.compositionConsent = false;
               const result = await tools.action({
                 action: 'compose',
                 planId: plan.id,
@@ -597,7 +666,7 @@ export function installDramaConversationTools(
                 confirmAssets: true,
               });
               if (!tools.current() || !result.composition)
-                throw new Error('没有取得真实组装回执，未写入文戏节点。');
+                throw new AgentOperationError('没有取得真实组装回执，未写入文戏节点。', { operation: 'compose-drama-canvas', planId: plan.id });
               const nodes = buildDramaCanvasNodes(
                 result.composition,
                 browserServices.__NAKO_WORKFLOW_NODES__,
@@ -618,64 +687,42 @@ export function installDramaConversationTools(
                   `${assetOnly ? '武戏' : '文戏'}草稿及资产连线已加入当前画布，重复创建不会覆盖已有节点。视频尚未运行，请检查对应节点的提示词，再单独确认运行。`,
                 );
             }),
-          disabled || !allReady || !compositionConsent,
+          disabled || !allReady || !local.compositionConsent,
         ),
       );
-    }
-    const message = note || snapshot.error;
-    if (message) {
-      const output = element('p', message);
-      output.className = 'nako-drama-inline-status';
-      output.setAttribute('role', noteError || snapshot.error ? 'alert' : 'status');
-      card.append(output);
-    }
-    const focus = Array.from(
-      card.querySelectorAll<HTMLElement>(
-        '[data-nako-drama-control],[data-nako-drama-action],[data-nako-drama-details-summary]',
-      ),
-    ).find(
-      (node) =>
-        (focusKey && node.dataset.nakoDramaControl === focusKey) ||
-        (focusAction && node.dataset.nakoDramaAction === focusAction) ||
-        (focusDetails && node.dataset.nakoDramaDetailsSummary === focusDetails),
-    );
-    focus?.focus({ preventScroll: true });
-    if (document.activeElement === focus) pendingFocus = null;
-    if (scrollParent && scrollTop !== undefined) {
-      scrollParent.scrollTop = followSummary
-        ? Math.max(0, scrollParent.scrollHeight - scrollParent.clientHeight)
-        : scrollTop;
-    }
-    renderedPlanKey = nextRenderedPlanKey;
-  }
+}
+
+function mountDramaTools(canvas: DramaCanvasBridge, conversation: AgentConversation,
+  local: DramaToolState, { stop, isDramaSelected, scope, status }: DramaToolScope,
+  { mergeAssets }: DramaToolActions) {
 
   const update = () => {
     const snapshot = conversation.snapshot();
     const key = `${snapshot.sessionId || ''}:${snapshot.projectId || ''}:${snapshot.selectedSkill?.source || ''}:${snapshot.selectedSkill?.slug || ''}`;
-    if (key !== context) {
-      context = key;
-      contextEpoch += 1;
+    if (key !== local.context) {
+      local.context = key;
+      local.contextEpoch += 1;
       stop(false);
-      note = '';
-      noteError = false;
-      selected.clear();
-      compositionConsent = false;
-      canvasSignature = '';
-      pendingFocus = null;
+      local.note = '';
+      local.noteError = false;
+      local.selected.clear();
+      local.compositionConsent = false;
+      local.canvasSignature = '';
+      local.pendingFocus = null;
     }
     const nextPlan = snapshot.state?.plan
       ? `${snapshot.state.plan.id}:${snapshot.state.plan.revision}`
       : '';
-    if (nextPlan !== planKey) {
-      planKey = nextPlan;
-      selected.clear();
-      paidConsent = false;
-      compositionConsent = false;
+    if (nextPlan !== local.planKey) {
+      local.planKey = nextPlan;
+      local.selected.clear();
+      local.paidConsent = false;
+      local.compositionConsent = false;
       // Attachment-only feedback must not keep saying "未调用模型" after a plan reply.
-      note = '';
-      noteError = false;
+      local.note = '';
+      local.noteError = false;
     }
-    render();
+    local.render();
     if (isDramaSelected() && snapshot.state && snapshot.sessionId && snapshot.projectId) {
       const active = scope(snapshot.sessionId, snapshot.projectId);
       void mergeAssets(snapshot.state).catch((cause) => {
@@ -687,45 +734,45 @@ export function installDramaConversationTools(
   const mount = () => {
     const content = document.querySelector('[data-nako-agent-conversation-content]');
     if (!content) {
-      if (card || attachment) {
-        contextEpoch += 1;
+      if (local.card || local.attachment) {
+        local.contextEpoch += 1;
         stop(false);
-        card?.remove();
-        attachment?.remove();
-        card = null;
-        attachment = null;
+        local.card?.remove();
+        local.attachment?.remove();
+        local.card = null;
+        local.attachment = null;
       }
       return;
     }
     let changed = false;
-    if (card?.parentElement !== content) {
-      if (card) {
-        contextEpoch += 1;
+    if (local.card?.parentElement !== content) {
+      if (local.card) {
+        local.contextEpoch += 1;
         stop(false);
-        card.remove();
+        local.card.remove();
       }
-      card = element('section');
-      card.dataset.nakoDramaConversationTools = 'true';
-      card.className = 'nako-drama-inline';
-      card.setAttribute('aria-label', '当前任务');
-      content.append(card);
+      local.card = element('section');
+      local.card.dataset.nakoDramaConversationTools = 'true';
+      local.card.className = 'nako-drama-inline';
+      local.card.setAttribute('aria-label', '当前任务');
+      content.append(local.card);
       changed = true;
     }
     const composer = document.querySelector('[data-nako-agent-composer]');
     const contextSlot = document.querySelector('[data-nako-agent-context-slot]');
     const attachmentParent = contextSlot || composer?.parentElement;
-    if (attachmentParent && attachment?.parentElement !== attachmentParent) {
-      attachment?.remove();
-      attachment = element('div');
-      attachment.dataset.nakoDramaAttachment = 'true';
-      attachment.className = 'nako-drama-attachment';
-      if (contextSlot) contextSlot.append(attachment);
-      else composer?.before(attachment);
+    if (attachmentParent && local.attachment?.parentElement !== attachmentParent) {
+      local.attachment?.remove();
+      local.attachment = element('div');
+      local.attachment.dataset.nakoDramaAttachment = 'true';
+      local.attachment.className = 'nako-drama-attachment';
+      if (contextSlot) contextSlot.append(local.attachment);
+      else composer?.before(local.attachment);
       changed = true;
     }
-    if (!composer && attachment) {
-      attachment.remove();
-      attachment = null;
+    if (!composer && local.attachment) {
+      local.attachment.remove();
+      local.attachment = null;
       changed = true;
     }
     if (changed) update();
@@ -741,13 +788,13 @@ export function installDramaConversationTools(
   style.textContent = `.nako-drama-inline{margin:12px 0;padding:8px 0;border-top:1px solid var(--nk-border);color:var(--nk-text);font:12px/1.6 Inter,"Microsoft YaHei UI",sans-serif;overflow-wrap:anywhere}.nako-drama-inline[hidden],.nako-drama-attachment[hidden]{display:none}.nako-drama-inline p{margin:6px 0;color:var(--nk-text-secondary);white-space:pre-wrap}.nako-drama-inline strong{display:block;font-size:13px}.nako-drama-inline details{margin-top:8px}.nako-drama-inline summary{cursor:pointer;font-weight:600}.nako-drama-inline button,.nako-drama-attachment button{margin:6px 6px 0 0;padding:6px 8px;border:1px solid var(--nk-border-control);border-radius:6px;background:var(--nk-surface-raised);color:var(--nk-text);cursor:pointer;font:inherit}.nako-drama-inline button:disabled,.nako-drama-inline input:disabled,.nako-drama-attachment button:disabled{opacity:.45;cursor:not-allowed}.nako-drama-inline :is(button,input,summary):focus-visible,.nako-drama-attachment button:focus-visible{outline:2px solid var(--nk-info);outline-offset:2px}.nako-drama-inline-check{display:flex;align-items:flex-start;gap:7px;margin:8px 0}.nako-drama-inline-check input{margin-top:4px;accent-color:var(--nk-border-control);flex:none}.nako-drama-inline-asset{border-top:1px solid var(--nk-border);padding-top:2px}.nako-drama-inline .nako-drama-inline-status{color:var(--nk-text)}.nako-drama-inline [role=alert],.nako-drama-attachment [role=alert]{color:var(--nk-danger)}.nako-drama-attachment{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0;margin:0 0 6px;color:var(--nk-text-secondary);font:12px/1.5 Inter,"Microsoft YaHei UI",sans-serif}.nako-drama-attachment button{flex:none;margin:0;padding:4px 7px;background:transparent}.nako-drama-attachment-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;max-width:calc(100% - 90px)}.nako-drama-attachment p{flex-basis:100%;margin:0;overflow-wrap:anywhere}.nako-drama-inline-operations:empty{display:none}`;
   document.head.append(style);
   return () => {
-    disposed = true;
+    local.disposed = true;
     stop(false);
     unsubscribe();
     uncanvas();
     unobserve();
-    card?.remove();
-    attachment?.remove();
+    local.card?.remove();
+    local.attachment?.remove();
     style.remove();
     document.removeEventListener('visibilitychange', hidden);
   };

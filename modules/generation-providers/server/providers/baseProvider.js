@@ -1,4 +1,7 @@
 import { annotateProviderError } from '../../../desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
+import { providerError, wrapProviderError, PROVIDER_ERRORS } from '../../../contracts/providerErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
+const logger = createModuleLogger('generation-providers');
 /**
  * baseProvider.js
  * 供应商处理器的基类/通用工具
@@ -22,7 +25,7 @@ try {
   }
   ProxyAgent = undici.ProxyAgent;
 } catch {
-  console.warn('[BaseProvider] undici not found, proxy features disabled.');
+  logger.warn('Optional undici transport unavailable; proxy support may be disabled.', { providerId: 'shared-provider', operation: 'initialize' });
 }
 if (!networkFetch) {
   try {
@@ -30,17 +33,17 @@ if (!networkFetch) {
     networkFetch = nodeFetch.default || nodeFetch.fetch || null;
     NetworkFormData = nodeFetch.FormData;
   } catch {
-    console.warn('[BaseProvider] No HTTP fetch implementation available.');
+    logger.warn('No fallback HTTP fetch implementation is available.', { providerId: 'shared-provider', operation: 'initialize' });
   }
 }
-if (!networkFetch) throw new Error('当前 Node 运行时不支持 HTTP Fetch。');
+if (!networkFetch) throw providerError('当前 Node 运行时不支持 HTTP Fetch。', { providerId: 'shared-provider', operation: 'initialize' });
 
 export const BaseProvider = {
   /**
    * 判断是否为可重试的瞬时网络错误
    */
   isRetryableNetworkError(error) {
-    const code = error?.cause?.code || error?.code;
+    const code = error?.transportCode || error?.cause?.code || error?.code;
     const retryableCodes = ['UND_ERR_SOCKET', 'ECONNRESET', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT'];
     return retryableCodes.includes(code);
   },
@@ -113,7 +116,7 @@ export const BaseProvider = {
         fetchOptions.dispatcher = new ProxyAgent(proxy);
         return proxy;
       } catch (e) {
-        console.error(`[BaseProvider] Proxy Injection Error: ${e.message}`);
+        logger.error('Proxy injection failed.', { providerId: 'shared-provider', operation: 'configure-proxy', error: e });
       }
     } else {
       // 关键修复：如果不用代理，确保对象中没有 dispatcher 属性
@@ -140,7 +143,7 @@ export const BaseProvider = {
     // 1. 处理代理
     const activeProxy = this.injectProxy(fetchOptions, useProxy);
     if (activeProxy) {
-      console.log(`[${modelId}] Using Proxy: ${activeProxy}`);
+      logger.info('Provider request is using proxy.', { providerId: modelId, operation: 'configure-proxy', modelId });
     }
 
     // 2. 准备日志数据 (脱敏并移除 dispatcher)
@@ -196,21 +199,15 @@ export const BaseProvider = {
         response = await networkFetch(url, fetchOptions);
         const rawText = await response.text();
         if (!rawText || !rawText.trim()) {
-          const emptyErr = new Error('上游返回空响应');
-          emptyErr.code = 'EMPTY_RESPONSE';
-          emptyErr.upstreamStatus = response.status;
-          throw emptyErr;
+          throw providerError('上游返回空响应', { providerId: modelId, operation: 'submit', code: PROVIDER_ERRORS.empty, upstreamStatus: response.status });
         }
         try {
           result = JSON.parse(rawText);
         } catch (parseError) {
-          const jsonErr = new Error(
-            `上游返回非 JSON 响应: ${String(parseError.message || parseError)}`,
-          );
-          jsonErr.code = 'INVALID_JSON_RESPONSE';
-          jsonErr.upstreamStatus = response.status;
-          jsonErr.rawBodySnippet = rawText.slice(0, 300);
-          throw jsonErr;
+          throw providerError(`上游返回非 JSON 响应: ${String(parseError.message || parseError)}`, {
+            providerId: modelId, operation: 'submit', code: PROVIDER_ERRORS.invalidJson, upstreamStatus: response.status,
+            rawBodySnippet: rawText.slice(0, 300), cause: parseError,
+          });
         }
         break;
       } catch (error) {
@@ -218,16 +215,16 @@ export const BaseProvider = {
           (this.isRetryableNetworkError(error) || this.isRetryableResponseError(error)) &&
           attempt < maxAttempts;
         if (!shouldRetry)
-          throw annotateProviderError(error, {
+          throw annotateProviderError(wrapProviderError(error, { providerId: modelId, operation: 'submit' }), {
             stage: 'submit',
             response,
             payload: result,
             requestBody: fetchOptions.body,
           });
         const waitMs = 300 * Math.pow(2, attempt - 1);
-        console.warn(
-          `[${modelId}] 请求异常，准备第 ${attempt + 1}/${maxAttempts} 次重试: ${error?.cause?.code || error?.code || error?.message}`,
-        );
+        logger.warn('Provider request failed transiently; retrying.', {
+          providerId: modelId, operation: 'submit', modelId, attempt: attempt + 1, maxAttempts, error,
+        });
         await new Promise((resolve) => setTimeout(resolve, waitMs));
       }
     }
@@ -244,9 +241,8 @@ export const BaseProvider = {
     if (!response.ok) {
       const errorMsg = result.error?.message || result.message || `HTTP ${response.status}`;
       throw annotateProviderError(
-        Object.assign(new Error(`API 错误 (${modelId}): ${errorMsg}`), {
-          status: response.status,
-          upstreamStatus: response.status,
+        providerError(`API 错误 (${modelId}): ${errorMsg}`, {
+          providerId: modelId, operation: 'submit', status: response.status, upstreamStatus: response.status,
         }),
         {
           stage: 'submit',
@@ -270,7 +266,7 @@ export const BaseProvider = {
     const { JIMENG_ACCESS_KEY, JIMENG_SECRET_KEY, TOS_BUCKET, TOS_ENDPOINT, TOS_REGION } = config;
 
     if (!JIMENG_ACCESS_KEY || !JIMENG_SECRET_KEY || !TOS_BUCKET) {
-      console.warn('[TOS] 未配置必要的密钥或存储桶，跳过上传。');
+      logger.warn('TOS upload skipped because required configuration is missing.', { providerId: 'tos', operation: 'upload-tos' });
       return null;
     }
 
@@ -307,7 +303,7 @@ export const BaseProvider = {
     const { url, headers } = signTOSV4(signingParams);
 
     try {
-      console.log(`[TOS] 正在上传到: ${url}`);
+      logger.info('Uploading file to TOS.', { providerId: 'tos', operation: 'upload-tos', fileName });
       const response = await fetch(url, {
         method: 'PUT',
         headers,
@@ -316,14 +312,14 @@ export const BaseProvider = {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[TOS] 上传失败详情: ${response.status} ${errorText}`);
-        throw new Error(`TOS 上传失败: ${response.status} ${errorText}`);
+        logger.error('TOS upload failed.', { providerId: 'tos', operation: 'upload-tos', status: response.status });
+        throw providerError(`TOS 上传失败: ${response.status} ${errorText}`, { providerId: 'tos', operation: 'upload-tos', status: response.status });
       }
 
-      console.log(`[TOS] 文件已成功上传: ${url}`);
+      logger.info('TOS upload completed.', { providerId: 'tos', operation: 'upload-tos', fileName });
       return url;
     } catch (error) {
-      console.error(`[TOS] 上传过程中出错:`, error.message);
+      logger.error('TOS upload failed.', { providerId: 'tos', operation: 'upload-tos', error });
       return null;
     }
   },
@@ -363,7 +359,7 @@ export const BaseProvider = {
 
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => {
-        reject(new Error(`生成超时（限制为 ${timeoutLabel}），请重试。`));
+        reject(providerError(`生成超时（限制为 ${timeoutLabel}），请重试。`, { operation: 'generation-timeout', code: PROVIDER_ERRORS.timeout }));
       }, timeoutMs);
     });
 
@@ -429,10 +425,10 @@ export const BaseProvider = {
     let response;
     try {
       response = await networkFetch(url, fetchOptions);
-      if (!response.ok) throw new Error(`素材下载失败：HTTP ${response.status}`);
+      if (!response.ok) throw providerError(`素材下载失败：HTTP ${response.status}`, { operation: 'download', code: PROVIDER_ERRORS.download, status: response.status });
       return Buffer.from(await response.arrayBuffer());
     } catch (error) {
-      throw annotateProviderError(error, { stage: 'download', response });
+      throw annotateProviderError(wrapProviderError(error, { operation: 'download' }), { stage: 'download', response });
     }
   },
 
@@ -467,7 +463,7 @@ export const BaseProvider = {
     const startTime = Date.now();
     while (true) {
       if (timeoutMs && Date.now() - startTime > timeoutMs) {
-        throw annotateProviderError(new Error('任务执行超时'), { stage: 'poll', taskId });
+        throw annotateProviderError(providerError('任务执行超时', { operation: 'poll', code: PROVIDER_ERRORS.timeout, context: { taskId } }), { stage: 'poll', taskId });
       }
       let result;
       try {
@@ -475,22 +471,18 @@ export const BaseProvider = {
       } catch (error) {
         const retryable =
           this.isRetryableNetworkError(error) || this.isRetryableResponseError(error);
-        if (!retryable) throw annotateProviderError(error, { stage: 'poll', taskId });
-        console.warn(
-          `[Poll] 状态查询瞬时失败，将继续查询同一任务: ${error?.cause?.code || error?.code || error?.message}`,
-        );
+        if (!retryable) throw annotateProviderError(wrapProviderError(error, { operation: 'poll' }), { stage: 'poll', taskId });
+        logger.warn('Provider poll request failed transiently; retrying the same task.', { providerId: 'shared-provider', operation: 'poll', taskId, error });
         await new Promise((r) => setTimeout(r, interval));
         continue;
       }
       if (result.done) return result.data;
       if (result.error && !result.retryable)
-        throw annotateProviderError(new Error(result.error), {
-          stage: 'poll',
-          taskId,
-          payload: { message: result.error },
+        throw annotateProviderError(providerError(result.error, { operation: 'poll', code: PROVIDER_ERRORS.task, taskId }), {
+          stage: 'poll', taskId, payload: { message: result.error },
         });
       if (result.error) {
-        console.warn(`[Poll] 状态接口暂时不可用，将继续查询同一任务: ${result.error}`);
+        logger.warn('Provider task status is temporarily unavailable; continuing to poll.', { providerId: 'shared-provider', operation: 'poll', taskId, error: result.error });
       } else if (onProgress) {
         onProgress(result.progress);
       }
@@ -531,9 +523,9 @@ export const BaseProvider = {
       }
 
       fs.writeFileSync(filePath, JSON.stringify(logData, null, 2));
-      console.log(`[Log] Debug log saved: ${nodeId}/${filename}`);
+      logger.info('Provider debug log saved.', { providerId: 'shared-provider', operation: 'save-debug-log', nodeId, filename });
     } catch (err) {
-      console.error(`[Log] Failed to save debug log:`, err.message);
+      logger.error('Failed to save provider debug log.', { providerId: 'shared-provider', operation: 'save-debug-log', error: err });
     }
   },
 };

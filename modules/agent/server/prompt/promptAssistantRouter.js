@@ -1,3 +1,6 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
+const logger = createModuleLogger('module.prompt');
 import express from 'express';
 import { classifyGenerationError } from '../../../generation-core/api/server/generation/generationErrors.js';
 
@@ -12,12 +15,10 @@ const OPTIMIZE_PROMPT_INSTRUCTION = [
   '输出一段可直接用于图片或视频生成的中文提示词，不添加解释、标题或引号。',
 ].join('');
 
-class PromptAssistantError extends Error {
+class PromptAssistantError extends AgentOperationError {
   constructor(message, status = 400, code = 'INVALID_PROMPT_ASSISTANT_REQUEST') {
-    super(message);
+    super(message, { operation: 'prompt-assistant-request' }, code, status);
     this.name = 'PromptAssistantError';
-    this.status = status;
-    this.code = code;
   }
 }
 
@@ -59,7 +60,7 @@ function sendError(response, error) {
     return;
   }
   const classified = classifyGenerationError(error);
-  console.error('[Prompt Assistant] Request failed:', classified.code);
+  logger.error('Prompt assistant request failed', { code: classified.code, status: classified.status });
   response.status(classified.status).json({
     error: classified.message,
     code: classified.code,

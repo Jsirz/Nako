@@ -1,3 +1,5 @@
+import { PluginError } from '../contracts/errors.js';
+import { GENERATION_ERROR_CODES } from '../contracts/generationErrors.js';
 export function parseTimeToMs(value) {
   if (!value) return 900_000;
   if (typeof value === 'number') return value;
@@ -13,7 +15,10 @@ export async function withTimeout(promise, estimate = '5min') {
   let timer;
   try {
     return await Promise.race([promise, new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`生成超时（限制为 ${label}），请重试。`)), milliseconds);
+      timer = setTimeout(() => reject(new PluginError(GENERATION_ERROR_CODES.timeout,
+        `生成超时（限制为 ${label}），请重试。`, {
+          context: { moduleId: 'generation-core', operation: 'withTimeout', milliseconds },
+        })), milliseconds);
     })]);
   } finally { clearTimeout(timer); }
 }

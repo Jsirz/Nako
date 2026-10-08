@@ -25,6 +25,12 @@ const fieldClass =
 
 /** Shared asset/SKILL form. A save must settle before closing and cannot outlive its dialog. */
 export function CanvasSaveDialog(React: Runtime, props: CanvasSaveDialogProps) {
+  const state = useSaveDialogState(React, props);
+  if (!props.isOpen) return null;
+  return renderSaveDialog(React, props, state);
+}
+
+function useSaveDialogState(React: Runtime, props: CanvasSaveDialogProps) {
   const liveRef = React.useRef(props);
   liveRef.current = props;
   const [name, setName] = React.useState(props.defaultName);
@@ -120,10 +126,18 @@ export function CanvasSaveDialog(React: Runtime, props: CanvasSaveDialogProps) {
       first?.focus();
     }
   };
-  if (!props.isOpen) return null;
-  const nameLabel = props.nameLabel || '名称',
-    categoryLabel = props.categoryLabel || '分类';
-  const busy = status === 'saving' || status === 'success';
+  return { name, setName, category, setCategory, newCategory, setNewCategory, ownership, setOwnership,
+    menuOpen, setMenuOpen, status, error, dialogRef, nameRef, idRef, close, save, keyDown,
+    busy: status === 'saving' || status === 'success' };
+}
+
+function renderSaveDialog(
+  React: Runtime, props: CanvasSaveDialogProps,
+  state: ReturnType<typeof useSaveDialogState>,
+) {
+  const { name, setName, category, newCategory, ownership, setOwnership, status, error,
+    dialogRef, nameRef, idRef, close, save, keyDown, busy } = state;
+  const nameLabel = props.nameLabel || '名称';
   return (
     <div
       className="fixed inset-0 bg-[var(--nk-overlay)] backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -186,97 +200,7 @@ export function CanvasSaveDialog(React: Runtime, props: CanvasSaveDialogProps) {
                     disabled={busy}
                   />
                 </div>
-                {props.compactCategory ? (
-                  <div className="flex flex-col gap-2">
-                    <label
-                      htmlFor={`${idRef.current}-category`}
-                      className="text-sm font-medium text-[var(--nk-text)]"
-                    >
-                      {categoryLabel} <span className="text-[var(--nk-danger)]">*</span>
-                    </label>
-                    <input
-                      id={`${idRef.current}-category`}
-                      className={fieldClass}
-                      value={category}
-                      onChange={(event) => setCategory(event.target.value)}
-                      maxLength={80}
-                      disabled={busy}
-                      placeholder="选择分类，也可以自行填写"
-                    />
-                    <select aria-label="选择已有分类" className={fieldClass} disabled={busy}
-                      value={props.categories.includes(category) ? category : ''}
-                      onChange={(event) => { if (event.target.value) setCategory(event.target.value); }}>
-                      <option value="" disabled>选择已有分类</option>
-                      {props.categories.map((value) => (
-                        <option key={value} value={value}>{value}</option>
-                      ))}
-                    </select>
-                    <span className="text-xs text-neutral-400">可选择已有分类，或输入新分类。</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex flex-col gap-2 relative">
-                      <span className="text-sm font-medium text-[var(--nk-text)]">
-                        选择现有{categoryLabel}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label={`选择现有${categoryLabel}`}
-                        aria-expanded={menuOpen}
-                        onClick={() => setMenuOpen(!menuOpen)}
-                        disabled={busy}
-                        className="w-full bg-[var(--nk-surface-raised)] border border-[var(--nk-border-control)] rounded-lg px-3 py-2 text-[var(--nk-text)] focus:outline-none flex items-center justify-between hover:bg-[var(--nk-surface-raised)]"
-                      >
-                        <span>{category || `请选择${categoryLabel}`}</span>
-                        <span aria-hidden="true">⌄</span>
-                      </button>
-                      {menuOpen && (
-                        <div className="absolute top-[70px] left-0 right-0 bg-[var(--nk-surface-raised)] border border-[var(--nk-border-control)] rounded-lg shadow-xl z-10 py-1 max-h-56 overflow-y-auto">
-                          {props.categories.length ? (
-                            props.categories.map((item) => (
-                              <button
-                                type="button"
-                                key={item}
-                                onClick={() => {
-                                  setCategory(item);
-                                  setMenuOpen(false);
-                                }}
-                                className="w-full px-3 py-2 text-left hover:bg-[var(--nk-surface-raised)] flex items-center justify-between group"
-                              >
-                                <span className="text-[var(--nk-text-secondary)] group-hover:text-[var(--nk-text)]">
-                                  {item}
-                                </span>
-                                {category === item && <span aria-hidden="true">✓</span>}
-                              </button>
-                            ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-[var(--nk-text-muted)]">
-                              暂无现有分类
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <label
-                        htmlFor={`${idRef.current}-category`}
-                        className="text-sm font-medium text-[var(--nk-text)]"
-                      >
-                        {categoryLabel} <span className="text-[var(--nk-danger)]">*</span>
-                      </label>
-                      <input
-                        id={`${idRef.current}-category`}
-                        type="text"
-                        value={newCategory}
-                        maxLength={80}
-                        onChange={(event) => setNewCategory(event.target.value)}
-                        className={fieldClass}
-                        placeholder={`输入新${categoryLabel}，留空则使用上方已选${categoryLabel}`}
-                        disabled={busy}
-                      />
-                    </div>
-                  </>
-                )}
+                {renderSaveCategory(React, props, state)}
                 {props.defaultOwnership !== undefined && (
                   <div className="flex flex-col gap-2">
                     <label
@@ -336,5 +260,72 @@ export function CanvasSaveDialog(React: Runtime, props: CanvasSaveDialogProps) {
         </form>
       </div>
     </div>
+  );
+}
+
+function renderSaveCategory(
+  React: Runtime, props: CanvasSaveDialogProps,
+  { category, setCategory, newCategory, setNewCategory, menuOpen, setMenuOpen, idRef, busy }:
+    ReturnType<typeof useSaveDialogState>,
+) {
+  const categoryLabel = props.categoryLabel || '分类';
+  return props.compactCategory ? (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={`${idRef.current}-category`} className="text-sm font-medium text-[var(--nk-text)]">
+        {categoryLabel} <span className="text-[var(--nk-danger)]">*</span>
+      </label>
+      <input
+        id={`${idRef.current}-category`} className={fieldClass} value={category}
+        onChange={(event) => setCategory(event.target.value)} maxLength={80} disabled={busy}
+        placeholder="选择分类，也可以自行填写"
+      />
+      <select aria-label="选择已有分类" className={fieldClass} disabled={busy}
+        value={props.categories.includes(category) ? category : ''}
+        onChange={(event) => { if (event.target.value) setCategory(event.target.value); }}>
+        <option value="" disabled>选择已有分类</option>
+        {props.categories.map((value) => <option key={value} value={value}>{value}</option>)}
+      </select>
+      <span className="text-xs text-neutral-400">可选择已有分类，或输入新分类。</span>
+    </div>
+  ) : (
+    <>
+      <div className="flex flex-col gap-2 relative">
+        <span className="text-sm font-medium text-[var(--nk-text)]">选择现有{categoryLabel}</span>
+        <button
+          type="button" aria-label={`选择现有${categoryLabel}`} aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(!menuOpen)} disabled={busy}
+          className="w-full bg-[var(--nk-surface-raised)] border border-[var(--nk-border-control)] rounded-lg px-3 py-2 text-[var(--nk-text)] focus:outline-none flex items-center justify-between hover:bg-[var(--nk-surface-raised)]"
+        >
+          <span>{category || `请选择${categoryLabel}`}</span>
+          <span aria-hidden="true">⌄</span>
+        </button>
+        {menuOpen && (
+          <div className="absolute top-[70px] left-0 right-0 bg-[var(--nk-surface-raised)] border border-[var(--nk-border-control)] rounded-lg shadow-xl z-10 py-1 max-h-56 overflow-y-auto">
+            {props.categories.length ? props.categories.map((item) => (
+              <button
+                type="button" key={item}
+                onClick={() => { setCategory(item); setMenuOpen(false); }}
+                className="w-full px-3 py-2 text-left hover:bg-[var(--nk-surface-raised)] flex items-center justify-between group"
+              >
+                <span className="text-[var(--nk-text-secondary)] group-hover:text-[var(--nk-text)]">{item}</span>
+                {category === item && <span aria-hidden="true">✓</span>}
+              </button>
+            )) : (
+              <div className="px-3 py-2 text-sm text-[var(--nk-text-muted)]">暂无现有分类</div>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor={`${idRef.current}-category`} className="text-sm font-medium text-[var(--nk-text)]">
+          {categoryLabel} <span className="text-[var(--nk-danger)]">*</span>
+        </label>
+        <input
+          id={`${idRef.current}-category`} type="text" value={newCategory} maxLength={80}
+          onChange={(event) => setNewCategory(event.target.value)} className={fieldClass}
+          placeholder={`输入新${categoryLabel}，留空则使用上方已选${categoryLabel}`} disabled={busy}
+        />
+      </div>
+    </>
   );
 }

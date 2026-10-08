@@ -1,10 +1,10 @@
-import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
+import { ERRORS } from '../../../modules/contracts/index.js';
+import { providerError } from '../../../modules/contracts/providerErrors.js';
 import { MODEL_DEFINITIONS, ROOT } from './protocol.js';
 export const invalid = (message) =>
-  Object.assign(new PluginError(ERRORS.invalidModel, message), {
-    status: 400,
-    expose: true,
-    retryable: false,
+  providerError(message, {
+    providerId: 'work-fisher', operation: 'validate-input', code: ERRORS.invalidModel,
+    status: 400, expose: true, retryable: false,
   });
 export function connection(kind, params, config) {
   const apiKey = String(config.WORK_FISHER_API_KEY || '').trim();

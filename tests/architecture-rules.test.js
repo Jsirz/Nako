@@ -55,17 +55,13 @@ describe('source architecture gates', () => {
     expect(isBackendSource('modules/agent/ui/panel.ts')).toBe(false);
   });
 
-  it('enforces 500 lines and monotonically decreasing recorded debt', () => {
+  it('enforces the AGENTS.md 1000-line limit without debt exemptions', () => {
     const code = (lines) => 'line\n'.repeat(lines);
     expect(sourceLineCount('line\r\n')).toBe(1);
-    expect(checkFileLimits(new Map([['new.ts', code(500)]])).failures).toEqual([]);
-    expect(checkFileLimits(new Map([['new.ts', code(501)]])).failures).toHaveLength(1);
-    expect(checkFileLimits(new Map([['old.ts', code(400)]]), { 'old.ts': 400 }).failures).toHaveLength(1);
-    const sources = new Map([['old.ts', code(600)]]);
-    expect(checkFileLimits(sources, { 'old.ts': 600 }).failures).toEqual([]);
-    expect(checkFileLimits(sources, { 'old.ts': 599 }).failures).toHaveLength(1);
-    expect(checkFileLimits(sources, { 'old.ts': 601 }).failures).toHaveLength(1);
-    expect(checkFileLimits(new Map(), { 'old.ts': 600 }).failures).toHaveLength(1);
-    expect(checkFileLimits(sources, { 'old.ts': 600 }, { strict: true }).failures).toHaveLength(1);
+    expect(sourceLineCount('')).toBe(0);
+    expect(checkFileLimits(new Map([['new.ts', code(1000)]])).failures).toEqual([]);
+    expect(checkFileLimits(new Map([['new.ts', code(1001)]])).failures).toHaveLength(1);
+    expect(checkFileLimits(new Map([['old.ts', code(1200)]])).failures).toHaveLength(1);
+    expect(checkFileLimits(new Map()).failures).toEqual([]);
   });
 });

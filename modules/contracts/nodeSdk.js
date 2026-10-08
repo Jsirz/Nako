@@ -1,5 +1,6 @@
 /** Stable, platform-free node package contract. */
 import { NODE_CAPABILITIES, validateNodeSchema } from './nodeExecution.js';
+import { ERRORS, PluginError } from './errors.js';
 export const NODE_SDK_VERSION = '2.0.0';
 export const NODE_MEDIA_TYPES = Object.freeze(['text', 'image', 'video', 'audio', 'json', 'any']);
 export const NODE_CATEGORIES = Object.freeze(['generation', 'asset', 'tool', 'workflow', 'utility']);
@@ -11,50 +12,53 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const validId = value => typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,127}$/i.test(value);
 const validVersion = value => typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value);
 const boundedText = (value, maximum) => typeof value === 'string' && value.length <= maximum;
+const invalid = (message, path = 'package') => new PluginError(ERRORS.nodePackage, message, {
+  status: 400, context: { moduleId: 'contracts', protocol: 'nodeSdk', operation: 'validate', path },
+});
 
 function validatePort(port, path) {
-  if (!isRecord(port) || !validId(port.id)) throw new TypeError(`${path}.id must be a stable identifier`);
+  if (!isRecord(port) || !validId(port.id)) throw invalid(`${path}.id must be a stable identifier`, path);
   if (!Array.isArray(port.media) || !port.media.length || port.media.some(type => !NODE_MEDIA_TYPES.includes(type)))
-    throw new TypeError(`${path}.media contains an unsupported media type`);
-  if (port.required !== undefined && typeof port.required !== 'boolean') throw new TypeError(`${path}.required must be boolean`);
-  if (port.multiple !== undefined && typeof port.multiple !== 'boolean') throw new TypeError(`${path}.multiple must be boolean`);
-  if (port.maximum !== undefined && (!Number.isInteger(port.maximum) || port.maximum < 1)) throw new TypeError(`${path}.maximum must be positive`);
+    throw invalid(`${path}.media contains an unsupported media type`, path);
+  if (port.required !== undefined && typeof port.required !== 'boolean') throw invalid(`${path}.required must be boolean`, path);
+  if (port.multiple !== undefined && typeof port.multiple !== 'boolean') throw invalid(`${path}.multiple must be boolean`, path);
+  if (port.maximum !== undefined && (!Number.isInteger(port.maximum) || port.maximum < 1)) throw invalid(`${path}.maximum must be positive`, path);
   if (port.schema) validateNodeSchema(port.schema);
   return { id: port.id, media: [...new Set(port.media)], ...(port.schema ? { schema: clone(port.schema) } : {}), ...(port.required === undefined ? {} : { required: port.required }), ...(port.multiple === undefined ? {} : { multiple: port.multiple }), ...(port.maximum === undefined ? {} : { maximum: port.maximum }) };
 }
 
 export function validateNodeDefinition(value, path = 'node') {
-  if (!isRecord(value) || !validId(value.type)) throw new TypeError(`${path}.type must be a stable identifier`);
-  if (!validVersion(value.version)) throw new TypeError(`${path}.version must be semver`);
-  if (!NODE_CATEGORIES.includes(value.category)) throw new TypeError(`${path}.category is invalid`);
-  if (!Array.isArray(value.inputs) || !Array.isArray(value.outputs)) throw new TypeError(`${path}.inputs and outputs are required`);
+  if (!isRecord(value) || !validId(value.type)) throw invalid(`${path}.type must be a stable identifier`, path);
+  if (!validVersion(value.version)) throw invalid(`${path}.version must be semver`, path);
+  if (!NODE_CATEGORIES.includes(value.category)) throw invalid(`${path}.category is invalid`, path);
+  if (!Array.isArray(value.inputs) || !Array.isArray(value.outputs)) throw invalid(`${path}.inputs and outputs are required`, path);
   const inputs = value.inputs.map((port, index) => validatePort(port, `${path}.inputs[${index}]`));
   const outputs = value.outputs.map((port, index) => validatePort(port, `${path}.outputs[${index}]`));
   if (new Set(inputs.map(port => port.id)).size !== inputs.length || new Set(outputs.map(port => port.id)).size !== outputs.length)
-    throw new TypeError(`${path} port ids must be unique on each side`);
+    throw invalid(`${path} port ids must be unique on each side`, path);
   const parameters = value.parameters === undefined ? undefined : clone(value.parameters);
   if (parameters !== undefined) validateNodeSchema(parameters);
   const render = value.render === undefined ? { kind: 'generic' } : value.render;
-  if (!isRecord(render) || !NODE_RENDERERS.includes(render.kind)) throw new TypeError(`${path}.render.kind is invalid`);
-  if (render.kind === 'iframe' && (typeof render.entry !== 'string' || !/^[a-z0-9_./-]+\.html$/i.test(render.entry))) throw new TypeError(`${path}.render.entry must be a package HTML file`);
+  if (!isRecord(render) || !NODE_RENDERERS.includes(render.kind)) throw invalid(`${path}.render.kind is invalid`, path);
+  if (render.kind === 'iframe' && (typeof render.entry !== 'string' || !/^[a-z0-9_./-]+\.html$/i.test(render.entry))) throw invalid(`${path}.render.entry must be a package HTML file`, path);
   const executor = value.executor === undefined ? undefined : clone(value.executor);
-  if (executor !== undefined && (!isRecord(executor) || !validId(executor.method))) throw new TypeError(`${path}.executor.method is required`);
-  if (executor?.transport !== undefined && executor.transport !== 'rpc') throw new TypeError(`${path}.executor.transport must be rpc`);
-  if (executor?.timeoutMs !== undefined && (!Number.isInteger(executor.timeoutMs) || executor.timeoutMs < 1000 || executor.timeoutMs > 1800000)) throw new TypeError(`${path}.executor.timeoutMs must be 1000–1800000`);
+  if (executor !== undefined && (!isRecord(executor) || !validId(executor.method))) throw invalid(`${path}.executor.method is required`, path);
+  if (executor?.transport !== undefined && executor.transport !== 'rpc') throw invalid(`${path}.executor.transport must be rpc`, path);
+  if (executor?.timeoutMs !== undefined && (!Number.isInteger(executor.timeoutMs) || executor.timeoutMs < 1000 || executor.timeoutMs > 1800000)) throw invalid(`${path}.executor.timeoutMs must be 1000–1800000`, path);
   const agent = value.agent === undefined ? undefined : value.agent;
-  if (value.capabilities !== undefined && (!Array.isArray(value.capabilities) || value.capabilities.some(name => !NODE_CAPABILITIES.includes(name)))) throw new TypeError(`${path}.capabilities is invalid`);
+  if (value.capabilities !== undefined && (!Array.isArray(value.capabilities) || value.capabilities.some(name => !NODE_CAPABILITIES.includes(name)))) throw invalid(`${path}.capabilities is invalid`, path);
   for (const migration of value.migrations || []) {
-    if (!validVersion(migration.from) || !validVersion(migration.to) || migration.from === migration.to) throw new TypeError(`${path}.migrations must advance an explicit version`);
+    if (!validVersion(migration.from) || !validVersion(migration.to) || migration.from === migration.to) throw invalid(`${path}.migrations must advance an explicit version`, path);
     for (const map of [migration.renameParameters, migration.renameInputs, migration.renameOutputs]) {
-      if (map && (!isRecord(map) || Object.entries(map).some(([key, target]) => !validId(key) || !validId(target) || [key, target].some(id => ['__proto__', 'constructor', 'prototype'].includes(id))))) throw new TypeError('Invalid migration mapping');
+      if (map && (!isRecord(map) || Object.entries(map).some(([key, target]) => !validId(key) || !validId(target) || [key, target].some(id => ['__proto__', 'constructor', 'prototype'].includes(id))))) throw invalid('Invalid migration mapping', path);
     }
   }
   if (agent !== undefined) {
-    if (!isRecord(agent) || typeof agent.exposed !== 'boolean') throw new TypeError(`${path}.agent.exposed must be boolean`);
-    if (agent.name !== undefined && !boundedText(agent.name, 200)) throw new TypeError(`${path}.agent.name is invalid`);
-    if (agent.description !== undefined && !boundedText(agent.description, 1000)) throw new TypeError(`${path}.agent.description is invalid`);
-    if (agent.requiresConfirmation !== undefined && typeof agent.requiresConfirmation !== 'boolean') throw new TypeError(`${path}.agent.requiresConfirmation must be boolean`);
-    if (agent.sideEffect !== undefined && !NODE_AGENT_SIDE_EFFECTS.includes(agent.sideEffect)) throw new TypeError(`${path}.agent.sideEffect is invalid`);
+    if (!isRecord(agent) || typeof agent.exposed !== 'boolean') throw invalid(`${path}.agent.exposed must be boolean`, path);
+    if (agent.name !== undefined && !boundedText(agent.name, 200)) throw invalid(`${path}.agent.name is invalid`, path);
+    if (agent.description !== undefined && !boundedText(agent.description, 1000)) throw invalid(`${path}.agent.description is invalid`, path);
+    if (agent.requiresConfirmation !== undefined && typeof agent.requiresConfirmation !== 'boolean') throw invalid(`${path}.agent.requiresConfirmation must be boolean`, path);
+    if (agent.sideEffect !== undefined && !NODE_AGENT_SIDE_EFFECTS.includes(agent.sideEffect)) throw invalid(`${path}.agent.sideEffect is invalid`, path);
   }
   return Object.freeze({
     type: value.type,
@@ -71,15 +75,15 @@ export function validateNodeDefinition(value, path = 'node') {
 }
 
 export function validateNodePackageManifest(value) {
-  if (!isRecord(value) || !validId(value.id)) throw new TypeError('node package id must be a stable identifier');
-  if (!validVersion(value.version)) throw new TypeError('node package version must be semver');
-  if (value.apiVersion !== undefined && typeof value.apiVersion !== 'string') throw new TypeError('node package apiVersion must be a range');
-  if (!Array.isArray(value.nodes) || !value.nodes.length) throw new TypeError('node package nodes are required');
+  if (!isRecord(value) || !validId(value.id)) throw invalid('node package id must be a stable identifier');
+  if (!validVersion(value.version)) throw invalid('node package version must be semver');
+  if (value.apiVersion !== undefined && typeof value.apiVersion !== 'string') throw invalid('node package apiVersion must be a range');
+  if (!Array.isArray(value.nodes) || !value.nodes.length) throw invalid('node package nodes are required');
   const nodes = value.nodes.map((node, index) => validateNodeDefinition(node, `nodes[${index}]`));
-  if (new Set(nodes.map(node => node.type)).size !== nodes.length) throw new TypeError('node package contains duplicate node types');
+  if (new Set(nodes.map(node => node.type)).size !== nodes.length) throw invalid('node package contains duplicate node types');
   const capabilities = value.capabilities || [];
-  if (!Array.isArray(capabilities) || capabilities.some(name => !NODE_CAPABILITIES.includes(name))) throw new TypeError('node package declares an unsupported capability');
-  if (nodes.some(node => node.capabilities?.some(name => !capabilities.includes(name)))) throw new TypeError('node capability is not declared by the package');
+  if (!Array.isArray(capabilities) || capabilities.some(name => !NODE_CAPABILITIES.includes(name))) throw invalid('node package declares an unsupported capability');
+  if (nodes.some(node => node.capabilities?.some(name => !capabilities.includes(name)))) throw invalid('node capability is not declared by the package');
   return Object.freeze({
     id: value.id,
     version: value.version,

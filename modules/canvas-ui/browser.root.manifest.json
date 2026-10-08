@@ -7,11 +7,13 @@
   "dependencies": {
     "ui.canvas-ui": "^1.0.0",
     "ui.project": "^1.0.0",
-    "ui.prompt": "^1.0.0"
+    "ui.prompt": "^1.0.0",
+    "ui.local-runtime": "^1.0.0"
   },
   "services": {
     "provides": [
       "ui.root"
-    ]
+    ],
+    "requires": ["ui.local-runtime"]
   }
 }

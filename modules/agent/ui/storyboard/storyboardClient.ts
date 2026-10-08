@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 export type StoryboardCharacter = {
   name: string;
@@ -61,13 +62,13 @@ type ErrorBody = {
   retryable?: unknown;
 };
 
-export class StoryboardClientError extends Error {
+export class StoryboardClientError extends AgentOperationError {
   code: string;
   status: number;
   retryable: boolean;
 
   constructor(message: string, code: string, status: number, retryable: boolean) {
-    super(message);
+    super(message, { operation: 'storyboard-client-request' }, code, status);
     this.name = 'StoryboardClientError';
     this.code = code;
     this.status = status;

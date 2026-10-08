@@ -17,14 +17,15 @@ else {
   const notes = path.resolve('release/notes.md');
   await writeFile(notes, [
     'Windows x64: install the setup.exe. macOS: choose the DMG matching your CPU.',
-    'ZIP archives and SHA-256 manifests are also included.',
+    'ZIP archives, macOS Sparkle delta packages and SHA-256 manifests are also included.',
     '',
     'The client keeps its configured HTTPS update service. Private GitHub Releases are for member downloads.',
     'For update-server deployment, use the original per-platform Actions artifacts.',
     'macOS now uses Sparkle with ad-hoc app signing and Ed25519 signed updates.',
-    'Existing macOS users must manually install this migration release once.',
+    'Sparkle macOS clients use a compatible signed delta when smaller, with full ZIP fallback.',
+    'Only macOS 1.5.5 and earlier require a one-time manual installation.',
     'On the update server, appcast-mac-arm64.xml and appcast-mac-x64.xml must each be named appcast.xml',
-    'in their respective mac-arm64/ and mac-x64/ directories. Upload metadata last.',
+    'in their respective mac-arm64/ and mac-x64/ directories. Upload ZIP and all .delta assets before metadata.',
     'Do not edit the signed appcast. Automatic updates require uploading these assets to the configured HTTPS service.',
     '',
     'See docs/GitHub发布说明.md for signing, update deployment, and release instructions.',

@@ -1,3 +1,5 @@
+import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -6,12 +8,12 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { RUNTIME_PATHS } from '../../../modules/project/api/server/workspace/runtimePaths.js';
 
-class MediaEditingError extends Error {
-  constructor(message, status = 400, code = 'INVALID_MEDIA_EDIT') {
-    super(message);
+class MediaEditingError extends PluginError {
+  constructor(message, status = 400, operationCode = 'INVALID_MEDIA_EDIT') {
+    super(status === 404 ? ERRORS.mediaNotFound : status === 403 ? ERRORS.permission : status >= 500 ? ERRORS.mediaStorage : ERRORS.invalidMedia, message, {
+      status, context: { moduleId: 'media.ffmpeg-sharp', operation: 'editMedia', operationCode },
+    });
     this.name = 'MediaEditingError';
-    this.status = status;
-    this.code = code;
   }
 }
 
@@ -196,7 +198,7 @@ async function defaultFfmpegRunner(job) {
     child.once('error', reject);
     child.once('close', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`FFmpeg 执行失败 (${code}): ${stderr.slice(-500)}`));
+      else reject(new MediaEditingError(`FFmpeg 执行失败 (${code}): ${stderr.slice(-500)}`, 500, 'FFMPEG_FAILED'));
     });
   });
 }
@@ -251,18 +253,18 @@ async function createOutputAsset({
 
 function sendError(error, logger) {
   const status = error instanceof MediaEditingError ? error.status : 500;
-  if (status >= 500) logger.error('Media editing error:', error);
+  if (status >= 500) logger.error('Media editing failed', { operation: 'editMedia', code: error.code });
   return { status, body: { error: error?.message || '媒体编辑失败', code: error?.code || 'MEDIA_EDIT_FAILED' } };
 }
 
-export function createLocalMediaProcessor({
-  libraryDirectory,
-  ffmpegRunner = defaultFfmpegRunner,
-  logger = console,
-}) {
-  if (!libraryDirectory) throw new Error('libraryDirectory is required');
+class LocalMediaProcessor {
+  constructor({ libraryDirectory, ffmpegRunner = defaultFfmpegRunner, logger = createModuleLogger('media.ffmpeg-sharp') }) {
+    if (!libraryDirectory) throw new PluginError(ERRORS.invalidConfiguration, 'libraryDirectory is required', { context: { moduleId: 'media.ffmpeg-sharp', operation: 'activate' } });
+    Object.assign(this, { libraryDirectory, ffmpegRunner, logger });
+  }
 
-  async function crop(request) {
+  async crop(request) {
+    const { libraryDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(request.body?.projectId, '项目标识');
       const imageUrl = String(request.body?.imageUrl || '');
@@ -291,7 +293,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function grid(request) {
+  async grid(request) {
+    const { libraryDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(request.body?.projectId, '项目标识');
       const imageUrl = String(request.body?.imageUrl || '');
@@ -342,7 +345,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function annotate(request) {
+  async annotate(request) {
+    const { libraryDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(request.body?.projectId, '项目标识');
       const sourceUrl = String(request.body?.sourceUrl || '');
@@ -367,7 +371,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function saveEdits(request) {
+  async saveEdits(request) {
+    const { libraryDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(request.params.projectId, '项目标识');
       const nodeId = assertSafeSegment(request.params.nodeId, '节点标识');
@@ -395,7 +400,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function readEdits(request) {
+  async readEdits(request) {
+    const { libraryDirectory, logger } = this;
     try {
       const projectId = assertSafeSegment(request.params.projectId, '项目标识');
       const nodeId = assertSafeSegment(request.params.nodeId, '节点标识');
@@ -411,7 +417,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function trimVideo(request) {
+  async trimVideo(request) {
+    const { libraryDirectory, ffmpegRunner, logger } = this;
     try {
       const projectId = assertSafeSegment(request.body?.projectId || 'default', '项目标识');
       const videoUrl = String(request.body?.videoUrl || '');
@@ -444,7 +451,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function videoFrames(request) {
+  async videoFrames(request) {
+    const { libraryDirectory, ffmpegRunner, logger } = this;
     try {
       const projectId = assertSafeSegment(request.body?.projectId, '项目标识');
       const videoUrl = String(request.body?.videoUrl || '');
@@ -482,7 +490,8 @@ export function createLocalMediaProcessor({
   
   }
 
-  async function trimAudio(request) {
+  async trimAudio(request) {
+    const { libraryDirectory, ffmpegRunner, logger } = this;
     try {
       const projectId = assertSafeSegment(request.body?.projectId || 'default', '项目标识');
       const audioUrl = String(request.body?.audioUrl || '');
@@ -515,7 +524,12 @@ export function createLocalMediaProcessor({
   
   }
 
-  return Object.freeze({ crop, grid, annotate, saveEdits, readEdits, trimVideo, videoFrames, trimAudio });
+}
+
+export function createLocalMediaProcessor(options) {
+  const processor = new LocalMediaProcessor(options);
+  const operations = ['crop', 'grid', 'annotate', 'saveEdits', 'readEdits', 'trimVideo', 'videoFrames', 'trimAudio'];
+  return Object.freeze(Object.fromEntries(operations.map(name => [name, processor[name].bind(processor)])));
 }
 
 export { MediaEditingError };

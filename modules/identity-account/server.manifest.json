@@ -13,7 +13,10 @@
       "http.routes"
     ],
     "provides": [
-      "preferences.repository"
+      "preferences.repository",
+      "identity.providerCredentials",
+      "identity.externalUrlFetch",
+      "identity.httpSecurity"
     ]
   },
   "capabilities": [

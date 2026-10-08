@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { SettingsScope } from '../../../generation-core/api/ui/generation/sourceSettingsScope';
 
 /** Cancel waiting and suppress continuations when the owning settings page closes. */
@@ -12,7 +13,7 @@ export async function settingsOperation<T>(
   const cancelled = new Promise<never>((_, reject) => {
     cancel = () => reject(new DOMException('页面已关闭', 'AbortError'));
     scope.signal.addEventListener('abort', cancel, { once: true });
-    timer = setTimeout(() => reject(new Error('等待超时，请先核对当前状态。')), timeoutMs);
+    timer = setTimeout(() => reject(canvasError('等待超时，请先核对当前状态。', 'settingsOperation')), timeoutMs);
   });
   try {
     const value = await Promise.race([operation(), cancelled]);

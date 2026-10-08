@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import type * as React from 'react';
 import { IMAGE_MODELS } from '../../../generation-core/api/models/catalog';
 import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
@@ -49,7 +50,7 @@ export function createCanvasImageUpscale(binding: Binding, api = runtime) {
                 node.generationDiagnosticCode === 'GENERATION_OBSERVATION_INTERRUPTED'),
           )
       ) {
-        throw new Error('此图片已有放大任务正在处理或核对，请先查看原结果卡。');
+        throw mediaError('此图片已有放大任务正在处理或核对，请先查看原结果卡。', { operation: 'upscale', sourceId });
       }
       activeSources.add(sourceId);
       const id = api.id(),
@@ -104,7 +105,7 @@ export function createCanvasImageUpscale(binding: Binding, api = runtime) {
         const urls = Array.isArray(result) ? result : [result];
         const url = urls[0];
         if (!url)
-          throw Object.assign(new Error('正在核对原放大任务。'), {
+          throw Object.assign(mediaError('正在核对原放大任务。', { operation: 'upscale', sourceId }), {
             code: 'GENERATION_OBSERVATION_INTERRUPTED',
           });
         if (!active()) return;

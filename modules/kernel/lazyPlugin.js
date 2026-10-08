@@ -1,4 +1,5 @@
 import { ERRORS, PluginError } from '../contracts/index.js';
+import { definePlugin } from './plugin.js';
 /** Defer implementation loading until activation, while retaining dependency and capability metadata. */
 export function lazyPlugin(manifest, load) {
   const canonical = (value) =>
@@ -12,7 +13,7 @@ export function lazyPlugin(manifest, load) {
           )
         : value;
   let implementation;
-  return {
+  return definePlugin({
     manifest,
     async activate(context) {
       implementation ??= await load();
@@ -25,5 +26,5 @@ export function lazyPlugin(manifest, load) {
     },
     canDeactivate: () => implementation?.canDeactivate?.() ?? true,
     deactivate: () => implementation?.deactivate?.(),
-  };
+  });
 }

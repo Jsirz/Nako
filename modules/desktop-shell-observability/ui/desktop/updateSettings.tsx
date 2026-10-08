@@ -4,7 +4,7 @@ import { RefreshCw, Download, RotateCcw } from 'lucide-react';
 import type { DesktopUpdateBridge, DesktopUpdateState } from '../../../contracts/desktopUpdates';
 import { PREPARE_DESKTOP_RESTART, type PrepareDesktopRestart } from '../../../contracts/desktopUpdates';
 import { desktopBridge } from './desktopBridge';
-import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { DESKTOP_ERRORS, desktopError } from '../../../contracts/desktopErrors.js';
 import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
 import './updateSettings.css';
 
@@ -19,7 +19,7 @@ async function prepareRestart() {
       Promise.all(work).then(results => results.every(Boolean)),
       new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), 15_000); }),
     ]);
-    if (!ready) throw new PluginError(ERRORS.desktopUpdate, '画布尚未保存完成，请稍后重试');
+    if (!ready) throw desktopError(DESKTOP_ERRORS.update, '画布尚未保存完成，请稍后重试', 'update.prepareRestart', 409);
   } finally { clearTimeout(timer); }
 }
 

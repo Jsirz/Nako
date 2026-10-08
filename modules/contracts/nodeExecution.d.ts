@@ -1,6 +1,7 @@
+import type { PluginError } from './errors.js';
 export declare const NODE_CAPABILITIES: readonly string[];
 export declare const NODE_ERROR: Readonly<Record<string, string>>;
-export declare function nodeError(code: string, message: string, details?: unknown): Error & { code: string; details?: unknown };
+export declare function nodeError(code: string, message: string, details?: unknown): PluginError & { details?: unknown };
 export declare function jsonClone<T>(value: T): T;
 export declare function isNodeRecord(value: unknown): value is Record<string, unknown>;
 export declare function validateNodeSchema(schema: unknown, depth?: number): Record<string, unknown>;

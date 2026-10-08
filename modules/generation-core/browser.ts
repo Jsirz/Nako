@@ -1,5 +1,6 @@
 import { createDefaultModelsClient } from './ui/generation/defaultModelsClient';
-import type { NakoPlugin } from '../contracts/index.js';
+import type { PluginDefinition } from '../contracts/index.js';
+import { definePlugin } from '../kernel/plugin.js';
 import { activateBrowserModule, trackBrowserResource } from '../kernel/browser';
 import { installGenerationScheduler } from './ui/generation/generationScheduler';
 import { installGenerationRecovery } from './ui/generation/generationRecovery';
@@ -11,8 +12,11 @@ import { installAgentModelAvailability } from './ui/generation/agentModelAvailab
 import { installModelPricing } from './ui/generation/modelPicker';
 import { createSourceSettingsClient } from './ui/generation/sourceSettingsClient';
 import { installVideoModeAdapter } from './ui/generation/videoMode';
+import { getGenerationConcurrency } from './ui/generation/generationClient';
+import { mountSourceSettings } from './ui/generation/sourceSettings';
+import type { GenerationUiService } from '../contracts/browserCapabilities';
 
-const plugin: NakoPlugin = {
+const plugin: PluginDefinition = {
   manifest: {
     id: 'ui.generation-core',
     version: '1.0.0',
@@ -21,7 +25,7 @@ const plugin: NakoPlugin = {
     reloadRequired: true,
     dependencies: { 'ui.identity-account': '^1.0.0' },
     capabilities: ['ui.generation-core'],
-    services: { provides: ['generation.defaults'] },
+    services: { provides: ['generation.defaults', 'ui.generation'] },
   },
   async activate(context) {
     await activateBrowserModule(context, async () => {
@@ -34,6 +38,10 @@ const plugin: NakoPlugin = {
       context.services.register('generation.defaults', defaults);
       await defaults.read().catch(() => {});
       const sourceSettingsClient = createSourceSettingsClient();
+      context.services.register<GenerationUiService>('ui.generation', Object.freeze({
+        concurrency: getGenerationConcurrency,
+        mountSettings: (host: HTMLElement) => mountSourceSettings(host, sourceSettingsClient),
+      }));
       trackBrowserResource(context, installAgentModelAvailability(sourceSettingsClient));
       trackBrowserResource(context, installImageModeAdapter());
       trackBrowserResource(context, installMidjourneyReferenceAdapter());
@@ -45,4 +53,4 @@ const plugin: NakoPlugin = {
     });
   },
 };
-export default plugin;
+export default definePlugin(plugin);

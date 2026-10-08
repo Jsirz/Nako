@@ -1,3 +1,5 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 import { selectDirectoryWithSystemDialog } from '../../../local-runtime/api/server/platform/directoryPicker.js';
 import express from 'express';
 import { normalizeLocalComfyServer } from '../../../contracts/comfyServerAddress.js';
@@ -28,9 +30,7 @@ const SAFE_ROUTER_CODES = new Set([
 ]);
 
 function objectInfoSizeError() {
-  const error = new Error('ComfyUI 节点定义超过大小限制');
-  error.code = 'OBJECT_INFO_SIZE_LIMIT';
-  return error;
+  return workflowRuntimeError('ComfyUI 节点定义超过大小限制', 'readObjectInfo', 'OBJECT_INFO_SIZE_LIMIT');
 }
 
 export async function readResponseTextWithLimit(response, maximumBytes = OBJECT_INFO_LIMIT) {
@@ -67,23 +67,17 @@ export async function readResponseTextWithLimit(response, maximumBytes = OBJECT_
 
 function decodeBase64Artifact(value) {
   if (typeof value !== 'string' || value.length === 0) {
-    const error = new Error('工作流源文件 Base64 无效');
-    error.code = 'INVALID_WORKFLOW_BASE64';
-    throw error;
+    throw workflowRuntimeError('工作流源文件 Base64 无效', 'decodeBase64Artifact', 'INVALID_WORKFLOW_BASE64');
   }
   const normalized = value.trim();
   const validShape = normalized.length % 4 === 0
     && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized);
   if (!validShape) {
-    const error = new Error('工作流源文件 Base64 无效');
-    error.code = 'INVALID_WORKFLOW_BASE64';
-    throw error;
+    throw workflowRuntimeError('工作流源文件 Base64 无效', 'decodeBase64Artifact', 'INVALID_WORKFLOW_BASE64');
   }
   const bytes = Buffer.from(normalized, 'base64');
   if (bytes.length === 0 || bytes.length > WORKFLOW_LIMITS.maxBytes) {
-    const error = new Error('工作流文件大小无效或超过限制');
-    error.code = 'WORKFLOW_SIZE_LIMIT';
-    throw error;
+    throw workflowRuntimeError('工作流文件大小无效或超过限制', 'decodeBase64Artifact', 'WORKFLOW_SIZE_LIMIT');
   }
   return bytes;
 }
@@ -94,15 +88,12 @@ export async function fetchObjectInfo(serverUrl) {
     const response = await fetch(`http://${normalized}/object_info`, {
       signal: AbortSignal.timeout(20_000),
     });
-    if (!response.ok) throw new Error(`ComfyUI object_info HTTP ${response.status}`);
+    if (!response.ok) throw workflowRuntimeError(`ComfyUI object_info HTTP ${response.status}`, 'fetchObjectInfo', 'COMFYUI_UNAVAILABLE', response.status);
     const content = await readResponseTextWithLimit(response);
     return JSON.parse(content);
   } catch (cause) {
     if (cause?.code === 'NON_LOCAL_COMFY_SERVER') throw cause;
-    const error = new Error('无法读取本机 ComfyUI 节点定义', { cause });
-    error.code = cause?.code || 'COMFYUI_UNAVAILABLE';
-    error.status = 503;
-    throw error;
+    throw workflowRuntimeError('无法读取本机 ComfyUI 节点定义', 'fetchObjectInfo', cause?.code || 'COMFYUI_UNAVAILABLE', 503, cause);
   }
 }
 
@@ -115,6 +106,7 @@ function sendError(response, error, logger) {
     ? Number(error?.status) || (error?.code === 'NON_LOCAL_COMFY_SERVER' ? 403 : 400)
     : 500;
   if (status >= 500) logger.error('Workflow library internal error', {
+    operation: 'sendError',
     code: isSafeError ? error?.code : 'WORKFLOW_LIBRARY_INTERNAL_ERROR',
     errorType: error?.name || 'Error',
   });
@@ -132,7 +124,7 @@ export function createWorkflowLibraryRouter({
   directoryGrantStore = new DirectoryGrantStore({ libraryDirectory, storageDirectory }),
   selectDirectory = selectDirectoryWithSystemDialog,
   loadObjectInfo = fetchObjectInfo,
-  logger = console,
+  logger = createModuleLogger('workflow-runtime'),
 }) {
   const router = express.Router();
 

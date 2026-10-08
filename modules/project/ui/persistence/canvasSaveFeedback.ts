@@ -1,3 +1,4 @@
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import type * as React from 'react';
 interface CoverNode {
   id: string;
@@ -67,7 +68,7 @@ export function useCanvasSaveFeedback(
     const isCurrent = () =>
       active.current && live.current.enabled && live.current.getWorkflowEpoch() === epoch;
     try {
-      if (!isCurrent()) throw Error('画布已切换，忽略旧保存操作');
+      if (!isCurrent()) throw new ProjectError(PROJECT_ERRORS.stale, '画布已切换，忽略旧保存操作', { context: { operation: 'saveFeedback', epoch } });
       const time = Date.now(),
         by = `用户${current.userNo || '-'}`,
         nodes = current.getNodes();

@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import type {
   WorkflowCanvasInsertionResult,
   WorkflowCanvasNodesAdapter,
@@ -32,7 +34,7 @@ export function createWorkflowCanvasInsertion(
         };
         const timeout = window.setTimeout(() => {
           cleanup();
-          reject(new Error('画布没有确认节点已插入，请刷新画布后重试。'));
+          reject(localRuntimeError('画布没有确认节点已插入，请刷新画布后重试。', 'addToCanvas', ERRORS.invalidCanvas));
         }, 12_000);
         window.addEventListener(WORKFLOW_CANVAS_INSERTED_EVENT, onInserted);
         window.dispatchEvent(

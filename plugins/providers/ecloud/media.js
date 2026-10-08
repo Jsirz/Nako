@@ -1,12 +1,11 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import { providerError, PROVIDER_ERRORS } from '../../../modules/contracts/providerErrors.js';
 export function ecloudInputError(message) {
-  return Object.assign(new Error(message), {
-    code: 'ECLOUD_INVALID_INPUT',
-    status: 400,
-    retryable: false,
-    expose: true,
+  return providerError(message, {
+    providerId: 'ecloud', operation: 'validate-input', code: PROVIDER_ERRORS.ecloudInput,
+    status: 400, retryable: false, expose: true,
   });
 }
 export function publicMediaUrl(value) {

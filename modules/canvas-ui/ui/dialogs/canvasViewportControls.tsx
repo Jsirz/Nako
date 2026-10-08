@@ -43,29 +43,12 @@ interface Components {
   }>;
 }
 export function CanvasViewportControls(React: Runtime, props: Props, components: Components) {
-  const {
-    view,
-    nodes,
-    viewport,
-    onViewportChange,
-    isMinimapOpen,
-    setIsMinimapOpen,
-    minimapWidth,
-    zoomControlsRef,
-    canvasRef,
-    documentEpoch,
-    onResetCanvas,
-    onSliderZoom,
-    showGridSlider,
-    setShowGridSlider,
-    gridColumns,
-    setGridColumns,
-    isCompact,
-    setIsCompact,
-    onGridLayout,
-    selectedNodeIds,
-  } = props;
-  const { Tooltip, Minimap } = components;
+  const state = useViewportControlState(React, props);
+  return renderViewportControls(React, props, components, state);
+}
+
+function useViewportControlState(React: Runtime, props: Props) {
+  const { documentEpoch, view, setShowGridSlider } = props;
   const [helpOpen, setHelpOpen] = React.useState(false),
     gridRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -88,6 +71,18 @@ export function CanvasViewportControls(React: Runtime, props: Props, components:
       setShowGridSlider(false);
     }
   };
+  return { helpOpen, setHelpOpen, gridRef, helpKeyDown, gridKeyDown };
+}
+
+function renderViewportControls(
+  React: Runtime, props: Props, { Tooltip, Minimap }: Components,
+  state: ReturnType<typeof useViewportControlState>,
+) {
+  const { view, nodes, viewport, onViewportChange, isMinimapOpen, setIsMinimapOpen,
+    minimapWidth, zoomControlsRef, canvasRef, documentEpoch, onResetCanvas, onSliderZoom,
+    showGridSlider, setShowGridSlider, gridColumns, setGridColumns, isCompact,
+    setIsCompact, onGridLayout, selectedNodeIds } = props;
+  const { gridRef, gridKeyDown } = state;
   return (
     <React.Fragment>
       {view === 'canvas' && isMinimapOpen && (
@@ -172,163 +167,7 @@ export function CanvasViewportControls(React: Runtime, props: Props, components:
           </span>
         </Tooltip>
       </div>
-      {view === 'canvas' && (
-        <div className={'fixed bottom-6 left-[240px] z-50 group'} onKeyDown={helpKeyDown}>
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="快捷键说明"
-            aria-expanded={helpOpen}
-            onClick={() => setHelpOpen((value) => !value)}
-            onFocus={() => setHelpOpen(true)}
-            onBlur={() => setHelpOpen(false)}
-            className={
-              'h-[42px] w-[42px] flex items-center justify-center cursor-help transition-all duration-300'
-            }
-          >
-            <svg
-              viewBox={'0 0 24 24'}
-              className={
-                'w-6 h-6 text-[var(--nk-text-muted)] group-hover:text-[var(--nk-info)] transition-all duration-300 drop-shadow-lg'
-              }
-              fill={'none'}
-              stroke={'currentColor'}
-              strokeWidth={'2'}
-              strokeLinecap={'round'}
-              strokeLinejoin={'round'}
-            >
-              <circle cx={'12'} cy={'12'} r={'10'} />
-              <path d={'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'} />
-              <line x1={'12'} y1={'17'} x2={'12.01'} y2={'17'} />
-            </svg>
-          </div>
-          <div
-            style={helpOpen ? { opacity: 1, pointerEvents: 'auto', transform: 'none' } : undefined}
-            className={
-              'absolute bottom-full left-0 mb-4 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-2 group-hover:translate-y-0'
-            }
-          >
-            <div
-              className={
-                'bg-[var(--nk-input)] border border-[var(--nk-border-control)] p-5 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.6)] w-64 backdrop-blur-2xl'
-              }
-            >
-              <h3 className={'text-[var(--nk-text)] font-bold mb-4 flex items-center gap-2'}>
-                <span className={'w-1.5 h-4 bg-[var(--nk-info-bg)] rounded-full'} />
-                {'快捷键说明'}
-              </h3>
-              <div className={'space-y-3'}>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'平移画布'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'中键拖拽 / Alt+滚轮'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'缩放画布'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'滚轮 / Ctrl+滚轮'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'聚焦选中/全部'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'F'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'自动排列'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'L'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'保存工作流'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'Ctrl + S'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'复制 / 粘贴'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'Ctrl + C / V'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'节点打组'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'Ctrl + G'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'撤销 / 重做'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'Ctrl + Z / Y'}
-                  </kbd>
-                </div>
-                <div className={'flex justify-between items-center text-sm'}>
-                  <span className={'text-[var(--nk-text-secondary)]'}>{'删除节点'}</span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'Del / Backspace'}
-                  </kbd>
-                </div>
-                <div
-                  className={
-                    'flex justify-between items-center text-sm border-t border-[var(--nk-border)] pt-2 mt-2'
-                  }
-                >
-                  <span className={'text-[var(--nk-text-secondary)] font-medium'}>
-                    {'断开连线'}
-                  </span>
-                  <kbd
-                    className={
-                      'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'
-                    }
-                  >
-                    {'双击连线'}
-                  </kbd>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {renderViewportHelp(React, props.view, state)}
       {showGridSlider && selectedNodeIds.length > 1 && view === 'canvas' && (
         <div
           className={
@@ -417,5 +256,59 @@ export function CanvasViewportControls(React: Runtime, props: Props, components:
         </div>
       )}
     </React.Fragment>
+  );
+}
+
+function renderViewportHelp(
+  React: Runtime, view: string,
+  { helpOpen, setHelpOpen, helpKeyDown }: ReturnType<typeof useViewportControlState>,
+) {
+  return view === 'canvas' && (
+    <div className={'fixed bottom-6 left-[240px] z-50 group'} onKeyDown={helpKeyDown}>
+      <div
+        role="button" tabIndex={0} aria-label="快捷键说明" aria-expanded={helpOpen}
+        onClick={() => setHelpOpen((value) => !value)}
+        onFocus={() => setHelpOpen(true)} onBlur={() => setHelpOpen(false)}
+        className={'h-[42px] w-[42px] flex items-center justify-center cursor-help transition-all duration-300'}
+      >
+        <svg
+          viewBox={'0 0 24 24'}
+          className={'w-6 h-6 text-[var(--nk-text-muted)] group-hover:text-[var(--nk-info)] transition-all duration-300 drop-shadow-lg'}
+          fill={'none'} stroke={'currentColor'} strokeWidth={'2'} strokeLinecap={'round'} strokeLinejoin={'round'}
+        >
+          <circle cx={'12'} cy={'12'} r={'10'} />
+          <path d={'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3'} />
+          <line x1={'12'} y1={'17'} x2={'12.01'} y2={'17'} />
+        </svg>
+      </div>
+      <div
+        style={helpOpen ? { opacity: 1, pointerEvents: 'auto', transform: 'none' } : undefined}
+        className={'absolute bottom-full left-0 mb-4 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all duration-300 translate-y-2 group-hover:translate-y-0'}
+      >
+        <div className={'bg-[var(--nk-input)] border border-[var(--nk-border-control)] p-5 rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.6)] w-64 backdrop-blur-2xl'}>
+          <h3 className={'text-[var(--nk-text)] font-bold mb-4 flex items-center gap-2'}>
+            <span className={'w-1.5 h-4 bg-[var(--nk-info-bg)] rounded-full'} />
+            {'快捷键说明'}
+          </h3>
+          <div className={'space-y-3'}>
+            {[
+              ['平移画布', '中键拖拽 / Alt+滚轮'], ['缩放画布', '滚轮 / Ctrl+滚轮'],
+              ['聚焦选中/全部', 'F'], ['自动排列', 'L'], ['保存工作流', 'Ctrl + S'],
+              ['复制 / 粘贴', 'Ctrl + C / V'], ['节点打组', 'Ctrl + G'],
+              ['撤销 / 重做', 'Ctrl + Z / Y'], ['删除节点', 'Del / Backspace'],
+            ].map(([label, keys]) => (
+              <div key={label} className={'flex justify-between items-center text-sm'}>
+                <span className={'text-[var(--nk-text-secondary)]'}>{label}</span>
+                <kbd className={'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'}>{keys}</kbd>
+              </div>
+            ))}
+            <div className={'flex justify-between items-center text-sm border-t border-[var(--nk-border)] pt-2 mt-2'}>
+              <span className={'text-[var(--nk-text-secondary)] font-medium'}>{'断开连线'}</span>
+              <kbd className={'px-2 py-1 bg-[var(--nk-surface-raised)] rounded border border-[var(--nk-border-control)] text-xs text-[var(--nk-info)] font-mono'}>{'双击连线'}</kbd>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

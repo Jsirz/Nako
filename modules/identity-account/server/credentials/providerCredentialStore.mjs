@@ -1,3 +1,4 @@
+import { IDENTITY_ERRORS, identityError, identityFailure } from '../../../contracts/identityErrors.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -16,12 +17,12 @@ export const PROVIDER_CREDENTIAL_FILE_NAME = process.platform === 'darwin'
 export function createPlatformCredentialProtector(options) {
   if (process.platform === 'darwin') return createMacosKeychainProtector();
   if (process.platform === 'win32') return createWindowsDpapiProtector(options);
-  throw Object.assign(new Error('Unsupported credential platform'), { code: 'CREDENTIAL_DECRYPT_FAILED' });
+  throw identityError(IDENTITY_ERRORS.credentialDecrypt, 'Unsupported credential platform', 'credentials.platform');
 }
 
 function windowsPowerShellPath() {
   const windowsRoot = String(process.env.SystemRoot || process.env.WINDIR || '').trim();
-  if (!windowsRoot) throw new Error('Windows system directory is unavailable');
+  if (!windowsRoot) throw identityError(IDENTITY_ERRORS.credentialConfiguration, 'Windows system directory is unavailable', 'credentials.dpapi.configure');
   return path.join(
     windowsRoot,
     'System32',
@@ -59,7 +60,7 @@ function runDpapiBridge({ action, input, helperPath, powershellPath = windowsPow
     };
     const timeout = setTimeout(() => {
       child.kill();
-      finish(() => reject(new Error('Windows DPAPI bridge timed out')));
+      finish(() => reject(identityError(IDENTITY_ERRORS.credentialTimeout, 'Windows DPAPI bridge timed out', 'credentials.dpapi', 504)));
     }, BRIDGE_TIMEOUT_MS);
     timeout.unref?.();
     child.stdout.on('data', (chunk) => {
@@ -69,16 +70,16 @@ function runDpapiBridge({ action, input, helperPath, powershellPath = windowsPow
     child.stderr.resume();
     child.stdin.on('error', () => {});
     child.on('error', () => finish(
-      () => reject(new Error('Windows DPAPI bridge could not start')),
+      () => reject(identityError(IDENTITY_ERRORS.credentialProtection, 'Windows DPAPI bridge could not start', 'credentials.dpapi')),
     ));
     child.on('close', (code) => {
       if (code !== 0 || stdoutBytes > MAX_BRIDGE_OUTPUT_BYTES) {
-        finish(() => reject(Object.assign(new Error('Windows DPAPI bridge failed'), { code: 'CREDENTIAL_DECRYPT_FAILED' })));
+        finish(() => reject(identityError(IDENTITY_ERRORS.credentialDecrypt, 'Windows DPAPI bridge failed', 'credentials.dpapi')));
         return;
       }
       const encoded = Buffer.concat(stdout).toString('utf8').trim();
       if (!encoded || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded)) {
-        finish(() => reject(new Error('Windows DPAPI bridge returned invalid data')));
+        finish(() => reject(identityError(IDENTITY_ERRORS.credentialProtection, 'Windows DPAPI bridge returned invalid data', 'credentials.dpapi')));
         return;
       }
       finish(() => resolve(Buffer.from(encoded, 'base64')));
@@ -90,7 +91,7 @@ function runDpapiBridge({ action, input, helperPath, powershellPath = windowsPow
 export function createWindowsDpapiProtector({ helperPath, powershellPath } = {}) {
   const resolvedHelper = path.resolve(String(helperPath || ''));
   if (!helperPath || !fs.existsSync(resolvedHelper)) {
-    throw new Error('Provider credential DPAPI helper is unavailable');
+    throw identityError(IDENTITY_ERRORS.credentialConfiguration, 'Provider credential DPAPI helper is unavailable', 'credentials.dpapi.configure');
   }
   return Object.freeze({
     protect(input) {
@@ -114,17 +115,17 @@ export function createWindowsDpapiProtector({ helperPath, powershellPath } = {})
 
 function normalizeCredentials(value, allowedKeys) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('Provider credential record is invalid');
+    throw identityError(IDENTITY_ERRORS.credentialInvalid, 'Provider credential record is invalid', 'credentials.validate', 400);
   }
   const normalized = {};
   for (const [key, rawValue] of Object.entries(value)) {
     if (!allowedKeys.has(key) || typeof rawValue !== 'string') {
-      throw new Error('Provider credential record contains an unsupported field');
+      throw identityError(IDENTITY_ERRORS.credentialInvalid, 'Provider credential record contains an unsupported field', 'credentials.validate', 400);
     }
     const credential = rawValue.trim();
     if (!credential) continue;
     if (credential.length > 100_000 || /[\r\n\0]/u.test(credential)) {
-      throw new Error('Provider credential value is invalid');
+      throw identityError(IDENTITY_ERRORS.credentialInvalid, 'Provider credential value is invalid', 'credentials.validate', 400);
     }
     normalized[key] = credential;
   }
@@ -134,13 +135,13 @@ function normalizeCredentials(value, allowedKeys) {
 export function createProviderCredentialStore({ filePath, allowedKeys, protector } = {}) {
   const resolvedFile = path.resolve(String(filePath || ''));
   const keySet = new Set(allowedKeys || []);
-  if (!filePath || keySet.size === 0) throw new Error('Provider credential store is not configured');
+  if (!filePath || keySet.size === 0) throw identityError(IDENTITY_ERRORS.credentialConfiguration, 'Provider credential store is not configured', 'credentials.configure');
   const activeProtector = protector;
   if (
     typeof activeProtector?.protect !== 'function'
     || typeof activeProtector?.unprotect !== 'function'
   ) {
-    throw new Error('Provider credential protector is not configured');
+    throw identityError(IDENTITY_ERRORS.credentialConfiguration, 'Provider credential protector is not configured', 'credentials.configure');
   }
   let updateQueue = Promise.resolve();
 
@@ -150,18 +151,20 @@ export function createProviderCredentialStore({ filePath, allowedKeys, protector
       contents = await readFile(resolvedFile);
     } catch (error) {
       if (error?.code === 'ENOENT') return {};
-      throw error;
+      throw identityFailure(error, IDENTITY_ERRORS.credentialRead, 'Provider credential store could not be read', 'credentials.read');
     }
     if (
       contents.length <= FILE_MAGIC.length
       || contents.length > MAX_FILE_BYTES
       || !contents.subarray(0, FILE_MAGIC.length).equals(FILE_MAGIC)
     ) {
-      throw Object.assign(new Error('Provider credential store is invalid'), { code: 'CREDENTIAL_FORMAT_INVALID' });
+      throw identityError(IDENTITY_ERRORS.credentialFormat, 'Provider credential store is invalid', 'credentials.read');
     }
     const plaintext = await activeProtector.unprotect(contents.subarray(FILE_MAGIC.length));
     try {
       return normalizeCredentials(JSON.parse(plaintext.toString('utf8')), keySet);
+    } catch (error) {
+      throw identityFailure(error, IDENTITY_ERRORS.credentialFormat, 'Provider credential store is invalid', 'credentials.read');
     } finally {
       plaintext.fill(0);
     }
@@ -180,11 +183,11 @@ export function createProviderCredentialStore({ filePath, allowedKeys, protector
       plaintext.fill(0);
     }
     if (!Buffer.isBuffer(protectedBytes) || protectedBytes.length === 0) {
-      throw new Error('Provider credential protection failed');
+      throw identityError(IDENTITY_ERRORS.credentialProtection, 'Provider credential protection failed', 'credentials.protect');
     }
     const contents = Buffer.concat([FILE_MAGIC, protectedBytes]);
     protectedBytes.fill(0);
-    if (contents.length > MAX_FILE_BYTES) throw new Error('Provider credential store is oversized');
+    if (contents.length > MAX_FILE_BYTES) throw identityError(IDENTITY_ERRORS.credentialInvalid, 'Provider credential store is oversized', 'credentials.replace', 413);
     await mkdir(path.dirname(resolvedFile), { recursive: true });
     const temporaryPath = `${resolvedFile}.${process.pid}.${crypto.randomUUID()}.tmp`;
     try {
@@ -203,7 +206,7 @@ export function createProviderCredentialStore({ filePath, allowedKeys, protector
       const next = { ...current };
       for (const [key, rawValue] of Object.entries(patch || {})) {
         if (!keySet.has(key) || typeof rawValue !== 'string') {
-          throw new Error('Provider credential update is invalid');
+          throw identityError(IDENTITY_ERRORS.credentialInvalid, 'Provider credential update is invalid', 'credentials.update', 400);
         }
         const value = rawValue.trim();
         if (value) next[key] = value;

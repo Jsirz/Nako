@@ -1,3 +1,4 @@
+import { protocolError } from './errors.js';
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 255;
 const id = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).every(key => keys.includes(key));
@@ -17,13 +18,13 @@ export function validWorkflowControl(value) {
 }
 export function projectWorkflowResult(value, result) {
   if (value.workflows !== undefined) {
-    if (!Array.isArray(value.workflows) || value.workflows.length > 50) throw Error('Invalid workflows');
+    if (!Array.isArray(value.workflows) || value.workflows.length > 50) throw protocolError('canvasWorkflow', 'Invalid workflows');
     result.workflows = value.workflows.map(item => {
-      if (!text(item.id) || typeof item.name !== 'string') throw Error('Invalid workflow');
+      if (!text(item.id) || typeof item.name !== 'string') throw protocolError('canvasWorkflow', 'Invalid workflow');
       return { id: item.id, name: item.name.slice(0, 500), ...(typeof item.parameters === 'string' ? { parameters: item.parameters } : {}), ...(item.ready === true ? { ready: true } : {}) };
     });
     if (value.nextOffset !== undefined) {
-      if (value.nextOffset !== null && (!Number.isInteger(value.nextOffset) || value.nextOffset < 0 || value.nextOffset > 100000)) throw Error('Invalid pagination');
+      if (value.nextOffset !== null && (!Number.isInteger(value.nextOffset) || value.nextOffset < 0 || value.nextOffset > 100000)) throw protocolError('canvasWorkflow', 'Invalid pagination');
       result.nextOffset = value.nextOffset;
     }
   }

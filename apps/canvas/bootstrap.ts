@@ -1,3 +1,4 @@
+import './installModelCatalog';
 import { browserHost } from '../../modules/kernel/browser';
 import type { NakoPlugin, PluginManifest } from '../../modules/contracts/index.js';
 import { lazyPlugin } from '../../modules/kernel/lazyPlugin.js';

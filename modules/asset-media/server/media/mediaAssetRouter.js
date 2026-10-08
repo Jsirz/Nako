@@ -1,8 +1,9 @@
 import express from 'express';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 
 /** HTTP translation only. Storage/processing is supplied by the plugin host. */
 export function createMediaAssetRouter({ mediaStore }) {
-  if (!mediaStore) throw new Error('mediaStore is required');
+  if (!mediaStore) throw new PluginError(ERRORS.serviceMissing, 'mediaStore is required', { context: { moduleId: 'asset-media', service: 'media.operations' } });
   const router = express.Router();
   router.post("/assets/upload/:type", async (request, response) => {
     const result = await mediaStore.upload({ params: request.params, query: request.query, headers: request.headers, body: request.body, stream: request });

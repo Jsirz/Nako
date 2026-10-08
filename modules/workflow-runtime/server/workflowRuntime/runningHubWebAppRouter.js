@@ -1,8 +1,10 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 import express from 'express';
 import { RunningHubWebAppError } from './runningHubWebApp.js';
 import { RunningHubWebAppLibraryError } from './runningHubWebAppLibraryService.js';
 import { RunningHubWorkflowClientError } from '../../../contracts/workflowProtocols.js';
-import { WorkflowDeploymentError } from './workflowDeploymentService.js';
+import { isWorkflowRuntimeDomainError } from './workflowDeploymentService.js';
 
 const json = express.json({ limit: 256 * 1024 });
 
@@ -10,16 +12,16 @@ function sendError(response, error, logger) {
   const safe = error instanceof RunningHubWebAppError
     || error instanceof RunningHubWebAppLibraryError
     || error instanceof RunningHubWorkflowClientError
-    || error instanceof WorkflowDeploymentError;
-  if (!safe) logger.error('RunningHub WebApp library error', { errorType: error?.name || 'Error' });
+    || isWorkflowRuntimeDomainError(error);
+  if (!safe) logger.error('RunningHub WebApp library error', { operation: 'sendError', errorType: error?.name || 'Error' });
   response.status(safe ? Number(error.status) || 400 : 500).json({
     error: safe ? error.message : '云端工作流内部错误',
     code: safe ? error.code : 'RUNNINGHUB_WEBAPP_INTERNAL_ERROR',
   });
 }
 
-export function createRunningHubWebAppRouter({ service, logger = console }) {
-  if (!service) throw new Error('RunningHub WebApp router requires a library service');
+export function createRunningHubWebAppRouter({ service, logger = createModuleLogger('workflow-runtime') }) {
+  if (!service) throw workflowRuntimeError('RunningHub WebApp router requires a library service', 'createRunningHubWebAppRouter');
   const router = express.Router();
 
   router.get('/official-workflows', async (_request, response) => {

@@ -1,4 +1,6 @@
 import express from 'express';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 
 export function createLegacyComfyGenerationRouter({
   workflowRegistry,
@@ -6,6 +8,7 @@ export function createLegacyComfyGenerationRouter({
   comfyClient,
   saveMediaToFile,
   fetchImpl = fetch,
+  logger = createModuleLogger('local-runtime'),
 }) {
   const router = express.Router();
 
@@ -21,7 +24,7 @@ export function createLegacyComfyGenerationRouter({
     try {
       const { imageUrl, projectId, ...params } = req.body;
 
-      console.log(`[ComfyUI] Processing ${config.title} (${workflowType}): project=${projectId}`);
+      logger.info('ComfyUI workflow started', { workflowType, projectId });
 
       // 0. 兜底：本机 ComfyUI 未运行且用户已开启自动启动时先拉起。
       //    未开启自动启动会返回 disabled，保持既有行为不变。
@@ -48,15 +51,15 @@ export function createLegacyComfyGenerationRouter({
       );
 
       if (!resultUrl) {
-        throw new Error(`ComfyUI failed to return a valid result for ${workflowType}`);
+        throw new PluginError(ERRORS.providerRequest, `ComfyUI failed to return a valid result for ${workflowType}`, { context: { moduleId: 'local-runtime', workflowType } });
       }
 
       // 3. If projectId is provided, save the result to project's media folder
       if (projectId && resultUrl.startsWith('http')) {
         try {
-          console.log(`[ComfyUI] Downloading result for project ${projectId}: ${resultUrl}`);
+          logger.info('Downloading ComfyUI result', { workflowType, projectId });
           const response = await fetchImpl(resultUrl);
-          if (!response.ok) throw new Error(`Failed to download result: ${response.statusText}`);
+          if (!response.ok) throw new PluginError(ERRORS.providerRequest, 'Failed to download ComfyUI result', { status: response.status, context: { moduleId: 'local-runtime', workflowType, projectId } });
 
           const contentType = response.headers.get('content-type') || 'image/png';
           const arrayBuffer = await response.arrayBuffer();
@@ -68,13 +71,13 @@ export function createLegacyComfyGenerationRouter({
             resultUrl = saved.url;
           }
         } catch (saveErr) {
-          console.error(`[ComfyUI] Failed to save ${workflowType} result:`, saveErr.message);
+          logger.error('ComfyUI result save failed', { workflowType, projectId, code: saveErr.code });
         }
       }
 
       res.json({ url: resultUrl });
     } catch (error) {
-      console.error(`[ComfyUI] ${config.title} failed:`, error);
+      logger.error('ComfyUI workflow failed', { workflowType, code: error.code });
       res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });

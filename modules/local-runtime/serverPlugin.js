@@ -100,13 +100,23 @@ export default defineApplicationPlugin({
         comfyProcessController,
         comfyClient,
         saveMediaToFile,
+        logger: context.logger,
       }),
     );
-    context.services.register('local.runtime', {
-      comfyProcessController,
-      dreaminaCliInstaller,
-      libTvCli,
+    /** @type {import('../contracts/localRuntimeService').LocalRuntimeService} */
+    const localRuntime = Object.freeze({
+      async providerConfiguration({ waitForFresh = true } = {}) {
+        if (waitForFresh)
+          await Promise.all([dreaminaCliInstaller.isAuthenticated(), libTvCli.isAuthenticated()]);
+        return {
+          LibTvCliImageProvider: libTvCli.getCachedAuthentication(),
+          LibTvCliVideoProvider: libTvCli.getCachedAuthentication(),
+          DreaminaCliImageProvider: dreaminaCliInstaller.getCachedAuthentication(),
+          DreaminaCliVideoProvider: dreaminaCliInstaller.getCachedAuthentication(),
+        };
+      },
     });
+    context.services.register('local.runtime', localRuntime);
     context.onDispose(async () => {
       await comfyProcessController.stop();
       delete applicationContext.DREAMINA_CLI;

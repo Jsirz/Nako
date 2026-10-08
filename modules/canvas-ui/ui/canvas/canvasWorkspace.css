@@ -57,8 +57,9 @@ html[data-nk-integrated-titlebar] .nako-project-header [aria-label="项目菜单
 @media (max-height: 600px) {
   [data-nako-workspace] [aria-label="画布工具"] { top: 100px; transform: none; max-height: calc(100dvh - 180px); overflow-y: auto; }
 }
-#canvas-background[data-read-only] #canvas-viewport-content,
-#canvas-background[data-read-only] #canvas-viewport-content * { pointer-events: none !important; }
+#canvas-background[data-read-only] [data-nako-connector-node-id] { display: none !important; }
+.canvas-preview-readonly-composer { pointer-events: none; }
+.canvas-preview-readonly-composer [data-nako-prompt-scroll] { pointer-events: auto; cursor: text; }
 .nako-read-only-banner{position:fixed;top:16px;left:50%;z-index:90;display:flex;align-items:center;gap:18px;max-width:min(90vw,760px);padding:10px 12px 10px 16px;border:1px solid var(--nk-border-control);border-radius:12px;background:var(--nk-surface);color:var(--nk-text);box-shadow:var(--nk-shadow);transform:translateX(-50%);font-size:13px}
 .nako-read-only-copy{display:flex;align-items:center;gap:9px;min-width:0;color:var(--nk-text-secondary)}
 .nako-read-only-copy span{white-space:nowrap}

@@ -91,6 +91,7 @@ export function CanvasConnectors(
 }
 interface FrameProps {
   data: NodeData;
+  readOnly?: boolean;
   selected?: boolean;
   isHoveredForConnection?: boolean;
   isInvalidHover?: boolean;
@@ -144,17 +145,20 @@ export function CanvasNodeFrame(
       onPointerDown={(event) => {
         if (event.button !== 1) props.onNodePointerDown(event, data.id);
       }}
-      onContextMenu={(event) => props.onContextMenu(event, data.id)}
+      onContextMenu={(event) => {
+        if (props.readOnly) event.preventDefault();
+        else props.onContextMenu(event, data.id);
+      }}
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
     >
-      {props.data.pluginId && !['native', undefined].includes(installNodeFramework().getDefinition(data.type, String(data.pluginId))?.render?.kind) ? React.createElement(PackageNodeConnectors, { data, onConnectorDown: props.onConnectorDown }) : React.createElement(dependencies.Connectors, {
+      {!props.readOnly && (props.data.pluginId && !['native', undefined].includes(installNodeFramework().getDefinition(data.type, String(data.pluginId))?.render?.kind) ? React.createElement(PackageNodeConnectors, { data, onConnectorDown: props.onConnectorDown }) : React.createElement(dependencies.Connectors, {
         nodeId: data.id,
         onConnectorDown: props.onConnectorDown,
         nodeType: data.type,
         zoom,
         selected,
-      })}
+      }))}
       <div className="relative group/nodecard flex flex-col items-center">
         <div
           className={
@@ -179,10 +183,34 @@ export function CanvasNodeFrame(
               width: '680px',
             }}
           >
-            {props.controls}
+            {props.readOnly ? (
+              <div
+                className="canvas-preview-readonly-composer"
+                onFocusCapture={(event) => {
+                  const target = event.target;
+                  if (
+                    target instanceof HTMLElement &&
+                    !target.closest('[data-nako-prompt-scroll]')
+                  )
+                    target.blur();
+                }}
+                onKeyDownCapture={(event) => {
+                  event.stopPropagation();
+                  if (
+                    !(event.target instanceof Element) ||
+                    !event.target.closest('[data-nako-prompt-scroll]')
+                  )
+                    event.preventDefault();
+                }}
+              >
+                {props.controls}
+              </div>
+            ) : (
+              props.controls
+            )}
           </div>
         )}
-        {selected && props.onResizeStart && isResizableMediaNode(data) && (
+        {selected && !props.readOnly && props.onResizeStart && isResizableMediaNode(data) && (
           <div
             data-nako-media-resize-handle="true"
             aria-label="缩放媒体节点"
@@ -229,6 +257,7 @@ const titles: Record<string, string> = {
 };
 interface HeaderProps {
   data: NodeData;
+  readOnly?: boolean;
   children?: ReactTypes.ReactNode;
   selected?: boolean;
   onUpdate(id: string, patch: { title?: string }): void;
@@ -243,7 +272,7 @@ interface HeaderIcons {
   Workflow: Icon;
 }
 export function CanvasNodeHeader(React: Runtime, props: HeaderProps, icons: HeaderIcons) {
-  const { data, selected } = props;
+  const { data, selected, readOnly } = props;
   const defaultTitle = titles[data.type] || data.type,
     title = data.title || defaultTitle;
   const [editing, setEditing] = React.useState(false),
@@ -349,15 +378,16 @@ export function CanvasNodeHeader(React: Runtime, props: HeaderProps, icons: Head
         ) : (
           <div
             role="button"
-            tabIndex={0}
+            tabIndex={readOnly ? -1 : 0}
+            aria-disabled={readOnly || undefined}
             aria-label={`重命名 ${title}`}
             className="text-[11px] font-bold px-1 py-0.5 rounded cursor-text select-none whitespace-nowrap overflow-hidden text-ellipsis flex items-center transition-colors min-w-0"
             onDoubleClick={(event) => {
               event.stopPropagation();
-              start();
+              if (!readOnly) start();
             }}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === 'F2') {
+              if (!readOnly && (event.key === 'Enter' || event.key === 'F2')) {
                 event.preventDefault();
                 event.stopPropagation();
                 start();
@@ -432,6 +462,7 @@ export function CanvasGenericNode(
     dependencies.Frame,
     {
       data: node,
+      readOnly: props.readOnly,
       selected: props.selected,
       onNodePointerDown: props.onNodePointerDown,
       onContextMenu: props.onContextMenu,
@@ -445,7 +476,7 @@ export function CanvasGenericNode(
       onResizeStart: props.onResizeStart,
       zoom: props.zoom,
     },
-    React.createElement(dependencies.Header, { data: node, selected: props.selected, onUpdate: props.onUpdate }),
+    React.createElement(dependencies.Header, { data: node, selected: props.selected, readOnly: props.readOnly, onUpdate: props.onUpdate }),
     React.createElement(
       'div',
       { className: 'p-3 text-xs text-[var(--nk-text-muted)] space-y-2' },

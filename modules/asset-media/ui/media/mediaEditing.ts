@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { browserServices } from '../../../kernel/browser';
 export type CompareConfig = {
   beforeUrl: string;
@@ -71,7 +72,7 @@ async function readJson(response: Response): Promise<unknown> {
     const message = typeof result === 'object' && result && 'error' in result
       ? String(result.error)
       : `媒体编辑请求失败 (${response.status})`;
-    throw new Error(message);
+    throw mediaError(message, { operation: 'readMediaEditing', httpStatus: response.status });
   }
   return result;
 }

@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import type {
   WorkflowCanvasNodeRecord,
   WorkflowCanvasNodesAdapter,
@@ -120,7 +122,7 @@ async function run(
       rememberKey: RUNNINGHUB_PAID_CONFIRMATION_KEY,
     }))
   ) {
-    throw new Error('已取消 RunningHub 付费执行');
+    throw localRuntimeError('已取消 RunningHub 付费执行', 'run', ERRORS.permission);
   }
   requireWorkflowScope(scope);
   onPatch({
@@ -178,7 +180,7 @@ async function resume(
   if (continuePaused && node.executionState?.phase === 'observation-paused') {
     const run = await client.continueObservation(runId);
     requireWorkflowScope(scope);
-    if (run.runId !== runId) throw new Error('任务回执编号不匹配');
+    if (run.runId !== runId) throw localRuntimeError('任务回执编号不匹配', 'resume');
     onPatch(runPatch(scope?.getNode?.() ?? node, run));
     if (TERMINAL_STATUSES.has(run.status)) {
       publishExternalOutputs(node, run);
@@ -202,7 +204,7 @@ async function cancel(
   if (!runId) return null;
   const run = await client.cancelRun(runId);
   requireWorkflowScope(scope);
-  if (run.runId !== runId) throw new Error('任务回执编号不匹配');
+  if (run.runId !== runId) throw localRuntimeError('任务回执编号不匹配', 'cancel');
   onPatch(runPatch(scope?.getNode?.() ?? node, run));
   publishRunProgress(node, run);
   return run;

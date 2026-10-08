@@ -1,26 +1,19 @@
+import { createWorkflowStageRenderers } from './createWorkflowStageRenderers';
 import { bindWorkflowFileInputs } from './bindWorkflowFileInputs';
 import { UI_FEATURES } from '../../../contracts/uiFeatures';
 import { isRunningHubRunner } from './workflowManagerMetadata';
 import { createWorkflowLibraryActions } from './createWorkflowLibraryActions';
 import { createWorkflowManagerActions } from './createWorkflowManagerActions';
 import { createWorkflowManagerView } from './createWorkflowManagerView';
-import { createWorkflowValueControl } from './createWorkflowValueControl';
 import { importWorkflowFiles } from './importWorkflowFiles';
 import { loadRequestedWorkflow } from './loadRequestedWorkflow';
 import { pollWorkflowRun } from './pollWorkflowRun';
-import { renderWorkflowBindings } from './renderWorkflowBindings';
-import { renderWorkflowCleanup } from './renderWorkflowCleanup';
-import { renderWorkflowDeployment } from './renderWorkflowDeployment';
 import { renderWorkflowLoadState } from './renderWorkflowLoadState';
-import { renderWorkflowOutputs } from './renderWorkflowOutputs';
-import { renderWorkflowSource } from './renderWorkflowSource';
 import { renderWorkflowStages } from './renderWorkflowStages';
-import { renderWorkflowTest } from './renderWorkflowTest';
 import { restoreWorkflowLibrary } from './restoreWorkflowLibrary';
 import { currentStage, stageReachable } from './workflowManagerBindings';
-import type { BindingSet, WorkflowManagerClient } from './workflowManagerClient';
+import type { WorkflowManagerClient } from './workflowManagerClient';
 import { button } from './workflowManagerControls';
-import { createWorkflowNodeTitleControl, panelHeading } from './workflowManagerPanelControls';
 import { injectStyles } from './workflowManagerStyles';
 import { WorkflowManagerOptions } from './workflowManagerTypes';
 
@@ -104,55 +97,8 @@ export function createWorkflowManager(
     host,
   );
 
-  const renderSource = () =>
-    renderWorkflowSource(
-      libraryContext,
-      state,
-      panel,
-      panelHeading,
-      appendDeployedCards,
-      session,
-      fileInput,
-      directoryInput,
-      appendPollingResume,
-      runBusy,
-      client,
-      hydrate,
-      setNotice,
-    )();
-
-  const renderDeployment = () => {
-    renderWorkflowDeployment(
-      state,
-      render,
-      runBusy,
-      client,
-      setNotice,
-      appendPollingResume,
-      panel,
-      panelHeading,
-    );
-  };
-
-  const renderBindings = () => {
-    renderWorkflowBindings(
-      state,
-      panel,
-      panelHeading,
-      createNodeTitleControl,
-      runBusy,
-      client,
-      setNotice,
-      syncCurrentCanvasNode,
-      loadDeployedRecords,
-    );
-  };
-
-  const valueControl = (binding: BindingSet['bindings'][number]) =>
-    createWorkflowValueControl(state, setNotice, client, runBusy)(binding);
-
-  const pollRun = (runId: string, token: number) =>
-    pollWorkflowRun(
+  function pollRun(runId: string, token: number) {
+    return pollWorkflowRun(
       state,
       client,
       session,
@@ -161,43 +107,10 @@ export function createWorkflowManager(
       setNotice,
       render,
     )(runId, token);
+  }
 
-  const renderCleanupSummary = () =>
-    renderWorkflowCleanup(state, runBusy, client, setNotice, panel)();
-
-  const createNodeTitleControl = () => createWorkflowNodeTitleControl(state);
-
-  const renderTest = () =>
-    renderWorkflowTest(
-      state,
-      runBusy,
-      client,
-      session,
-      setNotice,
-      pollRun,
-      appendPollingResume,
-      panel,
-      panelHeading,
-      render,
-      createNodeTitleControl,
-      syncCurrentCanvasNode,
-      valueControl,
-      renderCleanupSummary,
-    )();
-
-  const renderOutputs = () => {
-    renderWorkflowOutputs(
-      state,
-      panel,
-      panelHeading,
-      createNodeTitleControl,
-      renderCleanupSummary,
-      runBusy,
-      client,
-      loadDeployedRecords,
-      setNotice,
-    );
-  };
+  const { renderSource, renderDeployment, renderBindings, renderTest, renderOutputs } =
+    createWorkflowStageRenderers(view, actions, client, render, appendPollingResume, pollRun, appendDeployedCards);
 
   const renderRequestedDefinitionState = () =>
     renderWorkflowLoadState(session, loadRequestedDefinition, panel)();

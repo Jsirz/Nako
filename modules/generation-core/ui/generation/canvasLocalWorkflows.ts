@@ -1,6 +1,7 @@
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 import { browserServices } from '../../../kernel/browser';
 import type * as React from 'react';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 import { buildMiniMaxH3Request } from '../../../asset-media/api/ui/media/minimaxH3';
 import {
   createVideoWorkflowClient,
@@ -129,7 +130,9 @@ export function createCanvasLocalWorkflows(binding: Binding, runtime: Runtime) {
         return;
       let request: VideoWorkflowRequest;
       try {
-        if (!projectId) throw new Error('请先保存当前项目，再运行本地工作流。');
+        if (!projectId) throw new PluginError(ERRORS.invalidConfiguration, '请先保存当前项目，再运行本地工作流。', {
+          context: { moduleId: 'generation-core', operation: 'runLocalWorkflow', nodeId: id },
+        });
         request = buildMiniMaxH3Request(binding.getNodes(), source, projectId);
       } catch (error) {
         binding.setNodes((nodes) =>

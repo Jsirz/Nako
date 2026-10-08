@@ -1,3 +1,4 @@
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 const RESOURCE_OWNERSHIP = Object.freeze([
   Object.freeze({ id: 'application-files', ownership: 'global', location: 'app/**' }),
   Object.freeze({ id: 'public-shell', ownership: 'global', location: 'app/public/**' }),
@@ -82,7 +83,7 @@ export function assertResourceOwnershipCoverage() {
   const required = new Set(['global', 'global-row-scoped', 'user', 'temporary']);
   for (const resource of RESOURCE_OWNERSHIP) required.delete(resource.ownership);
   if (required.size > 0) {
-    throw new Error(`RESOURCE_OWNERSHIP_INCOMPLETE:${[...required].join(',')}`);
+    throw new ProjectError(PROJECT_ERRORS.configuration, '资源所有权定义不完整。', { context: { operation: 'assertResourceOwnershipCoverage', missing: [...required].join(',') } });
   }
   return true;
 }

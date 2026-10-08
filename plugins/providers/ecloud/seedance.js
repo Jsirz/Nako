@@ -4,16 +4,15 @@ import {
 } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
 import { ECLOUD_SEEDANCE as protocol } from './protocol.js';
 import { ecloudInputError as invalid, inputAssets, publicMediaUrl } from './media.js';
+import { PROVIDER_ERRORS, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
+const { credentialError, submitError, taskError, unknownError, timeoutError, wrapError } = providerErrorsFor('ecloud');
 
 function connection(params, config) {
   if (params.videoModel !== protocol.model || (params.url && params.url !== protocol.endpoint))
     throw invalid('移动云 Seedance 2.0 须使用官方模型别名和呼和浩特任务端点。');
   const apiKey = String(config.ECLOUD_API_KEY || '').trim();
   if (!apiKey)
-    throw Object.assign(new Error('请在移动云 MoMA 设置中保存 API Key。'), {
-      code: 'PROVIDER_CREDENTIAL_MISSING',
-      status: 400,
-    });
+    throw credentialError('请在移动云 MoMA 设置中保存 API Key。', { status: 400 });
   return {
     apiKey,
     modelId: protocol.model,
@@ -122,7 +121,7 @@ export function createSeedanceVideoProvider({ request, download, wait, now }) {
       });
     } catch (error) {
       if (error.upstreamStatus === 404) return { status: 'unknown' };
-      throw error;
+      throw wrapError(error, 'poll');
     }
     if (
       task.id !== reference.taskId ||
@@ -152,7 +151,7 @@ export function createSeedanceVideoProvider({ request, download, wait, now }) {
       });
       const reference = remoteTaskReference({ ...ctx, taskId: result.id });
       if (!reference)
-        throw Object.assign(new Error('移动云 Seedance 未返回任务 ID，请先核对原任务。'), {
+        throw Object.assign(submitError('移动云 Seedance 未返回任务 ID，请先核对原任务。'), {
           submissionUncertain: true,
         });
       config.generationTaskSubmitted?.(reference);
@@ -162,9 +161,9 @@ export function createSeedanceVideoProvider({ request, download, wait, now }) {
         if (state.status === 'success') return { buffer: state.buffer, format: state.format };
         if (state.status === 'failed')
           throw Object.assign(
-            new Error('移动云 Seedance 已确认任务失败、取消或过期，请核对任务记录。'),
+            taskError('移动云 Seedance 已确认任务失败、取消或过期，请核对任务记录。'),
             {
-              code: 'ECLOUD_TASK_FAILED',
+              code: PROVIDER_ERRORS.ecloudTask,
               status: 502,
               retryable: false,
               expose: true,
@@ -172,10 +171,10 @@ export function createSeedanceVideoProvider({ request, download, wait, now }) {
             },
           );
         if (state.status === 'unknown')
-          throw new Error('移动云 Seedance 任务状态未知，请保留任务编号并查询原任务。');
+          throw unknownError('移动云 Seedance 任务状态未知，请保留任务编号并查询原任务。');
         await wait(10000, params.signal);
       }
-      throw new Error('等待移动云 Seedance 结果超时，可稍后查询原任务。');
+      throw timeoutError('等待移动云 Seedance 结果超时，可稍后查询原任务。');
     },
     canRecoverVideo(reference, params, config) {
       try {

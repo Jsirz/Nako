@@ -19,7 +19,11 @@ export function createGenerationBudgetStore(privateDirectory, { now = Date.now, 
     return path.join(root, crypto.createHash('sha256').update(project).digest('hex') + '.json');
   };
   const read = async project => {
-    try { const value = JSON.parse(await readFile(filename(project), 'utf8')); if (value.projectId !== project || !Array.isArray(value.grants)) throw Error(); return value.grants; }
+    try {
+      const value = JSON.parse(await readFile(filename(project), 'utf8'));
+      if (value.projectId !== project || !Array.isArray(value.grants)) throw new PlanError('预算记录格式无效。', 'BUDGET_UNAVAILABLE', 503);
+      return value.grants;
+    }
     catch (error) { if (error.code === 'ENOENT') return []; throw new PlanError('预算记录无法读取。', 'BUDGET_UNAVAILABLE', 503); }
   };
   const mutate = async (project, operation) => {

@@ -4,6 +4,7 @@ import { OFFICIAL_WORKFLOWS } from './officialWorkflowCatalog.js';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createRunningHubWebAppProjection, RunningHubWebAppError } from './runningHubWebApp.js';
+import { ERRORS, PluginError } from '../../../contracts/index.js';
 
 const DEFAULT_CATEGORIES = Object.freeze([
   { id: 'image', name: '图像类', order: 0 },
@@ -71,17 +72,17 @@ export class RunningHubWebAppLibraryService {
     definitionStore,
     configurationStore,
     deploymentService,
-    credentialResolver,
     clientFactory,
   }) {
-    if (!definitionStore || !configurationStore || !deploymentService || !credentialResolver) {
-      throw new Error('RunningHubWebAppLibraryService requires workflow runtime dependencies');
+    if (!definitionStore || !configurationStore || !deploymentService || !clientFactory) {
+      throw new PluginError(ERRORS.serviceMissing, 'RunningHubWebAppLibraryService requires workflow runtime dependencies', {
+        context: { moduleId: 'workflow-runtime' },
+      });
     }
     Object.assign(this, {
       definitionStore,
       configurationStore,
       deploymentService,
-      credentialResolver,
       clientFactory,
     });
     this.categoriesPath = path.join(
@@ -94,8 +95,15 @@ export class RunningHubWebAppLibraryService {
   }
 
   async listOfficialWorkflows() {
-    const [apps, credential] = await Promise.all([this.listApps(), this.credentialResolver('runninghub-cn')]);
-    return OFFICIAL_WORKFLOWS.map((item) => ({ ...item, configured: Boolean(credential),
+    const apps = await this.listApps();
+    let configured = true;
+    try {
+      this.clientFactory({ baseUrl: baseUrlFor('runninghub-cn'), credentialRef: 'runninghub-cn' });
+    } catch (error) {
+      if (error.code !== ERRORS.credentialMissing) throw error;
+      configured = false;
+    }
+    return OFFICIAL_WORKFLOWS.map((item) => ({ ...item, configured,
       definitionId: apps.find((app) => app.webAppId === item.webAppId && app.credentialRef === 'runninghub-cn')?.definitionId,
     }));
   }
@@ -212,8 +220,8 @@ export class RunningHubWebAppLibraryService {
         if (!definition.presentation?.customCoverUrl && !this.coverAttempts.has(definition.id)) {
           this.coverAttempts.add(definition.id);
           try {
-          const apiKey = await this.credentialResolver(deployment.connection.credentialRef);
-          const client = apiKey ? this.clientFactory({ baseUrl: baseUrlFor(deployment.connection.credentialRef), apiKey, timeoutMs: 10000 }) : {};
+          const client = this.clientFactory({ baseUrl: baseUrlFor(deployment.connection.credentialRef),
+            credentialRef: deployment.connection.credentialRef, timeoutMs: 10000 });
           if (typeof client.getWebAppCover === 'function') {
             const remoteCover = await client.getWebAppCover(deployment.connection.remoteWebAppId).catch(() => null);
             const coverUrl = await downloadRunningHubCover({ coverUrl: remoteCover }, this.definitionStore.libraryDirectory,
@@ -260,17 +268,9 @@ export class RunningHubWebAppLibraryService {
   }
 
   async validateCredential(credentialRef) {
-    const apiKey = await this.credentialResolver(credentialRef);
-    if (!apiKey) {
-      throw new RunningHubWebAppLibraryError(
-        '请先填写并保存当前站点的 RunningHub API Key',
-        'RUNNINGHUB_CREDENTIAL_MISSING',
-        409,
-      );
-    }
     const client = this.clientFactory({
       baseUrl: baseUrlFor(credentialRef),
-      apiKey,
+      credentialRef,
       timeoutMs: 30_000,
     });
     const validation = await client.validateCredential();
@@ -296,16 +296,8 @@ export class RunningHubWebAppLibraryService {
     const replacedApps = apps.filter(
       (app) => app.webAppId === normalizedWebAppId && app.credentialRef === credentialRef,
     );
-    const apiKey = await this.credentialResolver(credentialRef);
-    if (!apiKey) {
-      throw new RunningHubWebAppLibraryError(
-        '请先在云端工作流页填写 RunningHub API Key',
-        'RUNNINGHUB_CREDENTIAL_MISSING',
-        409,
-      );
-    }
     const baseUrl = baseUrlFor(credentialRef);
-    const client = this.clientFactory({ baseUrl, apiKey, timeoutMs: 60_000 });
+    const client = this.clientFactory({ baseUrl, credentialRef, timeoutMs: 60_000 });
     const resolved = client.resolveWebAppInfo
       ? await client.resolveWebAppInfo(normalizedWebAppId)
       : { apiProtocol: 'legacy-webapp-v1', info: await client.getWebAppInfo(normalizedWebAppId) };

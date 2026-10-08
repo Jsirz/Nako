@@ -8,14 +8,8 @@ import { installStableCanvasClipboard } from '../canvas/canvasClipboard';
 import { connectCanvasNodes, type CanvasConnectionNode } from '../canvas/canvasConnections';
 import type { CanvasViewport } from '../canvas/canvasNavigation';
 
-export interface CanvasNode extends CanvasConnectionNode {
-  x: number;
-  y: number;
-  kind?: string;
-  comfyMode?: string;
-  videoModel?: string;
-  videoMode?: string;
-}
+import type { CanvasNode } from '../../../contracts/canvasDocument';
+export type { CanvasNode } from '../../../contracts/canvasDocument';
 interface Model {
   name: string;
   imageModes?: { value: string }[];

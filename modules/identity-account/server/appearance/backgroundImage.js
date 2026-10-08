@@ -1,20 +1,19 @@
+import { IDENTITY_ERRORS, IdentityError } from '../../../contracts/identityErrors.js';
 import sharp from 'sharp';
 
 export const MAX_BACKGROUND_BYTES = 20 * 1024 * 1024;
 export const MAX_BACKGROUND_PIXELS = 32_000_000;
 export const MAX_BACKGROUND_EDGE = 4096;
 
-export class BackgroundError extends Error {
-  constructor(message, status = 400, code = 'INVALID_BACKGROUND') {
-    super(message);
+export class BackgroundError extends IdentityError {
+  constructor(message, status = 400, code = IDENTITY_ERRORS.backgroundInvalid) {
+    super(code, message, 'background.normalize', status);
     this.name = 'BackgroundError';
-    this.status = status;
-    this.code = code;
   }
 }
 
 const invalid = () => new BackgroundError('图片已损坏或不是有效的 JPG、PNG、WebP 静态图片。', 415);
-const animated = () => new BackgroundError('画布背景只支持静态图片，请选择 JPG、PNG 或静态 WebP。', 415, 'ANIMATED_BACKGROUND');
+const animated = () => new BackgroundError('画布背景只支持静态图片，请选择 JPG、PNG 或静态 WebP。', 415, IDENTITY_ERRORS.backgroundAnimated);
 
 // Inspect container signatures before invoking a decoder. APNG is checked explicitly:
 // some PNG decoders expose only its first frame and omit the animation metadata.
@@ -57,7 +56,7 @@ function inspectContainer(bytes) {
 export async function normalizeBackgroundImage(bytes, mimeType) {
   if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw invalid();
   if (bytes.length > MAX_BACKGROUND_BYTES) {
-    throw new BackgroundError('背景图片不能超过 20 MiB。', 413, 'BACKGROUND_TOO_LARGE');
+    throw new BackgroundError('背景图片不能超过 20 MiB。', 413, IDENTITY_ERRORS.backgroundTooLarge);
   }
   const container = inspectContainer(bytes);
   if (mimeType !== container.mime) throw invalid();
@@ -67,7 +66,7 @@ export async function normalizeBackgroundImage(bytes, mimeType) {
     if (metadata.format !== container.format || !metadata.width || !metadata.height) throw invalid();
     if ((metadata.pages ?? 1) !== 1) throw animated();
     if (metadata.width * metadata.height > MAX_BACKGROUND_PIXELS) {
-      throw new BackgroundError('背景图片不能超过 3200 万像素。', 413, 'BACKGROUND_TOO_MANY_PIXELS');
+      throw new BackgroundError('背景图片不能超过 3200 万像素。', 413, IDENTITY_ERRORS.backgroundPixels);
     }
     // rotate() applies EXIF orientation; no withMetadata/keepMetadata call is intentional.
     const result = await image.rotate()
@@ -76,16 +75,16 @@ export async function normalizeBackgroundImage(bytes, mimeType) {
       .timeout({ seconds: 20 })
       .toBuffer({ resolveWithObject: true });
     if (!result.data.length || result.data.length > MAX_BACKGROUND_BYTES) {
-      throw new BackgroundError('处理后的背景图片过大，请选择较小的图片。', 413, 'BACKGROUND_TOO_LARGE');
+      throw new BackgroundError('处理后的背景图片过大，请选择较小的图片。', 413, IDENTITY_ERRORS.backgroundTooLarge);
     }
     return { bytes: result.data, width: result.info.width, height: result.info.height };
   } catch (error) {
     if (error instanceof BackgroundError) throw error;
     if (/timeout|timed out/i.test(error.message ?? '')) {
-      throw new BackgroundError('图片处理超时，请选择较小的图片后重试。', 504, 'BACKGROUND_PROCESSING_TIMEOUT');
+      throw new BackgroundError('图片处理超时，请选择较小的图片后重试。', 504, IDENTITY_ERRORS.backgroundTimeout);
     }
     if (/pixel limit/i.test(error.message ?? '')) {
-      throw new BackgroundError('背景图片不能超过 3200 万像素。', 413, 'BACKGROUND_TOO_MANY_PIXELS');
+      throw new BackgroundError('背景图片不能超过 3200 万像素。', 413, IDENTITY_ERRORS.backgroundPixels);
     }
     throw invalid();
   }

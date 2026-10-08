@@ -8,7 +8,7 @@ const catalogUrl = new URL('../config/model-plugins.json', import.meta.url);
 const plugins = readModelContributions(fileURLToPath(new URL('../', import.meta.url)));
 const listNames = Object.keys(MODEL_EXPORT_KINDS);
 const modelLists = Object.fromEntries(listNames.map((name) => [name, []]));
-let browser = "// Generated from plugin-owned models.ts files.\nexport * from './defaults';\n";
+let browser = '// Generated from plugin-owned declarative model contributions.\n';
 for (const [index, plugin] of plugins.entries()) {
   const url = new URL(plugin.entry, catalogUrl);
   const result = await build({
@@ -36,17 +36,19 @@ for (const [index, plugin] of plugins.entries()) {
       throw new Error(`Invalid model export ${plugin.id}: ${name}`);
     modelLists[name].push(...definitions[name]);
   }
-  browser += `import * as p${index} from '${'../../../' + plugin.entry.slice(3).replace(/\.ts$/, '')}';\n`;
+  browser += `import * as p${index} from '${'../../' + plugin.entry.slice(3).replace(/\.ts$/, '')}';\n`;
 }
+browser += '\nexport const modelContributions = {\n';
 for (const name of listNames) {
   modelLists[name].sort((a, b) => a.catalogOrder - b.catalogOrder);
-  browser += `export const ${name} = [${plugins.flatMap((plugin, index) => (plugin.exports.includes(name) ? [`...p${index}.${name}`] : [])).join(', ')}].sort((a,b)=>a.catalogOrder-b.catalogOrder);\n`;
+  browser += `  ${name}: [${plugins.flatMap((plugin, index) => (plugin.exports.includes(name) ? [`...p${index}.${name}`] : [])).join(', ')}],\n`;
 }
+browser += '};\n';
 const catalog = createModelCatalog(modelLists);
 const count = Object.values(modelLists).reduce((sum, entries) => sum + entries.length, 0);
 if (Object.keys(catalog).length !== count)
   throw new Error('Duplicate or invalid model names across plugins');
-await writeFile(new URL('../modules/generation-core/models/catalog.ts', import.meta.url), browser);
+await writeFile(new URL('../apps/canvas/modelContributions.ts', import.meta.url), browser);
 await writeFile(
   new URL('../modules/generation-core/server/config/modelCatalog.generated.json', import.meta.url),
   JSON.stringify(catalog, null, 2) + '\n',

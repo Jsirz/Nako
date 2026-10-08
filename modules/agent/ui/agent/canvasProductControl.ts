@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { validCanvasControl, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
 export const productOperations = { upload: '选择并上传素材', replace: '选择文件替换素材', download: '保存媒体到本机', saveAsset: '保存到素材库', resize: '调整图片尺寸', workflowManager: '导入或管理执行工作流', runWorkflow: '运行工作流' };
 export type ProductOperation = keyof typeof productOperations;
@@ -37,9 +38,9 @@ export function createCanvasProductControl(execute: CanvasActionHandler, getRunt
       item.state = 'opened'; publish();
       try {
         const command = item.request.command;
-        if (!active(item.request) || command.action !== 'product') throw Error('Expired');
+        if (!active(item.request) || command.action !== 'product') throw new AgentOperationError('Expired', { operation: 'approve-product-operation', requestId: id });
         const result: CanvasResult = await execute({ ...item.request, requestId: crypto.randomUUID(), command: { action: 'read' } });
-        if (!active(item.request) || !result.ok || result.revision !== command.revision) throw Error('Changed');
+        if (!active(item.request) || !result.ok || result.revision !== command.revision) throw new AgentOperationError('Changed', { operation: 'approve-product-operation', requestId: id });
         await getRuntime()!.invoke(command.operation, command.nodeId);
       } catch { item.state = 'unconfirmed'; publish(); }
     },

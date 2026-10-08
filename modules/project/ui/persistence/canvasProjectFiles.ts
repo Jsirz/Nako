@@ -1,5 +1,6 @@
 import type * as React from 'react';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import type { WorkflowRecord } from './workflowMerge';
 import { prepareProjectMedia } from './projectMediaImport';
 import {
@@ -64,7 +65,7 @@ export function useCanvasProjectFiles(
       if (!valid()) return;
       const parsed = parseProjectDocument(text, file.name);
       const targetId = merge ? start.projectId : crypto.randomUUID();
-      if (!targetId) throw new Error('请先打开目标项目。');
+      if (!targetId) throw new ProjectError(PROJECT_ERRORS.invalidDocument, '请先打开目标项目。', { context: { operation: 'mergeProjectFile', filename: file.name } });
       const document = await prepareProjectMedia(parsed, targetId, valid);
       if (!valid()) return;
       const current = live.current;

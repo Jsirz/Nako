@@ -1,8 +1,9 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import crypto from 'node:crypto';
 import { assistantMessage, textContent } from './modelAdapter.js';
 import { agentActivity } from '../../../contracts/agentActivity.js';
 export const harnessError = (message, code = 'AGENT_INVALID_REQUEST', status = 409) =>
-  Object.assign(new Error(message), { name: 'AgentRequestError', code, status });
+  Object.assign(new AgentOperationError(message, { operation: 'agent-session' }, code, status), { name: 'AgentRequestError' });
 export function branchEntries(record, tip = record.branches[record.activeBranch].tipId) {
   const entries = new Map(record.entries.map((entry) => [entry.id, entry]));
   const result = [],

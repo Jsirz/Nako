@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { canvasApiTool } from '../agent/canvasApiTool.js';
+import { canvasApiTool, invalidCanvasArguments } from '../agent/canvasApiTool.js';
 import { validCanvasControl } from '../../../contracts/canvasControlProtocol.js';
 import { harnessError } from './session.js';
 const groups = {
@@ -78,6 +78,16 @@ export function controlledTools({ sessions, sessionId, runId, dispatch, emit }) 
     const schema = canvasApiTool().function.parameters;
     schema.properties.action.enum = actions;
     schema.oneOf = schema.oneOf.filter((s) => actions.includes(s.properties.action.const));
+    const fields = new Set(schema.oneOf.flatMap((s) => Object.keys(s.properties)));
+    schema.properties = Object.fromEntries(Object.entries(schema.properties).filter(([key]) => fields.has(key)));
+    const validate = (command) => {
+      if (!actions.includes(command?.action) || !validCanvasControl(command)) {
+        const correction = invalidCanvasArguments(command);
+        if (!actions.includes(command?.action)) correction.expected = { actions };
+        throw harnessError(JSON.stringify(correction), 'AGENT_TOOL_INVALID', 400);
+      }
+      return command;
+    };
     return {
       name: name + '_control',
       label: name,
@@ -86,12 +96,12 @@ export function controlledTools({ sessions, sessionId, runId, dispatch, emit }) 
         '\nOnly actions: ' +
         actions.join(', '),
       parameters: schema,
+      prepareArguments: validate,
       replay: 'never',
       executionMode: 'sequential',
       async execute(toolCallId, command, signal) {
         signal?.throwIfAborted();
-        if (!actions.includes(command.action) || !validCanvasControl(command))
-          throw harnessError('操作参数无效', 'AGENT_TOOL_INVALID', 400);
+        validate(command);
         const key = mutates(command) ? fingerprint(command) : runId + ':' + toolCallId;
         let prior;
         await sessions.change(sessionId, (record) => {

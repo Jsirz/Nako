@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import path from 'node:path';
-import { ERRORS, PluginError } from '../../contracts/index.js';
+import { DESKTOP_ERRORS, desktopError, desktopFailure } from '../../contracts/desktopErrors.js';
 
-const failure = message => new PluginError(ERRORS.desktopUpdate, message);
+const failure = message => desktopError(DESKTOP_ERRORS.update, message, 'update.windowsHandoff');
 export async function validateInstaller(info) {
   const filename = info?.downloadedFile;
   const asset = info?.files?.find(file => /\.exe$/i.test(new URL(file.url, 'https://update.invalid/').pathname));
@@ -37,7 +37,7 @@ export async function launchWindowsUpdate({ info, tempDirectory, executable, qui
     cwd: directory, detached: true, stdio: 'ignore', windowsHide: false, env: environment,
   });
   let failed;
-  child.once('error', error => { failed = error; });
+  child.once('error', error => { failed = desktopFailure(error, DESKTOP_ERRORS.update, '独立更新程序启动失败', 'update.windowsHandoff'); });
   child.once('exit', () => { failed = failure('独立更新程序已退出'); });
   child.unref();
   try {
@@ -45,7 +45,7 @@ export async function launchWindowsUpdate({ info, tempDirectory, executable, qui
     while (true) {
       if (failed) throw failed;
       try { if (await readFile(path.join(directory, 'ready'), 'utf8') === 'ready') break; }
-      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      catch (error) { if (error.code !== 'ENOENT') throw desktopFailure(error, DESKTOP_ERRORS.update, '独立更新程序状态读取失败', 'update.windowsHandoff'); }
       if (Date.now() >= deadline) throw failure('独立更新窗口启动超时');
       await delay(100);
     }
@@ -53,7 +53,7 @@ export async function launchWindowsUpdate({ info, tempDirectory, executable, qui
     quit();
   } catch (error) {
     await writeFile(path.join(directory, 'cancel'), 'cancel').catch(() => {});
-    throw error;
+    throw desktopFailure(error, DESKTOP_ERRORS.update, '独立更新程序启动失败', 'update.windowsHandoff');
   }
 }
 

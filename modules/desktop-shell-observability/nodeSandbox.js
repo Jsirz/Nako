@@ -1,12 +1,15 @@
 import { launchNodeSandbox } from './nodeSandboxProcess.js';
-import { NODE_ERROR, nodeError } from '../contracts/nodeExecution.js';
+import { NODE_ERROR } from '../contracts/nodeExecution.js';
+import { desktopNodeError as nodeError } from '../contracts/desktopErrors.js';
+import { createModuleLogger } from '../kernel/logger.js';
 
 export function executeIsolatedNode({ sources, entry, method, timeoutMs = 120000, logger, pluginId }, input, context = {}) {
+  const moduleLogger = createModuleLogger('desktop-shell-observability', logger);
   if (context.signal?.aborted) return Promise.reject(nodeError(NODE_ERROR.CANCELLED, '节点运行已停止'));
   return new Promise((resolve, reject) => {
     let child, stderr = '';
-    const report = details => logger?.error?.('[desktop-shell-observability] Node sandbox failed', {
-      pluginId, method, runId: context.runId, nodeId: context.nodeId, ...details,
+    const report = details => moduleLogger.error('Node sandbox failed', {
+      moduleId: 'desktop-shell-observability', operation: 'node.execute', pluginId, method, runId: context.runId, nodeId: context.nodeId, ...details,
     });
     try { child = launchNodeSandbox(); }
     catch (error) {
@@ -59,7 +62,11 @@ export function executeIsolatedNode({ sources, entry, method, timeoutMs = 120000
         const value = await context.call(message.capability, message.input, message.stepId, controller.signal);
         if (!settled && child.connected) send({ type: 'reply', id: message.id, value });
       } catch (error) {
-        if (!settled && child.connected) send({ type: 'reply', id: message.id, error: error.message, code: error.code });
+        const failure = nodeError(error?.code || NODE_ERROR.FAILED, error?.message || '节点能力调用失败');
+        failure.status = error?.status ?? failure.status;
+        failure.context = Object.freeze({ ...failure.context, ...error?.context });
+        if (!settled && child.connected) send({ type: 'reply', id: message.id, error: failure.message,
+          code: failure.code, status: failure.status, context: failure.context });
       }
     });
     send({ sources, entry, method, input, timeoutMs, runId: context.runId || '', nodeId: context.nodeId || '' });

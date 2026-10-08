@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import { normalizeMidjourneyPrompt } from '../../../contracts/shared/midjourneyPrompt.js';
 
@@ -40,7 +41,7 @@ const TAG_PATTERN = /\[\[([^|\]]+)\|([\s\S]*?)\]\]/g;
 function validatedTagPart(value: string, label: string, maximumLength: number): string {
   const text = String(value ?? '').trim();
   if (!text || text.length > maximumLength || text.includes(']]')) {
-    throw new Error(`${label}无法安全保存为提示词标签`);
+    throw new AgentOperationError(`${label}无法安全保存为提示词标签`, { operation: 'serialize-prompt-tag', field: label });
   }
   return text;
 }
@@ -48,7 +49,7 @@ function validatedTagPart(value: string, label: string, maximumLength: number): 
 export function serializePromptTag(label: string, prompt: string): string {
   const normalizedLabel = validatedTagPart(label, '预设名称', 120);
   if (normalizedLabel.includes('|') || normalizedLabel.includes('[[')) {
-    throw new Error('预设名称包含标签保留字符');
+    throw new AgentOperationError('预设名称包含标签保留字符', { operation: 'serialize-prompt-tag', field: 'label' });
   }
   const normalizedPrompt = validatedTagPart(prompt, '提示词内容', 20000);
   return `[[${normalizedLabel}|${normalizedPrompt}]]`;
@@ -118,7 +119,7 @@ export function serializedTagsToHtml(escapedText: string): string {
 async function readJson<T>(response: Response): Promise<T> {
   const result = await response.json() as T & { error?: unknown };
   if (!response.ok) {
-    throw new Error(result?.error ? String(result.error) : `提示词预设操作失败 (${response.status})`);
+    throw new AgentOperationError(result?.error ? String(result.error) : `提示词预设操作失败 (${response.status})`, { operation: 'prompt-preset-request', status: response.status });
   }
   return result;
 }

@@ -44,8 +44,6 @@ export default defineApplicationPlugin({
       sessions: sessionStore, workspaces: workspaceStore,
     }));
 
-    const getAgentCredentials = (providerName) =>
-      context.services.get('generation.textTransport').credentials(providerName);
 
     app.use(
       '/api/agent/workspace',
@@ -93,7 +91,6 @@ export default defineApplicationPlugin({
         skillLibrary: agentSkillLibrary,
         createDramaConversation: context.services.get('agent.drama').createConversation,
         applicationContext,
-        getCredentials: getAgentCredentials,
         onHarness: (harness) => context.onDispose(() => harness.close()),
       }),
     );

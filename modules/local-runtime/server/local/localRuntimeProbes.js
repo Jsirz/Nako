@@ -1,3 +1,5 @@
+import { ERRORS } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { execFile } from 'node:child_process';
 
 function runFile(command, args) {
@@ -34,7 +36,7 @@ export async function probeNvidiaGpu({ runCommand = runFile } = {}) {
     const total = Number(totalMiB);
     const free = Number(freeMiB);
     if (!name || !Number.isFinite(total) || total <= 0 || !Number.isFinite(free)) {
-      throw new Error('invalid nvidia-smi output');
+      throw localRuntimeError('invalid nvidia-smi output', 'probeNvidiaGpu', ERRORS.invalidConfiguration);
     }
     return {
       available: true,
@@ -60,7 +62,7 @@ const DETAIL_TIMEOUT_MS = 20_000;
 
 async function fetchJson(url, timeoutMs = DETAIL_TIMEOUT_MS) {
   const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) throw localRuntimeError(`HTTP ${response.status}`, 'fetchComfyProbe', ERRORS.providerRequest, response.status);
   return response.json();
 }
 

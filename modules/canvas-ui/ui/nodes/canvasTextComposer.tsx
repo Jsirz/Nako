@@ -41,6 +41,7 @@ interface TextModel {
 }
 interface Props {
   data: ComposerNode;
+  readOnly?: boolean;
   connectedAssets?: Asset[];
   onUpdate(id: string, patch: Partial<ComposerNode>): void;
   onGenerate(id: string): void;
@@ -68,7 +69,7 @@ const noSubscription = () => () => {};
 const zero = () => 0;
 export function CanvasTextComposer(
   React: Runtime,
-  { data: node, connectedAssets = [], onUpdate, onGenerate, onSelect }: Props,
+  { data: node, readOnly = false, connectedAssets = [], onUpdate, onGenerate, onSelect }: Props,
   {
     models,
     PromptEditor,
@@ -132,7 +133,7 @@ export function CanvasTextComposer(
         className={`mb-1 relative group/prompt overflow-hidden prompt-editor-container custom-scrollbar ${editing ? 'is-prompt-editing cursor-text' : 'cursor-pointer'}`}
         onClick={(O) => {
           O.stopPropagation();
-          setEditing(true);
+          if (!readOnly) setEditing(true);
         }}
       >
         <PromptEditor
@@ -141,7 +142,7 @@ export function CanvasTextComposer(
           onChange={(O) => onUpdate(node.id, { prompt: O })}
           connectedAssets={connectedAssets}
           isDark={!0}
-          disableDirectEdit={!editing}
+          disableDirectEdit={readOnly || !editing}
           onBlur={() => setEditing(!1)}
           key={`mention-editor-${node.id}`}
         />

@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { browserServices } from '../../../kernel/browser';
 export type RuntimeDiagnostic = {
   status: string;
@@ -118,7 +119,7 @@ async function readComfyProcess<T>(response: Response): Promise<T> {
   const body = (await response.json()) as T & { error?: unknown; status?: string };
   // 启动失败会返回 409 并带上诊断码，属于正常业务结果，不当作请求异常。
   if (!response.ok && body.status !== 'failed') {
-    throw new Error(body.error ? String(body.error) : `本机 ComfyUI 操作失败 (${response.status})`);
+    throw localRuntimeError(body.error ? String(body.error) : `本机 ComfyUI 操作失败 (${response.status})`, 'readComfyProcess', undefined, response.status);
   }
   return body;
 }
@@ -126,7 +127,7 @@ async function readComfyProcess<T>(response: Response): Promise<T> {
 async function readStatus(response: Response): Promise<LocalRuntimeStatus> {
   const body = (await response.json()) as LocalRuntimeStatus & { error?: unknown };
   if (!response.ok) {
-    throw new Error(body.error ? String(body.error) : `本地运行环境检测失败 (${response.status})`);
+    throw localRuntimeError(body.error ? String(body.error) : `本地运行环境检测失败 (${response.status})`, 'readStatus', undefined, response.status);
   }
   return body;
 }
@@ -136,7 +137,7 @@ async function readComfyDirectorySelection(
 ): Promise<ComfyDirectorySelectionResult> {
   const body = (await response.json()) as ComfyDirectorySelectionResult & { error?: unknown };
   if (!response.ok && body.status !== 'invalid') {
-    throw new Error(body.error ? String(body.error) : `选择 ComfyUI 目录失败 (${response.status})`);
+    throw localRuntimeError(body.error ? String(body.error) : `选择 ComfyUI 目录失败 (${response.status})`, 'readComfyDirectorySelection', undefined, response.status);
   }
   return body;
 }
@@ -195,7 +196,7 @@ export function createLocalRuntimeClient(fetcher: typeof fetch = globalThis.fetc
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ COMFYUI_ROOT: root, COMFYUI_AUTO_START: 'true' }),
       });
-      if (!response.ok) throw new Error('保存本机 ComfyUI 目录失败。');
+      if (!response.ok) throw localRuntimeError('保存本机 ComfyUI 目录失败。', 'adoptComfy', undefined, response.status);
     },
   };
 }

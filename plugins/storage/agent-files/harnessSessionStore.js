@@ -1,9 +1,10 @@
+import { PluginError } from '../../../modules/contracts/index.js';
 import crypto from 'node:crypto';
 import { mkdir, readFile, readdir, rename, open, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { isAgentSession } from '../../../modules/contracts/agentSession.js';
 const failure = (message, code, status = 409) =>
-  Object.assign(new Error(message), { name: 'AgentSessionStoreError', code, status });
+  new PluginError(code, message, { status, context: { moduleId: 'storage.agent-files', operation: 'harnessSession' } });
 const hash = (id) => crypto.createHash('sha256').update(id).digest('hex');
 /** Atomic version-2 storage. No pi imports and no version-1 reader. */
 export function createHarnessSessionStore({ privateDirectory }) {

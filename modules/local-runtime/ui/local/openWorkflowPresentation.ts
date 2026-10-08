@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
 import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
 import type { WorkflowDefinition,WorkflowManagerClient } from './workflowManagerClient';
@@ -145,7 +146,7 @@ export function openWorkflowPresentation(
         if (coverMode === 'automatic') customCoverUrl = null;
         else if (selectedCover) {
           const uploaded = await client.uploadAsset('workflow-covers', 'image', selectedCover);
-          if (!uploaded.url) throw new Error('封面已上传，但没有返回可用地址。');
+          if (!uploaded.url) throw localRuntimeError('封面已上传，但没有返回可用地址。', 'uploadWorkflowCover');
           customCoverUrl = uploaded.url;
         }
         const updated = await client.updateDefinitionPresentation(record.definition.id, {

@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 export interface AnnotationPoint {
   x: number;
   y: number;
@@ -81,7 +82,7 @@ export function renderAnnotations(
   source: { width: number; height: number },
 ) {
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('无法创建标注画布');
+  if (!context) throw canvasError('无法创建标注画布', 'image-annotation.render');
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.scale(canvas.width / source.width, canvas.height / source.height);

@@ -53,17 +53,9 @@ function formatAudioTime(seconds: number) {
 export function CanvasAudioPlayer(
   React: Runtime,
   { data, selected, onAudioTrim }: Props,
-  {
-    PlayIcon,
-    PauseIcon,
-    TrimIcon,
-    ConfirmIcon,
-    Spinner,
-    AudioIcon,
-    Tooltip,
-    createWaveform = createAudioWaveform,
-  }: Components,
+  components: Components,
 ) {
+  const { createWaveform = createAudioWaveform } = components;
   const root = React.useRef<HTMLDivElement>(null),
     container = React.useRef<HTMLDivElement>(null);
   const player = React.useRef<AudioWaveform | null>(null),
@@ -204,6 +196,41 @@ export function CanvasAudioPlayer(
   const loading = data.status === 'loading';
   const canTrim =
     !loading && !data.uploadPending && !!data.resultUrl && !/^(blob|data):/i.test(data.resultUrl);
+  return renderAudioPlayer(React, { data, selected, onAudioTrim }, components, {
+    root, container, saving, trimming, editing, setEditing, ready, time, duration, playing,
+    play, canTrim, setTrimming, setError, range, trim, error, loadFailed, setAttempt, loading,
+  });
+}
+
+function renderAudioPlayer(
+  React: Runtime,
+  { data, selected, onAudioTrim }: Props,
+  { PlayIcon, PauseIcon, TrimIcon, ConfirmIcon, Spinner, AudioIcon, Tooltip }: Components,
+  state: {
+    root: ReactTypes.RefObject<HTMLDivElement | null>;
+    container: ReactTypes.RefObject<HTMLDivElement | null>;
+    saving: boolean;
+    trimming: boolean;
+    editing: boolean;
+    ready: boolean;
+    time: number;
+    duration: number;
+    playing: boolean;
+    canTrim: boolean;
+    loading: boolean;
+    range: AudioRange | null;
+    error: string;
+    loadFailed: boolean;
+    setEditing: ReactTypes.Dispatch<ReactTypes.SetStateAction<boolean>>;
+    setTrimming: ReactTypes.Dispatch<ReactTypes.SetStateAction<boolean>>;
+    setError: ReactTypes.Dispatch<ReactTypes.SetStateAction<string>>;
+    setAttempt: ReactTypes.Dispatch<ReactTypes.SetStateAction<number>>;
+    play: (event: ReactTypes.SyntheticEvent) => Promise<void>;
+    trim: (event: ReactTypes.SyntheticEvent) => Promise<void>;
+  },
+) {
+  const { root, container, saving, trimming, editing, setEditing, ready, time, duration,
+    playing, play, canTrim, setTrimming, setError, range, trim, error, loadFailed, setAttempt, loading } = state;
   return (
     <div
       ref={root}

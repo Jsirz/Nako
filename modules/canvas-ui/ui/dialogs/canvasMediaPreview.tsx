@@ -20,6 +20,12 @@ function isVideoPreview(url: string) {
   return /\.(mp4|webm|mov|m4v|mkv)$/.test(pathname) || /\/videos\//.test(pathname);
 }
 export function CanvasMediaPreview(React: Runtime, { mediaUrl, onClose }: Props) {
+  const state = useMediaPreviewTransform(React, { mediaUrl, onClose });
+  if (!mediaUrl) return null;
+  return renderMediaPreview(React, { mediaUrl, onClose }, state);
+}
+
+function useMediaPreviewTransform(React: Runtime, { mediaUrl, onClose }: Props) {
   const closeRef = React.useRef(onClose);
   closeRef.current = onClose;
   const [transform, setTransform] = React.useState(initial);
@@ -62,7 +68,6 @@ export function CanvasMediaPreview(React: Runtime, { mediaUrl, onClose }: Props)
       drag.current = null;
     };
   }, [mediaUrl, update]);
-  if (!mediaUrl) return null;
   const zoom = (delta: number) =>
     update({ ...current.current, scale: clamp(current.current.scale + delta) });
   const release = (event: ReactTypes.PointerEvent) => {
@@ -71,6 +76,15 @@ export function CanvasMediaPreview(React: Runtime, { mediaUrl, onClose }: Props)
     drag.current = null;
     setDragging(false);
   };
+  return { container, transform, current, drag, dragging, setDragging, update, reset, zoom, release };
+}
+
+function renderMediaPreview(
+  React: Runtime,
+  { mediaUrl, onClose }: Props & { mediaUrl: string },
+  { container, transform, current, drag, dragging, setDragging, update, reset, zoom, release }:
+    ReturnType<typeof useMediaPreviewTransform>,
+) {
   return (
     <div
       ref={container}

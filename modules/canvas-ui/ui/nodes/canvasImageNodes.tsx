@@ -37,6 +37,7 @@ interface Props extends Record<string, unknown> {
     nodeId: string;
     layers: { nodeId: string; url: string; title?: string }[];
     layout: Record<string, Partial<LayerTransform>>;
+    readOnly?: boolean;
   }) => void;
 }
 const imagesOf = (nodes: ConnectedImage[] | undefined, limit: number) =>
@@ -48,6 +49,7 @@ const imagesOf = (nodes: ConnectedImage[] | undefined, limit: number) =>
 function frameProps(props: Props) {
   return {
     data: props.data,
+    readOnly: props.readOnly,
     selected: props.selected,
     onNodePointerDown: props.onNodePointerDown,
     onContextMenu: props.onContextMenu,
@@ -66,6 +68,7 @@ function headerProps(props: Props) {
   return {
     data: props.data,
     selected: props.selected,
+    readOnly: props.readOnly,
     onUpdate: props.onUpdate,
   };
 }
@@ -226,6 +229,7 @@ export function CanvasCompositeNode(
           if (images.length)
             props.onOpenComposite?.({
               nodeId: props.data.id,
+              readOnly: Boolean(props.readOnly),
               layers: images.map((node) => ({
                 nodeId: node.id,
                 url: node.url!,

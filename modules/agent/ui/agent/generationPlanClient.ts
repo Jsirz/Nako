@@ -1,10 +1,11 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import type { GenerationBatch } from './canvasCreationControl';
 export interface GenerationPlanRecord extends GenerationBatch { revision: number }
 export function createGenerationPlanClient(fetcher: typeof fetch = globalThis.fetch) {
   const base = '/api/agent/plans';
   async function request<T>(url: string, body?: unknown): Promise<T> {
     const response = await fetcher(url, { signal: AbortSignal.timeout(15000), ...(body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }) });
-    if (!response.ok) throw Error('批次记录未确认，请核对原任务。'); return response.json();
+    if (!response.ok) throw new AgentOperationError('批次记录未确认，请核对原任务。', { operation: 'generation-plan-request', status: response.status }); return response.json();
   }
   return {
     list: (projectId: string) => request<GenerationPlanRecord[]>(`${base}?projectId=${encodeURIComponent(projectId)}`),

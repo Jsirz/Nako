@@ -1,11 +1,10 @@
+import { PlanError } from '../../../modules/contracts/storageErrors.js';
+export { PlanError } from '../../../modules/contracts/storageErrors.js';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import express from 'express';
 
-export class PlanError extends Error {
-  constructor(message, code = 'INVALID_PLAN', status = 400) { super(message); Object.assign(this, { code, status }); }
-}
 const id = value => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
 const text = (value, max) => typeof value === 'string' && value.length <= max;
 const clone = value => structuredClone(value);
@@ -39,7 +38,7 @@ export function createGenerationPlanStore(privateDirectory, { now = Date.now } =
   const read = async projectId => {
     try {
       const data = JSON.parse(await readFile(filename(projectId), 'utf8'));
-      if (data.projectId !== projectId || !Array.isArray(data.plans)) throw Error('Invalid journal');
+      if (data.projectId !== projectId || !Array.isArray(data.plans)) throw new PlanError('批次记录格式无效。', 'PLAN_JOURNAL_UNAVAILABLE', 503);
       return data.plans;
     } catch (error) { if (error.code === 'ENOENT') return []; throw new PlanError('批次记录无法读取，已保留原文件。', 'PLAN_JOURNAL_UNAVAILABLE', 503); }
   };

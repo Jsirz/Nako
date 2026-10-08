@@ -1,12 +1,16 @@
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import type { WorkflowRunScope } from '../../../contracts/workflowCanvasNodeProtocol';
 import type { WorkflowRun } from './workflowManagerClient';
 export type { WorkflowRunScope } from '../../../contracts/workflowCanvasNodeProtocol';
 
 /** An observer belongs to one mounted canvas/node lifetime, never just its saved ID. */
 
-export class WorkflowViewExpiredError extends Error {
+export class WorkflowViewExpiredError extends PluginError {
   constructor() {
-    super('工作流所在画布已变化，停止本次界面查询。');
+    super(ERRORS.inactive, '工作流所在画布已变化，停止本次界面查询。', {
+      context: { moduleId: 'local-runtime', operation: 'requireWorkflowScope' },
+    });
     this.name = 'WorkflowViewExpiredError';
   }
 }
@@ -53,7 +57,7 @@ export function createWorkflowRunObserver(getRun: (runId: string) => Promise<Wor
         let run: WorkflowRun;
         try {
           run = await getRun(runId);
-          if (run.runId !== runId) throw new Error('任务回执编号不匹配');
+          if (run.runId !== runId) throw localRuntimeError('任务回执编号不匹配', 'observeRun');
           errors = 0;
         } catch (error) {
           const watchers = current();

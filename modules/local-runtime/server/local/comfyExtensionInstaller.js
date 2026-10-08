@@ -1,3 +1,6 @@
+import { ERRORS, PluginError } from '../../../contracts/index.js';
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
+
 import crypto from 'node:crypto';
 import {
   lstat,
@@ -17,12 +20,10 @@ const EXTENSION_FILES = Object.freeze([
   'web/nako-node-ids.js',
 ]);
 
-export class ComfyExtensionInstallError extends Error {
+export class ComfyExtensionInstallError extends PluginError {
   constructor(code, message, status = 409) {
-    super(message);
+    super(code, message, { status, context: { moduleId: 'local-runtime', operation: 'comfyExtensionInstall' } });
     this.name = 'ComfyExtensionInstallError';
-    this.code = code;
-    this.status = status;
   }
 }
 
@@ -154,7 +155,7 @@ export function createComfyExtensionInstaller({
   getProcessState = async () => ({ running: false }),
 } = {}) {
   if (!sourceDirectory || typeof detectInstallation !== 'function') {
-    throw new Error('sourceDirectory and detectInstallation are required');
+    throw localRuntimeError('sourceDirectory and detectInstallation are required', 'createComfyExtensionInstaller', ERRORS.invalidConfiguration);
   }
   let pendingInstall = null;
 

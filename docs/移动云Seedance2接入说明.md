@@ -65,4 +65,4 @@
 - [常见问题与 Asset 引用](https://ecloud.10086.cn/op-help-center/doc/article/99155)、[素材资产 API 说明](https://ecloud.10086.cn/op-help-center/doc/article/100301)
 - [资费及资源包规则](https://ecloud.10086.cn/op-help-center/doc/article/99164)
 
-实现见 [seedance.js](../plugins/providers/ecloud/seedance.js)，测试见 [ecloud-seedance.test.js](../tests/ecloud-seedance.test.js)。验证覆盖四种请求格式、轮询、终态、丢失提交响应、结果下载失败、取消、GET 恢复、密钥隔离、输入限制及画布参考地址到请求体的传递；未使用真实 API Key 做付费调用。完整结果见 [验证记录](验证记录.md)。
+实现见 [seedance.js](../plugins/providers/ecloud/seedance.js)，测试见 [ecloud-seedance.test.js](../tests/ecloud-seedance.test.js)。验证覆盖四种请求格式、轮询、终态、丢失提交响应、结果下载失败、取消、GET 恢复、密钥隔离、输入限制及画布参考地址到请求体的传递；未使用真实 API Key 做付费调用。完整结果见 [验证记录](history/验证记录.md)。

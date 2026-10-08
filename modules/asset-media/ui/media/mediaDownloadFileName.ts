@@ -1,3 +1,4 @@
+import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { getBrowserServices } from '../../../kernel/browser';
 import { desktopBridge } from '../../../desktop-shell-observability/api/ui/desktop/desktopBridge';
 
@@ -164,8 +165,8 @@ function installDownloadStyle(documentRoot: Document) {
 }
 
 function downloadError(value: DownloadResponse, status: number) {
-  return Object.assign(new Error(value.error || `下载失败 (${status})`), {
-    code: value.code || 'DOWNLOAD_FAILED',
+  return mediaError(value.error || `下载失败 (${status})`, {
+    operation: 'download', operationCode: value.code || 'DOWNLOAD_FAILED', httpStatus: status,
   });
 }
 
@@ -237,8 +238,8 @@ export function createMediaDownloadAdapter({
       typeof result.foreground !== 'boolean' ||
       typeof result.directory !== 'string'
     ) {
-      throw Object.assign(new Error('打开下载目录返回了无效结果'), {
-        code: 'DOWNLOAD_OPEN_RESULT_INVALID',
+      throw mediaError('打开下载目录返回了无效结果', {
+        operation: 'openDirectory', operationCode: 'DOWNLOAD_OPEN_RESULT_INVALID',
       });
     }
     return {
@@ -286,8 +287,8 @@ export function createMediaDownloadAdapter({
           return { status: 'cancelled' };
         }
         if (result.status !== 'saved' || !result.fileName || !result.directory) {
-          throw Object.assign(new Error('下载服务返回了无效结果'), {
-            code: 'DOWNLOAD_RESULT_INVALID',
+          throw mediaError('下载服务返回了无效结果', {
+            operation: 'download', operationCode: 'DOWNLOAD_RESULT_INVALID',
           });
         }
         const { fileName: savedName, directory } = result;

@@ -18,7 +18,6 @@ export default defineApplicationPlugin({
     const generate = createDramaModelGenerator({
       textTransport: transport,
       defaultModels: context.services.get('generation.defaults'),
-      getCredentials: (name) => transport.credentials(name),
       readImages: media.imageContent,
     });
     const app = express.Router();

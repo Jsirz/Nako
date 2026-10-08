@@ -1,4 +1,6 @@
 import { PLUGIN_API_VERSION, ERRORS, PluginError, validatePluginManifest } from '../contracts/index.js';
+import { createModuleLogger } from './logger.js';
+import { definePlugin } from './plugin.js';
 
 const fail = (code, message) => { throw new PluginError(code, message); };
 const versionParts = value => /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value) ? value.split('.').map(Number) : null;
@@ -63,6 +65,7 @@ export class PluginHost {
       fail(ERRORS.invalidManifest, 'Invalid plugin lifecycle');
     if (!satisfiesVersion(PLUGIN_API_VERSION, m.apiVersion)) fail(ERRORS.incompatible, `Incompatible API: ${m.id}`);
     if (this.#plugins.has(m.id)) fail(ERRORS.duplicate, `Duplicate plugin: ${m.id}`);
+    plugin = definePlugin(plugin);
     const manifest = JSON.parse(JSON.stringify(m));
     this.#plugins.set(m.id, { plugin, manifest, state: 'registered', dispose: [] });
     return this;
@@ -113,10 +116,7 @@ export class PluginHost {
           fail(ERRORS.permission, `Credential access denied: ${id} -> ${providerId}`);
         return this.options.credentialStore?.get(providerId);
       } }),
-      logger: Object.freeze(Object.fromEntries(['info', 'warn', 'error'].map(level => [level, message => {
-        // Do not log arbitrary plugin payloads, request bodies or credentials.
-        this.options.logger[level]?.(`[${id}] ${String(message).replace(/(?:Bearer\s+|sk-)[\w.-]+/gi, '[REDACTED]')}`);
-      }]))),
+      logger: createModuleLogger(id, this.options.logger),
       onDispose: dispose => { assertActive(); record.dispose.push(dispose); },
     });
     try {

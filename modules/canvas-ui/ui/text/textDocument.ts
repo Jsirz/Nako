@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 /** JSON only: the plain mirror remains authoritative for older canvas/Agent consumers. */
 export interface TextDocumentNode {
   type: string;
@@ -34,7 +35,7 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 
 function invalid(): never {
-  throw new Error('文本格式无效，请保留正文后重试。');
+  throw canvasError('文本格式无效，请保留正文后重试。', 'text-document.validate');
 }
 
 function positiveInteger(value: unknown, maximum: number, fallback: number): number {

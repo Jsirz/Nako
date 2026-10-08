@@ -2,7 +2,6 @@ import { defineApplicationPlugin } from '../kernel/application.js';
 import { createGenerationService } from './server/generation/generationService.js';
 import { createNodeModelService, createNodeModelObserver } from './server/generation/nodeModelService.js';
 import { createGenerationRecoveryService } from './server/generation/generationRecoveryService.js';
-import { USER_PROVIDER_SECRET_KEYS } from '../contracts/providerSecrets.js';
 import express from 'express';
 import { createConfigRouter } from './server/routes/config.js';
 import {
@@ -14,7 +13,7 @@ import {
   createDefaultModelsService,
   createDefaultModelsRouter,
 } from './server/generation/defaultModels.js';
-import { createGenerationRuntime } from './server/generation/generationRuntime.js';
+import { createGenerationRuntime, publicGenerationTasks } from './server/generation/generationRuntime.js';
 import { parseTimeToMs } from './timing.js';
 import { getWorkspacePaths } from '../project/api/server/workspace/workspacePaths.js';
 
@@ -32,6 +31,7 @@ export default defineApplicationPlugin({
       'generation.taskStore',
       'media.generation',
       'preferences.repository',
+      'identity.providerCredentials',
     ],
     provides: ['generation.runtime', 'generation.defaults'],
   },
@@ -44,18 +44,10 @@ export default defineApplicationPlugin({
     const routes = context.services.get('http.routes');
     const app = express.Router();
     routes.contribute(context, app);
-    app.use('/api/config', createConfigRouter());
-    const { dreaminaCliInstaller, libTvCli } = context.services.get('local.runtime');
-    const getProviderConfiguration = async (_request, { waitForFresh = true } = {}) => {
-      if (waitForFresh)
-        await Promise.all([dreaminaCliInstaller.isAuthenticated(), libTvCli.isAuthenticated()]);
-      return {
-        LibTvCliImageProvider: libTvCli.getCachedAuthentication(),
-        LibTvCliVideoProvider: libTvCli.getCachedAuthentication(),
-        DreaminaCliImageProvider: dreaminaCliInstaller.getCachedAuthentication(),
-        DreaminaCliVideoProvider: dreaminaCliInstaller.getCachedAuthentication(),
-      };
-    };
+    app.use('/api/config', createConfigRouter({ credentialStore: context.services.get('identity.providerCredentials'), logger: context.logger }));
+    /** @type {import('../contracts/localRuntimeService').LocalRuntimeService} */
+    const localRuntime = context.services.get('local.runtime');
+    const getProviderConfiguration = (_request, options) => localRuntime.providerConfiguration(options);
     const defaultModels = createDefaultModelsService({
       repository: context.services.get('preferences.repository'),
       getProviderConfiguration,
@@ -65,13 +57,12 @@ export default defineApplicationPlugin({
     const generationRuntime = createGenerationRuntime({
       taskStore: context.services.get('generation.taskStore'),
       parseTimeToMs: (timeEstimate) => parseTimeToMs(timeEstimate),
+      logger: context.logger,
     });
+    context.onDispose(() => generationRuntime.coordinator.dispose());
 
     applicationContext.LOGS_DIR = LOGS_DIR;
 
-    for (const key of USER_PROVIDER_SECRET_KEYS) {
-      Object.defineProperty(applicationContext, key, { get: () => process.env[key] });
-    }
 
     applicationContext.TOS_BUCKET = process.env.TOS_BUCKET;
 
@@ -106,12 +97,13 @@ export default defineApplicationPlugin({
       '/api',
       createModelSourceRouter({
         getProviderConfiguration,
+        logger: context.logger,
       }),
     );
     context.services.register(
       'generation.runtime',
       Object.freeze({
-        ...generationRuntime,
+        ...publicGenerationTasks(generationRuntime),
         observeNode: createNodeModelObserver({ coordinator: generationRuntime.coordinator, recoverTask, applicationContext }),
         generateNode: createNodeModelService({ defaults: defaultModels, generate: createGenerationService({ applicationContext, mediaService: context.services.get('media.generation'), generationCoordinator: generationRuntime.coordinator, defaultModels }) }),
         generate: createGenerationService({ applicationContext, mediaService: context.services.get('media.generation'), generationCoordinator: generationRuntime.coordinator, defaultModels }),

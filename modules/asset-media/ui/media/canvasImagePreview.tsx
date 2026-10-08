@@ -41,8 +41,9 @@ const zero = () => 0;
 export function CanvasImagePreview(
   React: Runtime,
   { data: node, selected, onUpload, onUpdate, renderHeader }: Props,
-  { DownloadIcon, ImageIcon, nodeWidth, nodeHeight }: Components,
+  components: Components,
 ) {
+  const { nodeWidth, nodeHeight } = components;
   const scheduler = browserServices.__NAKO_GENERATION_SCHEDULER__;
   React.useSyncExternalStore(
     scheduler?.subscribe || subscribeNone,
@@ -175,6 +176,35 @@ export function CanvasImagePreview(
         </svg>
       </button>
     ) : null;
+  return renderImagePreview(React, { data: node, selected, onUpload, renderHeader }, components, {
+    historyControl, multiple, hasResult, busy, expanded, urls, fileInput, upload,
+    frameStyle, metadata, optionStyle, download, selectMain, exposureOverlay,
+  });
+}
+
+function renderImagePreview(
+  React: Runtime,
+  { data: node, selected, onUpload, renderHeader }: Props,
+  { DownloadIcon, ImageIcon }: Components,
+  state: {
+    historyControl: ReactTypes.ReactNode;
+    multiple: boolean;
+    hasResult: boolean;
+    busy: boolean;
+    expanded: boolean;
+    urls: string[];
+    fileInput: ReactTypes.RefObject<HTMLInputElement | null>;
+    upload(event: ReactTypes.ChangeEvent<HTMLInputElement>): void;
+    frameStyle(): ReactTypes.CSSProperties;
+    metadata(event: ReactTypes.SyntheticEvent<HTMLImageElement>): void;
+    optionStyle(index: number): ReactTypes.CSSProperties;
+    download(url: string, button: HTMLButtonElement): void;
+    selectMain(url: string, image?: HTMLImageElement | null): void;
+    exposureOverlay(): ReactTypes.ReactNode;
+  },
+) {
+  const { historyControl, multiple, hasResult, busy, expanded, urls, fileInput, upload,
+    frameStyle, metadata, optionStyle, download, selectMain, exposureOverlay } = state;
   return (
     <div className={'w-full h-full relative'} data-nako-image-preview="true">
       {renderHeader ? (

@@ -112,4 +112,4 @@ HappyHorse 文档规定任务查询及媒体 URL 有 24 小时有效期；Seedan
 - [文生视频](https://ecloud.10086.cn/op-help-center/doc/article/100407)、[首帧生视频](https://ecloud.10086.cn/op-help-center/doc/article/100409)、[参考生视频](https://ecloud.10086.cn/op-help-center/doc/article/100408)、[视频编辑](https://ecloud.10086.cn/op-help-center/doc/article/100410)
 - [非实时语音合成 API（本插件使用非流式 HTTP 调用）](https://ecloud.10086.cn/op-help-center/doc/article/100771)
 
-本轮没有接入移动云旧版开源模型端点、Token Plan、实时语音 WebSocket、Omni 音频输出、向量化/重排序或全部模型广场产品。上述已实现接口使用协议模拟测试验证；MiniMax 查询修复另通过用户已有任务的实际 GET 查询与结果下载验证，没有新发起付费生成。测试与构建结果见 [验证记录](验证记录.md)。
+本轮没有接入移动云旧版开源模型端点、Token Plan、实时语音 WebSocket、Omni 音频输出、向量化/重排序或全部模型广场产品。上述已实现接口使用协议模拟测试验证；MiniMax 查询修复另通过用户已有任务的实际 GET 查询与结果下载验证，没有新发起付费生成。测试与构建结果见 [验证记录](history/验证记录.md)。

@@ -192,6 +192,15 @@ export function createNodeFramework(): NodeFrameworkAdapter {
       }
       return errors;
     },
+    ...createNodeParameterMethods(),
+    ...createNodeResultMethods(),
+    getDiagnostics() { return { createCalls, validationFailures, definitionCount: nodeRegistry.diagnostics().definitionCount }; },
+  };
+  return adapter;
+}
+
+function createNodeParameterMethods(): Pick<NodeFrameworkAdapter, 'buildParameterForm' | 'validateInputs'> {
+  return {
     buildParameterForm({ models, selectedModel, values = {} }) {
       const selected = models.find((model) => model.name === selectedModel) ?? models[0];
       if (!selected) return [];
@@ -315,6 +324,12 @@ export function createNodeFramework(): NodeFrameworkAdapter {
       }
       return { valid: issues.length === 0, counts, issues };
     },
+  };
+}
+
+function createNodeResultMethods(): Pick<NodeFrameworkAdapter,
+  'beginGeneration' | 'updateGeneration' | 'selectResult' | 'setCollapsed' | 'getPresentation'> {
+  return {
     beginGeneration(node, { generationId, queuedAt = Date.now() }) {
       const next = { ...node };
       delete next.errorMessage;
@@ -402,9 +417,7 @@ export function createNodeFramework(): NodeFrameworkAdapter {
         },
       };
     },
-    getDiagnostics() { return { createCalls, validationFailures, definitionCount: nodeRegistry.diagnostics().definitionCount }; },
   };
-  return adapter;
 }
 
 export function installNodeFramework(): NodeFrameworkAdapter {

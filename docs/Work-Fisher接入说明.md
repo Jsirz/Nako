@@ -10,9 +10,9 @@ Nako 通过独立插件 `provider.work-fisher` 接入 `https://api.work-fisher.c
 
 Work-Fisher 设置只展示固定目录，不提供自定义模型 ID 覆盖输入；运行目录同样保持插件声明的模型 ID，防止设置值与具体协议不匹配。
 
-目录包含 56 项模型：10 项文本、17 项图像、24 项视频、5 项音频或音乐。上游的 DeepSeek V4 Flash、DeepSeek V4 Pro、Kimi K3 三项文本条目标记为不可选，本项目保持该状态，因此当前可选 53 项。模型 ID、生成模式、参考素材数量、分辨率、比例和高级参数来自固定目录及 Work-Fisher 当前公开文档；服务端实际权限仍取决于用户的 Key。
+目录包含 55 项模型：9 项文本、17 项图像、24 项视频、5 项音频或音乐。上游的 DeepSeek V4 Flash、DeepSeek V4 Pro、Kimi K3 三项文本条目标记为不可选，本项目保持该状态，因此当前可选 52 项。模型 ID、生成模式、参考素材数量、分辨率、比例和高级参数来自固定目录及 Work-Fisher 当前公开文档；服务端实际权限仍取决于用户的 Key。
 
-新增的 `workfisher/gm-3.8-flash`、`workfisher/g6-astra`、`workfisher/g5.6-sol`、`workfisher/g5.6-terra`、`workfisher/g5.6-luna` 均作为视觉文本模型提供，走 `POST /v1/chat/completions`，接受文本及一张图片输入。界面不读取或显示其价格页价格。
+新增的 `workfisher/gm-3.8-flash`、`workfisher/g6-astra`、`workfisher/g6-sol`、`workfisher/g6-luna` 均作为视觉文本模型提供，走 `POST /v1/chat/completions`，接受文本及一张图片输入。界面不读取或显示其价格页价格。
 
 ## 支持的协议
 

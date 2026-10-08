@@ -1,3 +1,4 @@
+import { createTextGenerationService } from '../plugins/platform/text-transport/service.js';
 import { createDramaConversationService } from '../modules/agent/server/agent/drama/dramaConversation.js';
 import { it, expect, vi } from 'vitest';
 import express from 'express';
@@ -56,8 +57,8 @@ async function fixture() {
       nodeRuns,
       createDramaConversation: (sessionStore) => createDramaConversationService({ sessionStore }),
       sessionStore: store,
-      textTransport: { fetcher },
-      getCredentials: () => ({ ECLOUD_API_KEY: 'fixture' }),
+      textTransport: createTextGenerationService({ fetcher, modelCatalog: loadModelCatalog,
+        credentials: { get: () => ({ ECLOUD_API_KEY: 'fixture' }) } }),
       mediaService: { imageContent: async () => [], fitVisualReferences: async (m) => m },
       onHarness: (h) => {
         harness = h;

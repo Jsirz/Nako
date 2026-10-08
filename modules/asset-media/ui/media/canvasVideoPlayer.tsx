@@ -39,17 +39,7 @@ interface Props {
 export function CanvasVideoPlayer(
   React: VideoRuntime,
   { data, selected, inputUrl, onSnapshot, onSnapshotFirstLast, onUpdate }: Props,
-  {
-    MuteIcon,
-    VolumeIcon,
-    PlayIcon,
-    PauseIcon,
-    FramesIcon,
-    SnapshotIcon,
-    ImageIcon,
-    VideoIcon,
-    Tooltip,
-  }: Components,
+  components: Components,
 ) {
   const playback = useCanvasVideoPlayback(React, data, onUpdate),
     {
@@ -141,6 +131,50 @@ export function CanvasVideoPlayer(
     void capture(true);
   };
 
+  return renderVideoPlayer(React, { data, selected, inputUrl, onSnapshot, onSnapshotFirstLast }, components, {
+    videoRef, playing, time, duration, muted, volume, buffering, playbackError,
+    hover, setHover, snapshotBusy, snapshotError, isLoading, hasResult, togglePlay,
+    toggleSound, changeVolume, seek, formatTime, frameStyle, snapshot, snapshotEnds,
+    retry: playback.retry,
+  });
+}
+
+interface VideoViewState {
+  videoRef: ReactTypes.RefObject<HTMLVideoElement | null>;
+  playing: boolean;
+  time: number;
+  duration: number;
+  muted: boolean;
+  volume: number;
+  buffering: boolean;
+  playbackError: string;
+  hover: boolean;
+  setHover: ReactTypes.Dispatch<ReactTypes.SetStateAction<boolean>>;
+  snapshotBusy: boolean;
+  snapshotError: string;
+  isLoading: boolean;
+  hasResult: boolean;
+  togglePlay(event: ReactTypes.SyntheticEvent): void;
+  toggleSound(event: ReactTypes.SyntheticEvent): void;
+  changeVolume(event: ReactTypes.ChangeEvent<HTMLInputElement>): void;
+  seek(event: ReactTypes.ChangeEvent<HTMLInputElement>): void;
+  formatTime(value: number): string;
+  frameStyle(): ReactTypes.CSSProperties;
+  snapshot(event: ReactTypes.SyntheticEvent): void;
+  snapshotEnds(event: ReactTypes.SyntheticEvent): void;
+  retry(): void;
+}
+
+function renderVideoPlayer(
+  React: VideoRuntime,
+  props: Props,
+  components: Components,
+  state: VideoViewState,
+) {
+  const { data, selected, inputUrl } = props;
+  const { ImageIcon, VideoIcon } = components;
+  const { videoRef, muted, buffering, playbackError, hover, setHover, snapshotBusy, snapshotError,
+    isLoading, hasResult, togglePlay, frameStyle, retry } = state;
   const content = (
     <div
       className={'w-full h-full rounded-lg overflow-hidden'}
@@ -192,7 +226,7 @@ export function CanvasVideoPlayer(
                   type="button"
                   onClick={(event) => {
                     event.stopPropagation();
-                    playback.retry();
+                    retry();
                   }}
                 >
                   重新加载视频
@@ -200,137 +234,7 @@ export function CanvasVideoPlayer(
               </div>
             </div>
           ) : null}
-          {hasResult && (
-            <div
-              data-nako-video-volume={'true'}
-              className={`absolute top-2 left-2 z-30 flex h-8 items-center gap-1.5 rounded-lg border border-white/15 bg-black/55 px-1.5 text-white backdrop-blur-sm transition-all duration-200 ${hover ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <button
-                type={'button'}
-                aria-label={muted ? '取消静音' : '静音'}
-                onClick={toggleSound}
-                className={'grid h-7 w-7 shrink-0 place-items-center rounded-md hover:bg-white/10'}
-              >
-                {muted || volume === 0 ? <MuteIcon size={14} /> : <VolumeIcon size={14} />}
-              </button>
-              <input
-                type={'range'}
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={changeVolume}
-                aria-label={'视频音量'}
-                aria-valuetext={Math.round(volume * 100) + '%'}
-                className={'h-3 w-20 cursor-pointer accent-white'}
-              />
-              <span className={'w-7 text-right text-[10px] tabular-nums text-white/80'}>
-                {Math.round(volume * 100) + '%'}
-              </span>
-            </div>
-          )}
-          {hasResult && (
-            <div
-              className={`absolute bottom-0 left-0 right-0 z-30 px-3 pb-2.5 pt-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-center gap-2.5 transition-all duration-300 ease-out ${hover ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <button
-                aria-label={playing ? '暂停视频' : '播放视频'}
-                onClick={togglePlay}
-                onPointerDown={(event) => event.stopPropagation()}
-                className={'text-white hover:text-white/80 shrink-0 transition-colors z-50'}
-              >
-                {playing ? (
-                  <PauseIcon size={16} fill={'currentColor'} />
-                ) : (
-                  <PlayIcon size={16} fill={'currentColor'} />
-                )}
-              </button>
-              <span
-                className={
-                  'text-[11px] text-white/90 tabular-nums min-w-[34px] text-right shrink-0 leading-none'
-                }
-              >
-                {formatTime(time)}
-              </span>
-              <div className={'flex-1 flex items-center'}>
-                <div className={'relative w-full flex items-center h-4'}>
-                  <div
-                    className={
-                      'absolute left-0 right-0 h-1 bg-white/20 rounded-full pointer-events-none'
-                    }
-                  >
-                    <div
-                      className={'absolute left-0 top-0 h-full bg-white rounded-full'}
-                      style={{ width: `${(time / (duration || 1)) * 100}%` }}
-                    />
-                  </div>
-                  <input
-                    aria-label={'视频播放进度'}
-                    type={'range'}
-                    min={'0'}
-                    max={duration || 0}
-                    step={'0.01'}
-                    value={time}
-                    onChange={seek}
-                    className={`relative w-full h-4 bg-transparent cursor-pointer appearance-none z-10
-                      [&::-webkit-slider-thumb]:appearance-none
-                      [&::-webkit-slider-thumb]:w-3
-                      [&::-webkit-slider-thumb]:h-3
-                      [&::-webkit-slider-thumb]:rounded-full
-                      [&::-webkit-slider-thumb]:bg-white
-                      [&::-webkit-slider-thumb]:shadow-lg
-                      [&::-webkit-slider-thumb]:cursor-pointer
-                      [&::-webkit-slider-thumb]:transition-transform
-                      [&::-webkit-slider-thumb]:hover:scale-125
-                      [&::-moz-range-thumb]:w-3
-                      [&::-moz-range-thumb]:h-3
-                      [&::-moz-range-thumb]:rounded-full
-                      [&::-moz-range-thumb]:bg-white
-                      [&::-moz-range-thumb]:shadow-lg
-                      [&::-moz-range-thumb]:border-0
-                      [&::-moz-range-thumb]:cursor-pointer
-                      [&::-moz-range-thumb]:transition-transform
-                      [&::-moz-range-thumb]:hover:scale-125`}
-                  />
-                </div>
-              </div>
-              <span
-                className={
-                  'text-[11px] text-white/90 tabular-nums min-w-[34px] shrink-0 leading-none'
-                }
-              >
-                {formatTime(duration)}
-              </span>
-              {onSnapshot && (
-                <div className={'flex items-center gap-1.5 shrink-0'}>
-                  {onSnapshotFirstLast && (
-                    <Tooltip text={'截取首尾帧'}>
-                      <button
-                        aria-label="截取首尾帧"
-                        disabled={snapshotBusy}
-                        onClick={snapshotEnds}
-                        className={'text-white hover:text-blue-400 transition-colors'}
-                      >
-                        <FramesIcon size={16} />
-                      </button>
-                    </Tooltip>
-                  )}
-                  <Tooltip text={'截图'}>
-                    <button
-                      aria-label="视频截图"
-                      disabled={snapshotBusy}
-                      onClick={snapshot}
-                      className={'text-white hover:text-blue-400 transition-colors'}
-                    >
-                      <SnapshotIcon size={16} />
-                    </button>
-                  </Tooltip>
-                </div>
-              )}
-            </div>
-          )}
+          {hasResult && renderVideoControls(React, props, components, state)}
           {isLoading && <GenerationWaiting operation="视频生成" />}
         </div>
       ) : (
@@ -407,5 +311,134 @@ export function CanvasVideoPlayer(
         </div>
       )}
     </div>
+  );
+}
+
+function renderVideoControls(
+  React: VideoRuntime,
+  { onSnapshot, onSnapshotFirstLast }: Props,
+  { MuteIcon, VolumeIcon, PauseIcon, PlayIcon, Tooltip, FramesIcon, SnapshotIcon }: Components,
+  state: VideoViewState,
+) {
+  const { muted, volume, hover, toggleSound, changeVolume, playing, togglePlay,
+    formatTime, time, duration, seek, snapshotBusy, snapshotEnds, snapshot } = state;
+  return (
+    <>
+      <div
+        data-nako-video-volume="true"
+        className={`absolute top-2 left-2 z-30 flex h-8 items-center gap-1.5 rounded-lg border border-white/15 bg-black/55 px-1.5 text-white backdrop-blur-sm transition-all duration-200 ${hover ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+        onPointerDown={event => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          aria-label={muted ? '取消静音' : '静音'}
+          onClick={toggleSound}
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md hover:bg-white/10"
+        >
+          {muted || volume === 0 ? <MuteIcon size={14} /> : <VolumeIcon size={14} />}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={volume}
+          onChange={changeVolume}
+          aria-label="视频音量"
+          aria-valuetext={Math.round(volume * 100) + '%'}
+          className="h-3 w-20 cursor-pointer accent-white"
+        />
+        <span className="w-7 text-right text-[10px] tabular-nums text-white/80">
+          {Math.round(volume * 100) + '%'}
+        </span>
+      </div>
+      <div
+        className={`absolute bottom-0 left-0 right-0 z-30 px-3 pb-2.5 pt-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex items-center gap-2.5 transition-all duration-300 ease-out ${hover ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
+        onPointerDown={event => event.stopPropagation()}
+      >
+        <button
+          aria-label={playing ? '暂停视频' : '播放视频'}
+          onClick={togglePlay}
+          onPointerDown={event => event.stopPropagation()}
+          className="text-white hover:text-white/80 shrink-0 transition-colors z-50"
+        >
+          {playing ? (
+            <PauseIcon size={16} fill="currentColor" />
+          ) : (
+            <PlayIcon size={16} fill="currentColor" />
+          )}
+        </button>
+        <span className="text-[11px] text-white/90 tabular-nums min-w-[34px] text-right shrink-0 leading-none">
+          {formatTime(time)}
+        </span>
+        <div className="flex-1 flex items-center">
+          <div className="relative w-full flex items-center h-4">
+            <div className="absolute left-0 right-0 h-1 bg-white/20 rounded-full pointer-events-none">
+              <div
+                className="absolute left-0 top-0 h-full bg-white rounded-full"
+                style={{ width: `${(time / (duration || 1)) * 100}%` }}
+              />
+            </div>
+            <input
+              aria-label="视频播放进度"
+              type="range"
+              min="0"
+              max={duration || 0}
+              step="0.01"
+              value={time}
+              onChange={seek}
+              className={`relative w-full h-4 bg-transparent cursor-pointer appearance-none z-10
+                [&::-webkit-slider-thumb]:appearance-none
+                [&::-webkit-slider-thumb]:w-3
+                [&::-webkit-slider-thumb]:h-3
+                [&::-webkit-slider-thumb]:rounded-full
+                [&::-webkit-slider-thumb]:bg-white
+                [&::-webkit-slider-thumb]:shadow-lg
+                [&::-webkit-slider-thumb]:cursor-pointer
+                [&::-webkit-slider-thumb]:transition-transform
+                [&::-webkit-slider-thumb]:hover:scale-125
+                [&::-moz-range-thumb]:w-3
+                [&::-moz-range-thumb]:h-3
+                [&::-moz-range-thumb]:rounded-full
+                [&::-moz-range-thumb]:bg-white
+                [&::-moz-range-thumb]:shadow-lg
+                [&::-moz-range-thumb]:border-0
+                [&::-moz-range-thumb]:cursor-pointer
+                [&::-moz-range-thumb]:transition-transform
+                [&::-moz-range-thumb]:hover:scale-125`}
+            />
+          </div>
+        </div>
+        <span className="text-[11px] text-white/90 tabular-nums min-w-[34px] shrink-0 leading-none">
+          {formatTime(duration)}
+        </span>
+        {onSnapshot && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onSnapshotFirstLast && (
+              <Tooltip text="截取首尾帧">
+                <button
+                  aria-label="截取首尾帧"
+                  disabled={snapshotBusy}
+                  onClick={snapshotEnds}
+                  className="text-white hover:text-blue-400 transition-colors"
+                >
+                  <FramesIcon size={16} />
+                </button>
+              </Tooltip>
+            )}
+            <Tooltip text="截图">
+              <button
+                aria-label="视频截图"
+                disabled={snapshotBusy}
+                onClick={snapshot}
+                className="text-white hover:text-blue-400 transition-colors"
+              >
+                <SnapshotIcon size={16} />
+              </button>
+            </Tooltip>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

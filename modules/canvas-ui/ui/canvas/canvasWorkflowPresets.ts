@@ -1,8 +1,9 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import { remapCanvasNodeReferences } from './canvasNodeReferences';
 import type * as React from 'react';
 import type { CanvasNode } from '../nodes/canvasNodeOperations';
 import type { CanvasViewport } from './canvasNavigation';
-import { interruptedMediaNode } from '../../../asset-media/api/ui/media/mediaOperationRecovery';
+import { mediaRecovery } from '../../../kernel/browser';
 
 type Hooks = Pick<typeof React, 'useRef' | 'useEffect'>;
 type Setter<T> = React.Dispatch<React.SetStateAction<T>>;
@@ -38,7 +39,7 @@ export function instantiateWorkflowPreset(
   runtime: Pick<PresetRuntime, 'width' | 'height'>,
   createId: () => string = () => crypto.randomUUID(),
 ): CanvasNode[] {
-  if (!Array.isArray(input) || input.length === 0) throw new Error('工作流内容为空');
+  if (!Array.isArray(input) || input.length === 0) throw canvasError('工作流内容为空', 'workflow-preset.validate');
   const nodes = copy(input) as CanvasNode[];
   const ids = new Set<string>();
   for (const node of nodes) {
@@ -51,7 +52,7 @@ export function instantiateWorkflowPreset(
       !Number.isFinite(node.x) ||
       !Number.isFinite(node.y)
     )
-      throw new Error('工作流节点数据无效');
+      throw canvasError('工作流节点数据无效', 'workflow-preset.node');
     ids.add(node.id);
   }
   const area = bounds(nodes, runtime),
@@ -61,7 +62,7 @@ export function instantiateWorkflowPreset(
     };
   const idMap = new Map(nodes.map((node) => [node.id, createId()]));
   return nodes.map((source) => {
-    const node = interruptedMediaNode(source);
+    const node = mediaRecovery().interruptedMediaNode(source) as CanvasNode;
     const parents = Array.isArray(node.parentIds) ? node.parentIds : [];
     const indexed = node.type === 'ComfyUI' || node.kind === 'workflow';
     const indices = parents
@@ -126,7 +127,7 @@ export function useCanvasWorkflowPresets(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: preset.id, projectId }),
       });
-      if (!response.ok) throw new Error('导入工作流失败');
+      if (!response.ok) throw canvasError('导入工作流失败', 'workflow-preset.import');
       const data = await response.json();
       if (!valid(epoch, projectId)) return;
       const viewport = live.current.viewport;

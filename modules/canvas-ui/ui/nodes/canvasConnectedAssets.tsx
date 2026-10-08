@@ -24,11 +24,17 @@ interface Components {
   RemoveIcon: Icon;
 }
 
+type Runtime = Pick<typeof ReactTypes, 'createElement' | 'useState' | 'useRef' | 'useEffect'>;
 export function CanvasConnectedAssets(
-  React: Pick<typeof ReactTypes, 'createElement' | 'useState' | 'useRef' | 'useEffect'>,
-  { node, connectedImageNodes = [], disabled = false, onUpdate }: ConnectedAssetsProps,
-  { ImageIcon, VideoIcon, AudioIcon, RemoveIcon }: Components,
+  React: Runtime,
+  props: ConnectedAssetsProps,
+  components: Components,
 ) {
+  const state = useConnectedAssetState(React, props);
+  return renderConnectedAssetStrip(React, props, components, state);
+}
+
+function useConnectedAssetState(React: Runtime, { node, connectedImageNodes = [], disabled = false, onUpdate }: ConnectedAssetsProps) {
   const [focused, setFocused] = React.useState<string | null>(null);
   const [previewId, setPreviewId] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState('all');
@@ -96,6 +102,17 @@ export function CanvasConnectedAssets(
     }
     onUpdate(node.id, patch);
   };
+  return { focused, setFocused, preview, hover, hovered, setHover, setPreviewId,
+    filter, setFilter, keepHover, closeHover, showHover, index, assets, remove };
+}
+
+function renderConnectedAssetStrip(
+  React: Runtime, { disabled = false }: ConnectedAssetsProps,
+  { ImageIcon, VideoIcon, AudioIcon, RemoveIcon }: Components,
+  state: ReturnType<typeof useConnectedAssetState>,
+) {
+  const { focused, setFocused, setPreviewId, filter, setFilter, closeHover,
+    showHover, index, assets, remove } = state;
   return (
     <div
       data-nako-connected-asset-strip="true"
@@ -249,6 +266,14 @@ export function CanvasConnectedAssets(
           </div>
         </div>
       </div>
+      {renderConnectedAssetPreviews(React, state)}
+    </div>
+  );
+}
+
+function renderConnectedAssetPreviews(React: Runtime, state: ReturnType<typeof useConnectedAssetState>) {
+  const { hover, hovered, preview, keepHover, closeHover, setPreviewId, setHover } = state;
+  return <>
       {hover &&
         hovered &&
         !preview &&
@@ -370,6 +395,5 @@ export function CanvasConnectedAssets(
           </div>,
           document.body,
         )}
-    </div>
-  );
+    </>;
 }

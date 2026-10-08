@@ -362,6 +362,12 @@ export function createDramaConversationService({ sessionStore, planStore, execut
       plan,
     };
   }
+  const conversation = { snapshot, attachScript, turnContext, acceptReply };
+  const action = createConversationAction({ sessionStore, currentPlan, execution, append });
+  return { ...conversation, action, prepareTurn: (input) => prepareDramaTurn({ ...conversation, action }, sessionStore, input) };
+}
+
+function createConversationAction({ sessionStore, currentPlan, execution, append }) {
   async function action(sessionId, body, appContext) {
     assertDramaObject(body, [
       'projectId',
@@ -474,6 +480,5 @@ export function createDramaConversationService({ sessionStore, planStore, execut
     }
     return { session, plan, execution: state, ...(composition ? { composition } : {}) };
   }
-  const conversation = { snapshot, attachScript, turnContext, acceptReply, action };
-  return { ...conversation, prepareTurn: (input) => prepareDramaTurn(conversation, sessionStore, input) };
+  return action;
 }

@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as ReactTypes from 'react';
 import './canvasAnchoredPanel.css';
 type Runtime = Pick<typeof ReactTypes, 'createElement' | 'useState' | 'useRef' | 'useEffect'>;
@@ -82,7 +83,14 @@ function projectScope(id?: string) {
 }
 
 export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
-  const { isOpen, onClose, panelY = 200, onSelectAsset } = props;
+  const model = useAssetHistoryState(React, props);
+  useAssetHistoryPagination(React, props, model);
+  if (!props.isOpen) return null;
+  return renderAssetHistory(React, props, icons, model);
+}
+
+function useAssetHistoryState(React: Runtime, props: Props) {
+  const { isOpen, onClose } = props;
   const [kind, setKind] = React.useState<Kind>('images'),
     [attempt, setAttempt] = React.useState(0);
   const [deleteId, setDeleteId] = React.useState<string | null>(null);
@@ -135,7 +143,7 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
       controllers.add(controller);
       let cancel = () => {};
       const cancelled = new Promise<never>((_, reject) => {
-        cancel = () => reject(Error('操作未确认，请刷新列表核对结果。'));
+        cancel = () => reject(canvasError('操作未确认，请刷新列表核对结果。', 'asset-history.cancel'));
         controller.signal.addEventListener('abort', cancel, { once: true });
       });
       const timer = setTimeout(() => controller.abort(), 15_000);
@@ -145,8 +153,9 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
             const response = await fetch(url, { method, signal: controller.signal });
             const body = await response.json();
             if (!response.ok)
-              throw Error(
+              throw canvasError(
                 method === 'DELETE' ? '删除失败，请刷新后重试。' : '加载素材失败，请重试。',
+                'asset-history.request',
               );
             return body as T;
           })(),
@@ -167,7 +176,7 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
       try {
         const page = await read<Page>(url(kind, first ? 0 : offset, 20));
         if (!active()) return;
-        if (!Array.isArray(page.assets)) throw Error('素材列表格式不正确，请重试。');
+        if (!Array.isArray(page.assets)) throw canvasError('素材列表格式不正确，请重试。', 'asset-history.page');
         offset = (first ? 0 : offset) + page.assets.length;
         hasMore = page.hasMore === true && page.assets.length > 0;
         update((old) => ({
@@ -199,7 +208,7 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
           'DELETE',
         );
         if (!active()) return;
-        if (result.success !== true) throw Error('未收到删除成功回执，请刷新列表核对。');
+        if (result.success !== true) throw canvasError('未收到删除成功回执，请刷新列表核对。', 'asset-history.delete');
         offset = Math.max(0, offset - 1);
         update((old) => ({
           ...old,
@@ -238,6 +247,11 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
       controllers.forEach((controller) => controller.abort());
     };
   }, [isOpen, key, kind, projectId]);
+  return { kind, setKind, setAttempt, deleteId, setDeleteId, state, key, actions, scrollRef, sentinelRef };
+}
+
+function useAssetHistoryPagination(React: Runtime, { isOpen }: Props, model: ReturnType<typeof useAssetHistoryState>) {
+  const { sentinelRef, scrollRef, state, actions, key } = model;
   React.useEffect(() => {
     const target = sentinelRef.current;
     if (
@@ -259,6 +273,13 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
     observer.observe(target);
     return () => observer.disconnect();
   }, [isOpen, key, state.loading, state.loadingMore, state.hasMore, state.error, state.deleting]);
+}
+
+function renderAssetHistory(
+  React: Runtime, props: Props, icons: Icons, model: ReturnType<typeof useAssetHistoryState>,
+) {
+  const { isOpen, onClose, panelY = 200, onSelectAsset } = props;
+  const { kind, setKind, setAttempt, state } = model;
   const select = (asset: Asset) => {
     onSelectAsset(
       kind,
@@ -271,13 +292,8 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
       Number.isFinite(asset.duration) ? asset.duration : undefined,
     );
   };
-  const groups = new Map<string, Asset[]>();
-  for (const asset of state.items) {
-    const date = new Date(asset.createdAt || '');
-    const day = Number.isFinite(date.getTime()) ? date.toLocaleDateString('en-CA') : '日期未知';
-    groups.set(day, [...(groups.get(day) || []), asset]);
-  }
-  const { ImageIcon, VideoIcon, AudioIcon, CloseIcon, DeleteIcon, Spinner } = icons;
+  const groups = groupHistoryAssets(state.items);
+  const { ImageIcon, VideoIcon, AudioIcon, CloseIcon } = icons;
   if (!isOpen) return null;
   return (
     <div
@@ -336,7 +352,17 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
           </button>
         </div>
       )}
-      <div
+      {renderAssetHistoryList(React, icons, model, groups, select)}
+    </div>
+  );
+}
+
+function renderAssetHistoryList(
+  React: Runtime, { Spinner, ImageIcon, AudioIcon, DeleteIcon }: Icons,
+  { state, kind, scrollRef, deleteId, setDeleteId, actions, sentinelRef }: ReturnType<typeof useAssetHistoryState>,
+  groups: Map<string, Asset[]>, select: (asset: Asset) => void,
+) {
+  return <div
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
         style={{ scrollbarWidth: 'thin', scrollbarColor: '#525252 #171717' }}
@@ -473,6 +499,15 @@ export function CanvasAssetHistory(React: Runtime, props: Props, icons: Icons) {
           </div>
         )}
       </div>
-    </div>
-  );
+    ;
+}
+
+function groupHistoryAssets(items: Asset[]) {
+  const groups = new Map<string, Asset[]>();
+  for (const asset of items) {
+    const date = new Date(asset.createdAt || '');
+    const day = Number.isFinite(date.getTime()) ? date.toLocaleDateString('en-CA') : '日期未知';
+    groups.set(day, [...(groups.get(day) || []), asset]);
+  }
+  return groups;
 }

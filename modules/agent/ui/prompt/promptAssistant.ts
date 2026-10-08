@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import { expandPromptTags } from './promptPresets';
 
@@ -13,13 +14,13 @@ type AssistantErrorBody = {
   retryable?: unknown;
 };
 
-export class PromptAssistantClientError extends Error {
+export class PromptAssistantClientError extends AgentOperationError {
   code: string;
   status: number;
   retryable: boolean;
 
   constructor(message: string, code: string, status: number, retryable: boolean) {
-    super(message);
+    super(message, { operation: 'prompt-assistant-client' }, code, status);
     this.name = 'PromptAssistantClientError';
     this.code = code;
     this.status = status;
@@ -52,7 +53,7 @@ export function createPromptAssistantClient(fetcher: typeof fetch = globalThis.f
     },
     async optimizePrompt(prompt: string): Promise<string> {
       const expandedPrompt = expandPromptTags(String(prompt || '')).trim();
-      if (!expandedPrompt) throw new Error('请输入需要优化的提示词');
+      if (!expandedPrompt) throw new AgentOperationError('请输入需要优化的提示词', { operation: 'optimize-prompt' });
       const result = await fetcher('/api/prompt-assistant/optimize-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

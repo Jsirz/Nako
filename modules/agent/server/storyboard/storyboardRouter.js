@@ -1,15 +1,16 @@
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
+const logger = createModuleLogger('module.agent.storyboard');
 import crypto from 'node:crypto';
 import express from 'express';
 import { classifyGenerationError } from '../../../generation-core/api/server/generation/generationErrors.js';
 
 const REFERENCE_CATEGORIES = new Set(['Character', 'Scene', 'Item', 'Style', 'Other']);
 
-class StoryboardError extends Error {
+class StoryboardError extends AgentOperationError {
   constructor(message, status = 400, code = 'INVALID_STORYBOARD_REQUEST') {
-    super(message);
+    super(message, { operation: 'storyboard-request' }, code, status);
     this.name = 'StoryboardError';
-    this.status = status;
-    this.code = code;
   }
 }
 
@@ -104,7 +105,7 @@ function sendError(response, error) {
     return;
   }
   const classified = classifyGenerationError(error);
-  console.error('[Storyboard] Request failed:', classified.code);
+  logger.error('Storyboard request failed', { code: classified.code, status: classified.status });
   response.status(classified.status).json({
     error: classified.message,
     code: classified.code,

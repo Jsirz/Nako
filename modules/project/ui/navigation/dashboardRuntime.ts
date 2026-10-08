@@ -1,4 +1,3 @@
-import type { CanvasComponent } from '../../../canvas-ui/api/ui/app/canvasComponentType';
 import type * as React from 'react';
 
 export type DashboardRuntime = Pick<
@@ -12,4 +11,7 @@ export type DashboardRuntime = Pick<
   | 'useMemo'
   | 'useCallback'
 >;
-export type DashboardIcon = CanvasComponent;
+export type DashboardIcon =
+  | Exclude<React.ElementType, string>
+  | (keyof React.JSX.IntrinsicElements &
+      (keyof HTMLElementTagNameMap | keyof SVGElementTagNameMap));

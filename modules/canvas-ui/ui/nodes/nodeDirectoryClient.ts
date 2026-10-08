@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { NodePackageManifest } from '../../../contracts/nodeSdk.js';
 import type { NodePackage } from '../../../contracts/nodeSdk.js';
 
@@ -15,7 +16,7 @@ export async function loadNodeDirectoryPackages(
   fetcher: typeof fetch = fetch,
 ): Promise<{ loaded: string[]; skipped: string[]; errors: string[] }> {
   const response = await fetcher('/api/node-packages', { headers: { accept: 'application/json' } });
-  if (!response.ok) throw new Error(`Node package directory request failed: ${response.status}`);
+  if (!response.ok) throw canvasError(`Node package directory request failed: ${response.status}`, 'node-directory.load');
   const payload = (await response.json()) as DirectoryResponse;
   const previous = disposers.get(framework);
   previous?.forEach((dispose) => dispose());

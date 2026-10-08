@@ -7,7 +7,6 @@
   "dependencies": {
     "ui.canvas-ui": "^1.0.0"
   },
-  "capabilities": [
-    "ui.project"
-  ]
+  "capabilities": ["ui.project"],
+  "services": { "provides": ["ui.project.preferences"], "requires": ["ui.canvas.project", "ui.media.recovery"] }
 }

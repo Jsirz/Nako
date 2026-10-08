@@ -1,4 +1,5 @@
-import { NODE_ERROR, nodeError } from '../contracts/nodeExecution.js';
+import { NODE_ERROR } from '../contracts/nodeExecution.js';
+import { desktopNodeError as nodeError } from '../contracts/desktopErrors.js';
 
 function localUrl(value, projectId) {
   const url = typeof value === 'string' ? value : value?.url;
@@ -64,7 +65,8 @@ export function createNodeCapabilities({ generation, mediaStore, mediaAgent, med
       return { ...result, frames };
     },
     async 'project.read'(_input, ctx) {
-      const project = await projects.getWorkflowById(ctx.projectId);
+      const project = await projects.get(ctx.projectId);
+      if (!project) throw nodeError(NODE_ERROR.NOT_FOUND, '项目不存在或已删除');
       return { id: project.id, name: project.name, revision: project.revision, nodes: (project.nodes || []).map(node => ({ id: node.id, type: node.type, title: node.title })) };
     },
     'storage.get': (input, ctx) => store.value(ctx.scope + ':' + ctx.projectId, ctx.pluginId, input.key),

@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Palette, Clapperboard, SlidersHorizontal, X, Star } from 'lucide-react';
@@ -55,7 +56,7 @@ interface SavedLibrary {
   custom: CreativePreset[];
 }
 async function readLibrary(response: Response): Promise<SavedLibrary> {
-  if (!response.ok) throw new Error('未能读写本机预设，请检查本机连接。');
+  if (!response.ok) throw new AgentOperationError('未能读写本机预设，请检查本机连接。', { operation: 'read-creative-library', status: response.status });
   const saved = await response.json();
   return {
     favorites: Array.isArray(saved.favorites)
@@ -215,15 +216,7 @@ export function CreativeLibraryTools({
   );
 }
 
-function CreativeLibraryPanel({
-  anchor,
-  initialTab,
-  tabs,
-  selected,
-  disabled,
-  onClose,
-  onChoose,
-}: {
+type CreativeLibraryProps = {
   anchor?: import('react').RefObject<HTMLDivElement | null>;
   initialTab: Tab;
   tabs: Tab[];
@@ -231,7 +224,13 @@ function CreativeLibraryPanel({
   disabled: boolean;
   onClose(): void;
   onChoose(slot: Tab, preset: CreativePreset | null): void;
-}) {
+};
+function CreativeLibraryPanel(props: CreativeLibraryProps) {
+  const state = useCreativeLibraryState(props);
+  return renderCreativeLibrary(state);
+}
+
+function useCreativeLibraryState({ anchor, initialTab, tabs, selected, disabled, onClose, onChoose }: CreativeLibraryProps) {
   const [tab, setTab] = useState(initialTab),
     [category, setCategory] = useState('全部'),
     [search, setSearch] = useState('');
@@ -369,6 +368,15 @@ function CreativeLibraryPanel({
         p.category === category) &&
       `${p.name} ${p.description}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  return { anchor, tabs, selected, disabled, onClose, onChoose, tab, setTab, category, setCategory,
+    search, setSearch, catalog, error, saved, ready, saving, active, setActive, name, setName,
+    prefix, setPrefix, suffix, setSuffix, customId, setCustomId, root, save, applyCustom, categories, items };
+}
+
+type CreativeLibraryState = ReturnType<typeof useCreativeLibraryState>;
+function renderCreativeLibrary(state: CreativeLibraryState) {
+  const { anchor, onClose, root, tabs, tab, setTab, setCategory, setSearch, setActive,
+    search, selected, disabled, onChoose, items, error } = state;
   return createPortal(
     <div
       className={`af-creative-backdrop${anchor ? ' af-node-side-backdrop' : ''}`}
@@ -421,7 +429,27 @@ function CreativeLibraryPanel({
             <X size={18} />
           </button>
         </header>
-        {tab !== 'custom' ? (
+        {tab !== 'custom' ? renderCreativeCatalog(state) : renderCustomCreativePresets(state)}
+        <footer className="af-creative-footer">
+          <span role="status">
+            {error || (tab === 'custom' ? '前后缀随节点保存，不修改正文。'
+              : `${items.length} 个预设 · 收藏保存在本机账号${tab === 'motion' ? ' · 悬停预览运镜' : ''}`)}
+          </span>
+          {selected[tab] && (
+            <button type="button" disabled={disabled} onClick={() => onChoose(tab, null)}>
+              清除{labels[tab]}
+            </button>
+          )}
+        </footer>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function renderCreativeCatalog({ categories, category, setCategory, setActive, items, selected,
+  tab, active, disabled, onChoose, ready, saving, saved, save, error, catalog }: CreativeLibraryState) {
+  return (
           <>
             <nav className="af-creative-categories" aria-label="预设分类">
               {categories.map((c) => (
@@ -496,7 +524,12 @@ function CreativeLibraryPanel({
               )}
             </div>
           </>
-        ) : (
+  );
+}
+
+function renderCustomCreativePresets({ customId, saved, setCustomId, setName, setPrefix, setSuffix,
+  name, prefix, suffix, save, ready, saving, applyCustom, disabled }: CreativeLibraryState) {
+  return (
           <div className="af-creative-custom">
             <label>
               已保存预设
@@ -582,22 +615,5 @@ function CreativeLibraryPanel({
               </button>
             </div>
           </div>
-        )}
-        <footer className="af-creative-footer">
-          <span role="status">
-            {error ||
-              (tab === 'custom'
-                ? '前后缀随节点保存，不修改正文。'
-                : `${items.length} 个预设 · 收藏保存在本机账号${tab === 'motion' ? ' · 悬停预览运镜' : ''}`)}
-          </span>
-          {selected[tab] && (
-            <button type="button" disabled={disabled} onClick={() => onChoose(tab, null)}>
-              清除{labels[tab]}
-            </button>
-          )}
-        </footer>
-      </div>
-    </div>,
-    document.body,
   );
 }

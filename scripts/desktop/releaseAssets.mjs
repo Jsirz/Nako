@@ -29,14 +29,17 @@ export async function prepareRelease(directory, version) {
       : ['dmg', 'zip'].map(extension => `Nako-${version}-mac-${arch}.${extension}`);
     const checksumName = `SHA256SUMS-${target}-${arch}.txt`;
     const files = await readdir(source);
+    const deltas = target === 'mac' ? files.filter(name => name.endsWith('.delta')) : [];
+    for (const name of deltas) assert.match(name, /^[a-zA-Z0-9._-]+\.delta$/, 'Invalid delta filename');
+    const downloads = [...installers, ...deltas];
     for (const name of [...installers, metadata, checksumName])
       assert.ok(files.includes(name), `Missing release asset: ${target}-${arch}/${name}`);
     const entries = (await readFile(path.join(source, checksumName), 'utf8')).trim().split('\n');
-    assert.equal(entries.length, installers.length, `Incomplete checksum manifest: ${checksumName}`);
+    assert.equal(entries.length, downloads.length, `Incomplete checksum manifest: ${checksumName}`);
     const verified = new Set();
     for (const entry of entries) {
       const [checksum, name, extra] = entry.trim().split('  ');
-      assert.ok(!extra && installers.includes(name) && !verified.has(name), `Invalid checksum entry: ${entry}`);
+      assert.ok(!extra && downloads.includes(name) && !verified.has(name), `Invalid checksum entry: ${entry}`);
       assert.match(checksum, /^[a-f0-9]{64}$/);
       assert.equal(await sha256(path.join(source, name)), checksum, `Checksum mismatch: ${name}`);
       verified.add(name);
@@ -48,10 +51,11 @@ export async function prepareRelease(directory, version) {
       assert.ok(info.includes(`<sparkle:version>${version}</sparkle:version>`), `Wrong update version: ${source}`);
       assert.ok(info.includes('sparkle:edSignature=') && info.includes('<!-- sparkle-signatures:'),
         `Unsigned Sparkle metadata: ${source}`);
+      for (const name of deltas) assert.ok(info.includes(name), `Unreferenced delta: ${name}`);
     }
     assert.ok(info.includes(installers.find(name => name.endsWith(target === 'win' ? '.exe' : '.zip'))),
       `Update metadata does not reference the correct installer: ${source}`);
-    const names = [...installers, checksumName, metadata,
+    const names = [...downloads, checksumName, metadata,
       ...files.filter(name => installers.some(installer => name === `${installer}.blockmap`))];
     for (const name of names) {
       // Architecture-specific appcasts retain their original name in Actions artifacts.

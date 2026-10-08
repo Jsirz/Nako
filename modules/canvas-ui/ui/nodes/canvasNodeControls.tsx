@@ -175,17 +175,13 @@ interface DimensionProps {
 }
 export function CanvasDimensions(
   React: ComposerRuntime,
-  {
-    data,
-    onUpdate,
-    allRatios,
-    supportedRatios,
-    allResolutions,
-    supportedResolutions,
-    disabled,
-    videoSettings,
-  }: DimensionProps,
+  props: DimensionProps,
 ) {
+  const state = useDimensionMenu(React, props.disabled);
+  return renderDimensions(React, props, state);
+}
+
+function useDimensionMenu(React: ComposerRuntime, disabled: boolean | undefined) {
   const [open, setOpen] = React.useState(false),
     root = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -199,6 +195,15 @@ export function CanvasDimensions(
     document.addEventListener('mousedown', outside);
     return () => document.removeEventListener('mousedown', outside);
   }, [open]);
+  return { open, setOpen, root };
+}
+
+function renderDimensions(
+  React: ComposerRuntime,
+  { data, onUpdate, allRatios, supportedRatios, allResolutions, supportedResolutions,
+    disabled, videoSettings }: DimensionProps,
+  { open, setOpen, root }: ReturnType<typeof useDimensionMenu>,
+) {
   const ratio =
     data.aspectRatio && data.aspectRatio !== 'Auto'
       ? data.aspectRatio

@@ -1,3 +1,4 @@
+import { protocolError } from './errors.js';
 const text = value => typeof value === 'string' && value.length > 0 && value.length <= 255;
 const exact = (value, keys) => Object.keys(value).every(key => keys.includes(key));
 export function validTaskControl(value) {
@@ -7,9 +8,9 @@ export function validTaskControl(value) {
 }
 export function projectTaskResult(value, result) {
   if (value.tasks === undefined) return;
-  if (!Array.isArray(value.tasks) || value.tasks.length > 100) throw new Error('Invalid tasks');
+  if (!Array.isArray(value.tasks) || value.tasks.length > 100) throw protocolError('canvasTask', 'Invalid tasks');
   result.tasks = value.tasks.map(task => {
-    if (!text(task?.nodeId) || !['pending', 'success', 'failed', 'cancelled', 'unknown', 'missing', 'cancelling', 'unsupported'].includes(task.status)) throw new Error('Invalid task');
+    if (!text(task?.nodeId) || !['pending', 'success', 'failed', 'cancelled', 'unknown', 'missing', 'cancelling', 'unsupported'].includes(task.status)) throw protocolError('canvasTask', 'Invalid task');
     return { nodeId: task.nodeId, status: task.status, remoteMayContinue: task.remoteMayContinue === true,
       ...(typeof task.text === 'string' ? { text: task.text } : {}) };
   });

@@ -1,3 +1,4 @@
+import { mediaError } from '../../../modules/contracts/mediaDelivery.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, realpath, readFile, rm, mkdir, open } from 'node:fs/promises';
@@ -9,17 +10,17 @@ import { resolveMediaArtifact } from '../../../modules/asset-media/api/server/me
 const execute = promisify(execFile);
 const suffix = process.platform === 'win32' ? '.exe' : '';
 export async function resolveInspectionSource(libraryDirectory, projectId, url, type) {
-  if (!['audio', 'video', 'image'].includes(type) || !/^[A-Za-z0-9_-]{1,128}$/.test(projectId || '')) throw new Error('素材项目无效');
+  if (!['audio', 'video', 'image'].includes(type) || !/^[A-Za-z0-9_-]{1,128}$/.test(projectId || '')) throw mediaError('素材项目无效', { moduleId: 'media.filesystem', operation: 'inspect' });
   const prefix = `/library/media/${projectId}/${type}s/`;
   const decoded = decodeURIComponent(String(url).split('?')[0]);
-  if (!decoded.startsWith(prefix)) throw new Error('只能解析当前项目中的素材');
+  if (!decoded.startsWith(prefix)) throw mediaError('只能解析当前项目中的素材', { moduleId: 'media.filesystem', operation: 'inspect' });
   const name = decoded.slice(prefix.length);
   // eslint-disable-next-line no-control-regex -- Reject control bytes in project asset paths.
-  if (!name || name.startsWith('.') || /[\\/:\x00-\x1f]/.test(name)) throw new Error('素材路径无效');
+  if (!name || name.startsWith('.') || /[\\/:\x00-\x1f]/.test(name)) throw mediaError('素材路径无效', { moduleId: 'media.filesystem', operation: 'inspect' });
   const root = await realpath(libraryDirectory);
   const expected = path.join(root, 'media', projectId, `${type}s`, name);
   const file = await realpath(expected);
-  if (file.toLowerCase() !== expected.toLowerCase()) throw new Error('素材链接超出项目范围');
+  if ((process.platform === 'win32' ? file.toLowerCase() !== expected.toLowerCase() : file !== expected)) throw mediaError('素材链接超出项目范围', { moduleId: 'media.filesystem', operation: 'inspect' });
   return file;
 }
 
@@ -32,13 +33,13 @@ export function createMediaInspector({ libraryDirectory, run = execute, binDirec
     const prefix = Buffer.alloc(32);
     try { await handle.read(prefix, 0, 32, 0); } finally { await handle.close(); }
     const artifact = resolveMediaArtifact({ filename: file, prefix, requireRecognizedContent: true });
-    if (artifact.kind !== type) throw new Error('素材内容与类型不一致');
+    if (artifact.kind !== type) throw mediaError('素材内容与类型不一致', { moduleId: 'media.filesystem', operation: 'inspect' });
     const options = { windowsHide: true, timeout: 0, maxBuffer: Infinity, signal };
     const probe = JSON.parse((await run(path.join(binDirectory, `ffprobe${suffix}`), ['-v', 'error', '-protocol_whitelist', 'file,pipe', '-show_format', '-show_streams', '-of', 'json', file], options)).stdout);
     const duration = Number(probe.format?.duration || 0);
-    if (!Number.isFinite(duration) || duration <= 0) throw new Error('音视频时长无效');
+    if (!Number.isFinite(duration) || duration <= 0) throw mediaError('音视频时长无效', { moduleId: 'media.filesystem', operation: 'inspect' });
     const selected = times ?? (type === 'video' ? [0.05, 0.35, 0.65, 0.95].map(r => duration * r) : []);
-    if (!Array.isArray(selected) || selected.length > 20 || selected.some(t => !Number.isFinite(t) || t < 0 || t >= duration)) throw new Error('抽帧时间超出范围');
+    if (!Array.isArray(selected) || selected.length > 20 || selected.some(t => !Number.isFinite(t) || t < 0 || t >= duration)) throw mediaError('抽帧时间超出范围', { moduleId: 'media.filesystem', operation: 'inspect' });
     const temporary = await mkdtemp(path.join(os.tmpdir(), 'nako-inspect-'));
     try {
       const frames = [];

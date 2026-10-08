@@ -16,7 +16,7 @@ import type {
   WorkflowVerifiedCanvasInsertion,
   WorkflowCanvasOutputValue,
 } from '../../../contracts/workflowCanvasNodeProtocol';
-import type { WorkflowCanvasBlueprint } from '../../../local-runtime/api/ui/local/workflowManagerClient';
+import type { WorkflowCanvasBlueprint } from '../../../contracts/workflowCanvas';
 
 export { createNodeOperations, createNodeMenuOperations } from './canvasNodeOperations';
 export { useCanvasContextMenu } from '../canvas/canvasContextHooks';
@@ -46,6 +46,10 @@ function eventDetail<T>(event: Event): T {
   return (event as CustomEvent<T>).detail;
 }
 
+type WorkflowEventListener = <T>(name: string, handler: (detail: T) => void) => void;
+const captureWorkflowExample = (nodes: CanvasNode[], id: string) =>
+  browserServices.__NAKO_WORKFLOW_NODES__?.captureExample(nodes, id);
+
 /** Listeners act on one live store; no side effects run inside React state updaters. */
 export function attachWorkflowNodeEvents(
   store: NodeStore,
@@ -58,8 +62,7 @@ export function attachWorkflowNodeEvents(
     listeners.set(name, listener);
     window.addEventListener(name, listener);
   };
-  const capture = (nodes: CanvasNode[], id: string) =>
-    browserServices.__NAKO_WORKFLOW_NODES__?.captureExample(nodes, id);
+  const capture = captureWorkflowExample;
   listen<
     | WorkflowCanvasBlueprint
     | {
@@ -182,6 +185,19 @@ export function attachWorkflowNodeEvents(
       capture(after, target.id);
     },
   );
+  listenWorkflowOutputNodes(store, runtime, listen);
+  return () => {
+    listeners.forEach((listener, name) => window.removeEventListener(name, listener));
+    frames.forEach(cancelAnimationFrame);
+  };
+}
+
+function listenWorkflowOutputNodes(
+  store: NodeStore,
+  runtime: Pick<StateRuntime, 'getWidth' | 'createId'>,
+  listen: WorkflowEventListener,
+) {
+  const capture = captureWorkflowExample;
   listen<{
     sourceNodeId: string;
     runId: string;
@@ -248,10 +264,6 @@ export function attachWorkflowNodeEvents(
     store.setSelected(created.map((node) => node.id));
     capture(after, source.id);
   });
-  return () => {
-    listeners.forEach((listener, name) => window.removeEventListener(name, listener));
-    frames.forEach(cancelAnimationFrame);
-  };
 }
 
 export function useCanvasNodes(hooks: Hooks, runtime: StateRuntime) {

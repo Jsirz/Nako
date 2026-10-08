@@ -1,6 +1,6 @@
 import type * as ReactTypes from 'react';
 import { installMediaDownloadFileName } from '../../../asset-media/api/ui/media/mediaDownloadFileName';
-import { createWorkflowManagerClient } from '../../../local-runtime/api/ui/local/workflowManagerClient';
+import { localRuntimeUi } from '../../../kernel/browser';
 import { UI_FEATURES } from '../../../contracts/uiFeatures';
 import { Grid2X2, Globe, Box } from 'lucide-react';
 type Runtime = Pick<typeof ReactTypes, 'createElement' | 'Fragment' | 'useState' | 'useEffect'>;
@@ -15,6 +15,7 @@ interface MediaNode {
 }
 interface Props {
   data: MediaNode;
+  readOnly?: boolean;
   selected?: boolean;
   showControls?: boolean;
   isDragging?: boolean;
@@ -46,6 +47,11 @@ const imageTypes = new Set(['Image', 'Upload Image']),
   videoTypes = new Set(['Video', 'Upload Video']),
   audioTypes = new Set(['Audio', 'Upload Audio']);
 export function CanvasMediaToolbar(React: Runtime, props: Props, components: Components) {
+  const state = useMediaToolbarMenus(React, props);
+  return renderMediaToolbar(React, props, components, state);
+}
+
+function useMediaToolbarMenus(React: Runtime, props: Props) {
   const [panoramaOpen, setPanoramaOpen] = React.useState(false);
   const [upscaleOpen, setUpscaleOpen] = React.useState(false);
   const [rhConfigured, setRhConfigured] = React.useState<boolean | null>(null);
@@ -54,7 +60,7 @@ export function CanvasMediaToolbar(React: Runtime, props: Props, components: Com
     setRhConfigured(null);
     if (!canUpscale) return;
     let active = true, revision = 0;
-    const client = createWorkflowManagerClient();
+    const client = localRuntimeUi().createWorkflowClient();
     const refresh = () => {
       const request = ++revision;
       void client.getRunningHubCredentialStatus().then(
@@ -70,6 +76,16 @@ export function CanvasMediaToolbar(React: Runtime, props: Props, components: Com
     setUpscaleOpen(false);
     setPanoramaOpen(false);
   }, [props.data.id, props.selected]);
+  return { panoramaOpen, setPanoramaOpen, upscaleOpen, setUpscaleOpen, rhConfigured };
+}
+
+function renderMediaToolbar(
+  React: Runtime,
+  props: Props,
+  components: Components,
+  { panoramaOpen, setPanoramaOpen, upscaleOpen, setUpscaleOpen, rhConfigured }:
+    ReturnType<typeof useMediaToolbarMenus>,
+) {
   const { data: node, selected, showControls, isDragging, zoom, fileInputRef } = props;
   const { Tooltip } = components;
   const stop = (event: { stopPropagation(): void }) => event.stopPropagation();
@@ -126,7 +142,7 @@ export function CanvasMediaToolbar(React: Runtime, props: Props, components: Com
       }}
     >
       <div className="flex items-center gap-2 px-2 py-1 bg-[var(--nk-input)] rounded-full border border-[var(--nk-border-control)] shadow-xl backdrop-blur-md">
-        {imageTypes.has(node.type) && node.resultUrl && (
+        {!props.readOnly && imageTypes.has(node.type) && node.resultUrl && (
           <React.Fragment>
             {action('标注', components.annotate, () => props.onAnnotate?.(node.id))}
             {action('图片编辑', components.crop, () => props.onCrop?.(node.id, 'editor'))}
@@ -232,13 +248,13 @@ export function CanvasMediaToolbar(React: Runtime, props: Props, components: Com
             <div className="w-px h-3 bg-[var(--nk-selected)] mx-0.5" />
           </React.Fragment>
         )}
-        {node.type.startsWith('Upload ') &&
+        {!props.readOnly && node.type.startsWith('Upload ') &&
           fileInputRef &&
           action('替换素材', components.replace, () => fileInputRef.current?.click())}
         {(imageTypes.has(node.type) || videoTypes.has(node.type) || audioTypes.has(node.type)) &&
           node.resultUrl &&
           !node.uploadPending &&
-          props.onSaveAsset &&
+          !props.readOnly && props.onSaveAsset &&
           action('保存到资产', components.saveAsset, () => props.onSaveAsset?.(node.id))}
         {node.resultUrl && action('下载', components.download, download)}
         {node.resultUrl &&

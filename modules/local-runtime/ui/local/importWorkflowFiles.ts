@@ -1,3 +1,4 @@
+import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import {
 autoPair,
@@ -69,7 +70,7 @@ export function importWorkflowFiles(
             title: definition.name,
           });
           const adapter = browserServices.__NAKO_WORKFLOW_NODES__;
-          if (!adapter) throw new Error('画布节点适配器尚未加载，请刷新后重试。');
+          if (!adapter) throw localRuntimeError('画布节点适配器尚未加载，请刷新后重试。', 'importWorkflowFiles');
           const insertion = await adapter.addToCanvas(blueprint);
           focusInsertedWorkflow(insertion.nodeIds);
           await loadDeployedRecords();

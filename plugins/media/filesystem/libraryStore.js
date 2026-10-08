@@ -1,108 +1,114 @@
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
+import { mediaError } from '../../../modules/contracts/mediaDelivery.js';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
 import { generateAssetId, saveAssetMetadata } from '../../../modules/asset-media/api/server/utils/imageHelpers.js';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
 
-export function createFilesystemLibraryStore({ libraryDirectory, publicDirectory, logger }) {
-    const baseLibraryDirectory = libraryDirectory;
-    const libraryAssetsDirectory = path.join(libraryDirectory, 'assets');
-    const getUrlPrefix = () => '/library';
-    const getProjectMediaDir = (projectId = 'default', type) => {
+class FilesystemLibraryStore {
+    constructor({ libraryDirectory, publicDirectory, logger = createModuleLogger('media.filesystem') }) {
+        Object.assign(this, { libraryDirectory, publicDirectory, logger });
+        this.LIBRARY_ASSETS_DIR = path.join(libraryDirectory, 'assets');
+        this.LIBRARY_WORKFLOWS_DIR = path.join(libraryDirectory, 'workflows');
+        for (const directory of [this.LIBRARY_ASSETS_DIR, this.LIBRARY_WORKFLOWS_DIR]) {
+            if (!fs.existsSync(directory)) fs.mkdirSync(directory, { recursive: true });
+        }
+    }
+    getUrlPrefix = () => '/library';
+    getProjectMediaDir = (projectId = 'default', type) => {
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(projectId) || !['images', 'videos', 'audios'].includes(type))
-            throw new PluginError(ERRORS.permission, 'Invalid project media location');
-        const directory = path.join(libraryDirectory, 'media', projectId, type);
+            throw new PluginError(ERRORS.permission, 'Invalid project media location', { context: { moduleId: 'media.filesystem', operation: 'libraryImport' } });
+        const directory = path.join(this.libraryDirectory, 'media', projectId, type);
         fs.mkdirSync(directory, { recursive: true });
         return directory;
     };
-    const resolveLocalPath = value => {
+    resolveLocalPath = value => {
         try {
             const pathname = new URL(String(value), 'http://localhost').pathname;
             if (!pathname.startsWith('/library/')) return null;
-            const target = path.resolve(libraryDirectory, decodeURIComponent(pathname.slice('/library/'.length)));
-            const relative = path.relative(path.resolve(libraryDirectory), target);
+            const target = path.resolve(this.libraryDirectory, decodeURIComponent(pathname.slice('/library/'.length)));
+            const relative = path.relative(path.resolve(this.libraryDirectory), target);
             return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? target : null;
         } catch { return null; }
     };
-    const LIBRARY_ASSETS_DIR = libraryAssetsDirectory;
-    const LIBRARY_WORKFLOWS_DIR = path.join(baseLibraryDirectory, 'workflows');
-    for (const directory of [LIBRARY_ASSETS_DIR, LIBRARY_WORKFLOWS_DIR]) {
-        if (!fs.existsSync(directory)) fs.mkdirSync(directory, { recursive: true });
-    }
-
 // --- Library Assets API ---
 
-const LIBRARY_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']);
-const LIBRARY_VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.m4v', '.mkv']);
-const LIBRARY_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.m4a', '.ogg', '.aac', '.flac']);
+    LIBRARY_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']);
+    LIBRARY_VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.m4v', '.mkv']);
+    LIBRARY_AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.m4a', '.ogg', '.aac', '.flac']);
 
-function sanitizeAssetFileName(name) {
+sanitizeAssetFileName = (name) => {
     const safeName = String(name || '')
         .trim()
         .replace(/[\\/:*?"<>|]/g, '_')
         .replace(/\s+/g, ' ')
         .replace(/[. ]+$/g, '');
     return safeName || 'asset';
-}
+};
 
-function encodeLibraryAssetId(relativePath) {
+encodeLibraryAssetId = (relativePath) => {
     return Buffer.from(relativePath, 'utf8').toString('base64url');
-}
+};
 
-function decodeLibraryAssetId(id) {
+decodeLibraryAssetId = (id) => {
     try {
         return Buffer.from(String(id || ''), 'base64url').toString('utf8');
     } catch {
         return null;
     }
-}
+};
 
-function getLibraryAssetType(fileName) {
+getLibraryAssetType = (fileName) => {
+    const { LIBRARY_IMAGE_EXTENSIONS, LIBRARY_VIDEO_EXTENSIONS, LIBRARY_AUDIO_EXTENSIONS } = this;
     const ext = path.extname(fileName).toLowerCase();
     if (LIBRARY_IMAGE_EXTENSIONS.has(ext)) return 'image';
     if (LIBRARY_VIDEO_EXTENSIONS.has(ext)) return 'video';
     if (LIBRARY_AUDIO_EXTENSIONS.has(ext)) return 'audio';
     return null;
-}
+};
 
-function getMediaTypeFromLibraryType(type) {
+getMediaTypeFromLibraryType = (type) => {
     if (type === 'video') return 'videos';
     if (type === 'audio') return 'audios';
     return 'images';
-}
+};
 
-function buildLibraryAssetUrl(relativePath) {
+buildLibraryAssetUrl = (relativePath) => {
+    const { getUrlPrefix } = this;
     const normalizedPath = relativePath.split(path.sep).join('/');
     const encodedPath = normalizedPath
         .split('/')
         .map(part => encodeURIComponent(part))
         .join('/');
     return `${getUrlPrefix()}/assets/${encodedPath}`;
-}
+};
 
-function getLibraryAssetMetaPathFromFile(filePath) {
+getLibraryAssetMetaPathFromFile = (filePath) => {
     const parsed = path.parse(filePath);
     return path.join(parsed.dir, `${parsed.name}.json`);
-}
+};
 
-function readLibraryAssetMeta(filePath) {
+readLibraryAssetMeta = (filePath) => {
+    const { getLibraryAssetMetaPathFromFile, logger } = this;
     const metaPath = getLibraryAssetMetaPathFromFile(filePath);
     if (!fs.existsSync(metaPath)) return null;
 
     try {
         return JSON.parse(fs.readFileSync(metaPath, 'utf8'));
     } catch (error) {
-        logger.warn(`[Library] Failed to read asset metadata: ${metaPath}`, error);
+        logger.warn('Library metadata read failed', { operation: 'readLibraryMetadata', code: error.code });
         return null;
     }
-}
+};
 
-function writeLibraryAssetMeta(targetDir, assetId, metadata) {
+writeLibraryAssetMeta = (targetDir, assetId, metadata) => {
     const metaPath = path.join(targetDir, `${assetId}.json`);
     fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2), 'utf8');
-}
+};
 
-function buildLibraryAssetEntry(relativePath, fallback = {}) {
+buildLibraryAssetEntry = (relativePath, fallback = {}) => {
+    const { LIBRARY_ASSETS_DIR, readLibraryAssetMeta, getLibraryAssetType, encodeLibraryAssetId, buildLibraryAssetUrl } = this;
     const absolutePath = path.join(LIBRARY_ASSETS_DIR, relativePath);
     const stats = fs.statSync(absolutePath);
     const createdAt = stats.birthtimeMs > 0 ? stats.birthtime : stats.mtime;
@@ -141,9 +147,10 @@ function buildLibraryAssetEntry(relativePath, fallback = {}) {
         duration,
         createdAt: metadata.createdAt || createdAt.toISOString()
     };
-}
+};
 
-function listLibraryAssets() {
+listLibraryAssets = () => {
+    const { LIBRARY_ASSETS_DIR, getLibraryAssetType, buildLibraryAssetEntry } = this;
     const assets = [];
 
     if (!fs.existsSync(LIBRARY_ASSETS_DIR)) {
@@ -175,41 +182,44 @@ function listLibraryAssets() {
 
     assets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return assets;
-}
+};
 
-function encodeLibraryWorkflowId(relativePath) {
+encodeLibraryWorkflowId = (relativePath) => {
     return Buffer.from(relativePath, 'utf8').toString('base64url');
-}
+};
 
-function decodeLibraryWorkflowId(id) {
+decodeLibraryWorkflowId = (id) => {
     try {
         return Buffer.from(String(id || ''), 'base64url').toString('utf8');
     } catch {
         return null;
     }
-}
+};
 
-function buildLibraryWorkflowUrl(relativePath) {
+buildLibraryWorkflowUrl = (relativePath) => {
+    const { getUrlPrefix } = this;
     const normalizedPath = relativePath.split(path.sep).join('/');
     const encodedPath = normalizedPath
         .split('/')
         .map(part => encodeURIComponent(part))
         .join('/');
     return `${getUrlPrefix()}/workflows/${encodedPath}`;
-}
+};
 
-function getWorkflowPresetJsonInfo(category, folderName) {
+getWorkflowPresetJsonInfo = (category, folderName) => {
+    const { LIBRARY_WORKFLOWS_DIR } = this;
     const presetDir = path.join(LIBRARY_WORKFLOWS_DIR, category, folderName);
     const jsonPath = path.join(presetDir, `${folderName}.json`);
     const coverPath = path.join(presetDir, `${folderName}.png`);
     return { presetDir, jsonPath, coverPath };
-}
+};
 
-function readJsonFile(filePath) {
+readJsonFile = (filePath) => {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-}
+};
 
-function buildWorkflowPresetEntry(category, folderName) {
+buildWorkflowPresetEntry = (category, folderName) => {
+    const { getWorkflowPresetJsonInfo, readJsonFile, encodeLibraryWorkflowId, buildLibraryWorkflowUrl } = this;
     const { jsonPath, coverPath } = getWorkflowPresetJsonInfo(category, folderName);
     if (!fs.existsSync(jsonPath)) return null;
 
@@ -228,9 +238,10 @@ function buildWorkflowPresetEntry(category, folderName) {
         nodeCount: Array.isArray(payload.nodes) ? payload.nodes.length : 0,
         createdAt: payload.createdAt || createdAt.toISOString()
     };
-}
+};
 
-function listLibraryWorkflowPresets() {
+listLibraryWorkflowPresets = () => {
+    const { LIBRARY_WORKFLOWS_DIR, buildWorkflowPresetEntry } = this;
     if (!fs.existsSync(LIBRARY_WORKFLOWS_DIR)) return [];
 
     const workflows = [];
@@ -249,9 +260,10 @@ function listLibraryWorkflowPresets() {
     }
 
     return workflows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-}
+};
 
-function collectNodeAssetCandidates(node) {
+collectNodeAssetCandidates = (node) => {
+    const { getUrlPrefix, resolveLocalPath, readJsonFile } = this;
     const candidates = [];
     const pending = [{ record: node, owner: node.projectId, parameters: false }];
     const types = { image: 'images', mask: 'images', video: 'videos', audio: 'audios', images: 'images', videos: 'videos', audios: 'audios' };
@@ -285,7 +297,7 @@ function collectNodeAssetCandidates(node) {
                     const metadataUrl = `${getUrlPrefix()}/media/${encodeURIComponent(projectId)}/${type}/${encodeURIComponent(id)}.json`;
                     const metadataPath = resolveLocalPath(metadataUrl);
                     const metadata = metadataPath && fs.existsSync(metadataPath) ? readJsonFile(metadataPath) : null;
-                    if (!metadata?.filename || path.basename(metadata.filename) !== metadata.filename) throw new Error('组合引用的素材不存在，请重新上传。');
+                    if (!metadata?.filename || path.basename(metadata.filename) !== metadata.filename) throw mediaError('组合引用的素材不存在，请重新上传。');
                     add(record, 'assetId', `${getUrlPrefix()}/media/${encodeURIComponent(projectId)}/${type}/${encodeURIComponent(metadata.filename)}`);
                 }
             }
@@ -294,9 +306,9 @@ function collectNodeAssetCandidates(node) {
         pending.push({ record: record.parameterValues, owner: projectId, parameters: true });
     }
     return candidates;
-}
+};
 
-function updateNodeAssetField(candidate, value, projectId) {
+updateNodeAssetField = (candidate, value, projectId) => {
     const { record, field } = candidate;
     if (field === 'assetId') record.assetId = projectId ? path.parse(value).name : value;
     else record[field] = value;
@@ -305,9 +317,10 @@ function updateNodeAssetField(candidate, value, projectId) {
         if (projectId) record.projectId = projectId;
         delete record.networkUrl;
     }
-}
+};
 
-function importWorkflowPresetNodeAssets(nodes, presetDir, folderName, projectId) {
+importWorkflowPresetNodeAssets = (nodes, presetDir, folderName, projectId) => {
+    const { collectNodeAssetCandidates, updateNodeAssetField, getLibraryAssetType, getMediaTypeFromLibraryType, getProjectMediaDir, getUrlPrefix } = this;
     const importedAssets = new Map();
     return nodes.map((node) => {
         const nextNode = JSON.parse(JSON.stringify(node));
@@ -323,10 +336,10 @@ function importWorkflowPresetNodeAssets(nodes, presetDir, folderName, projectId)
             }
             const absoluteSourcePath = path.resolve(presetDir, currentValue);
             const relativeSource = path.relative(presetDir, absoluteSourcePath);
-            if (relativeSource.startsWith('..') || path.isAbsolute(relativeSource)) throw new Error('组合素材路径无效。');
-            if (!fs.existsSync(absoluteSourcePath)) throw new Error('组合素材文件缺失，请重新保存组合。');
+            if (relativeSource.startsWith('..') || path.isAbsolute(relativeSource)) throw mediaError('组合素材路径无效。');
+            if (!fs.existsSync(absoluteSourcePath)) throw mediaError('组合素材文件缺失，请重新保存组合。');
             const actualRelative = path.relative(fs.realpathSync(presetDir), fs.realpathSync(absoluteSourcePath));
-            if (actualRelative.startsWith('..') || path.isAbsolute(actualRelative)) throw new Error('组合素材路径无效。');
+            if (actualRelative.startsWith('..') || path.isAbsolute(actualRelative)) throw mediaError('组合素材路径无效。');
 
             const ext = path.extname(absoluteSourcePath).toLowerCase();
             const libraryType = getLibraryAssetType(absoluteSourcePath) || getLibraryAssetType(ext);
@@ -379,10 +392,11 @@ function importWorkflowPresetNodeAssets(nodes, presetDir, folderName, projectId)
 
         return nextNode;
     });
-}
+};
 
 // Save curated asset to library
-async function save(req) {
+async save(req) {
+    const { sanitizeAssetFileName, LIBRARY_ASSETS_DIR, resolveLocalPath, logger, getLibraryAssetType, writeLibraryAssetMeta, buildLibraryAssetEntry } = this;
     try {
         const { sourceUrl, name, category, meta, ownership = '' } = req.body;
         if (typeof name !== 'string' || !name.trim() || name.trim().length > 200
@@ -439,8 +453,8 @@ async function save(req) {
             const sourcePath = resolveLocalPath(sourceUrl);
 
             if (!sourcePath || !fs.existsSync(sourcePath)) {
-                logger.error(`Save asset failed: Source file not found. URL: ${sourceUrl}, Path: ${sourcePath}`);
-                return { status: 404, body: { error: "Source file not found", debug: { sourceUrl, sourcePath } } };
+                logger.error('Library source file not found', { operation: 'saveLibraryAsset', code: ERRORS.mediaNotFound });
+                return { status: 404, body: { error: 'Source file not found', code: ERRORS.mediaNotFound } };
             }
 
             // Copy file
@@ -499,23 +513,25 @@ async function save(req) {
 
         return { status: 200, body: { success: true, asset: newEntry } };
     } catch (error) {
-        logger.error("Save to library error:", error);
+        logger.error('Library save failed', { operation: 'save', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
 // List library assets
-async function list(req) {
+async list(req) {
+    const { listLibraryAssets, logger } = this;
     try {
         return { status: 200, body: listLibraryAssets() };
     } catch (error) {
-        logger.error("List library error:", error);
+        logger.error('Library list failed', { operation: 'list', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
 // Import library asset into current project media folder
-async function importAsset(req) {
+async importAsset(req) {
+    const { decodeLibraryAssetId, LIBRARY_ASSETS_DIR, getLibraryAssetType, readLibraryAssetMeta, getMediaTypeFromLibraryType, getProjectMediaDir, getUrlPrefix, logger } = this;
     try {
         const { id, projectId } = req.body;
         const relativePath = decodeLibraryAssetId(id);
@@ -605,13 +621,14 @@ async function importAsset(req) {
             }
         } };
     } catch (error) {
-        logger.error('Import library asset error:', error);
+        logger.error('Library import failed', { operation: 'importAsset', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
 // Editing presentation metadata keeps the media path/id stable for existing canvas references.
-async function update(req) {
+async update(req) {
+    const { decodeLibraryAssetId, getLibraryAssetType, LIBRARY_ASSETS_DIR, getLibraryAssetMetaPathFromFile, buildLibraryAssetEntry } = this;
     try {
         const fields = req.body;
         if (!fields || typeof fields !== 'object' || Array.isArray(fields)
@@ -638,7 +655,7 @@ async function update(req) {
         }
         // Preserve unknown metadata; malformed metadata must never be silently replaced.
         const previous = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {};
-        if (!previous || typeof previous !== 'object' || Array.isArray(previous)) throw new Error('Invalid metadata');
+        if (!previous || typeof previous !== 'object' || Array.isArray(previous)) throw mediaError('Invalid metadata');
         const metadata = {
             ...previous,
             name: fields.name.trim(), title: fields.name.trim(),
@@ -658,7 +675,8 @@ async function update(req) {
 }
 
 // Delete library asset
-async function remove(req) {
+async remove(req) {
+    const { decodeLibraryAssetId, LIBRARY_ASSETS_DIR, getLibraryAssetMetaPathFromFile, logger } = this;
     try {
         const { id } = req.params;
         const relativePath = decodeLibraryAssetId(id);
@@ -683,23 +701,25 @@ async function remove(req) {
 
         return { status: 200, body: { success: true } };
     } catch (error) {
-        logger.error("Delete library asset error:", error);
+        logger.error('Library delete failed', { operation: 'remove', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
 // --- Library Workflow Presets API ---
 
-async function listWorkflows(_req) {
+async listWorkflows(_req) {
+    const { listLibraryWorkflowPresets, logger } = this;
     try {
         return { status: 200, body: listLibraryWorkflowPresets() };
     } catch (error) {
-        logger.error('List library workflow presets error:', error);
+        logger.error('Library workflow list failed', { operation: 'listWorkflows', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
-async function importWorkflow(req) {
+async importWorkflow(req) {
+    const { decodeLibraryWorkflowId, getWorkflowPresetJsonInfo, readJsonFile, importWorkflowPresetNodeAssets, logger } = this;
     try {
         const { id, projectId } = req.body;
         const relativeDir = decodeLibraryWorkflowId(id);
@@ -730,12 +750,13 @@ async function importWorkflow(req) {
             }
         } };
     } catch (error) {
-        logger.error('Import library workflow preset error:', error);
+        logger.error('Library workflow import failed', { operation: 'importWorkflow', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
-async function removeWorkflow(req) {
+async removeWorkflow(req) {
+    const { decodeLibraryWorkflowId, LIBRARY_WORKFLOWS_DIR, logger } = this;
     try {
         const relativeDir = decodeLibraryWorkflowId(req.params.id);
         if (!relativeDir) {
@@ -753,7 +774,7 @@ async function removeWorkflow(req) {
         fs.rmSync(presetDir, { recursive: true, force: true });
         return { status: 200, body: { success: true } };
     } catch (error) {
-        logger.error('Delete library workflow preset error:', error);
+        logger.error('Library workflow delete failed', { operation: 'removeWorkflow', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
@@ -762,7 +783,8 @@ async function removeWorkflow(req) {
 
 // List public workflows (shipped with the repo in public/workflows/)
 // Dynamically scans directory - no need to maintain index.json manually
-async function listPublicWorkflows(req) {
+async listPublicWorkflows(req) {
+    const { publicDirectory, logger } = this;
     try {
         const publicWorkflowsDir = path.join(publicDirectory, 'workflows');
 
@@ -798,7 +820,7 @@ async function listPublicWorkflows(req) {
                     coverUrl: workflow.coverUrl || null
                 };
             } catch (parseError) {
-                logger.warn(`Skipping invalid workflow file: ${file}`, parseError.message);
+                logger.warn('Invalid public workflow skipped', { operation: 'listPublicWorkflows', filename: file, code: parseError.code });
                 return null;
             }
         }).filter(Boolean); // Remove any null entries from parse errors
@@ -808,13 +830,14 @@ async function listPublicWorkflows(req) {
 
         return { status: 200, body: workflows };
     } catch (error) {
-        logger.error("List public workflows error:", error);
+        logger.error('Public workflows list failed', { operation: 'listPublicWorkflows', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
 // Load specific public workflow
-async function readPublicWorkflow(req) {
+async readPublicWorkflow(req) {
+    const { publicDirectory, logger } = this;
     try {
         const publicWorkflowsDir = path.join(publicDirectory, 'workflows');
         if (!/^[A-Za-z0-9_-]{1,128}$/.test(req.params.id)) return { status: 400, body: { error: 'Invalid workflow id' } };
@@ -827,10 +850,15 @@ async function readPublicWorkflow(req) {
         const content = fs.readFileSync(filePath, 'utf8');
         return { status: 200, body: JSON.parse(content) };
     } catch (error) {
-        logger.error("Load public workflow error:", error);
+        logger.error('Public workflow load failed', { operation: 'readPublicWorkflow', code: error.code });
         return { status: 500, body: { error: error.message } };
     }
 }
 
-    return Object.freeze({ save, list, importAsset, update, remove, listWorkflows, importWorkflow, removeWorkflow, listPublicWorkflows, readPublicWorkflow });
+}
+
+export function createFilesystemLibraryStore(options) {
+    const store = new FilesystemLibraryStore(options);
+    const operations = ['save', 'list', 'importAsset', 'update', 'remove', 'listWorkflows', 'importWorkflow', 'removeWorkflow', 'listPublicWorkflows', 'readPublicWorkflow'];
+    return Object.freeze(Object.fromEntries(operations.map(name => [name, store[name].bind(store)])));
 }

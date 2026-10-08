@@ -1,3 +1,4 @@
+import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import path from 'node:path';
 
 const LEGACY_ANIMA_WEBAPP_ID = '2079545014811885570';
@@ -10,10 +11,7 @@ function clone(value) {
 function assertNode(plan, nodeId, classType) {
   const node = plan?.[nodeId];
   if (!node || node.class_type !== classType || !node.inputs || typeof node.inputs !== 'object') {
-    const error = new Error('RunningHub AI 应用的兼容工作流已变化，请重新发布应用后再试。');
-    error.code = 'RUNNINGHUB_WEBAPP_COMPATIBILITY_DRIFT';
-    error.status = 409;
-    throw error;
+    throw workflowRuntimeError('RunningHub AI 应用的兼容工作流已变化，请重新发布应用后再试。', 'assertCompatibilityNode', 'RUNNINGHUB_WEBAPP_COMPATIBILITY_DRIFT', 409);
   }
   return node;
 }
@@ -35,10 +33,7 @@ export function adaptLegacyAnimaWebAppWorkflow(source) {
     || !promptPreview.inputs.source
     || !promptJoin.inputs
   ) {
-    const error = new Error('RunningHub AI 应用的兼容工作流已变化，请重新发布应用后再试。');
-    error.code = 'RUNNINGHUB_WEBAPP_COMPATIBILITY_DRIFT';
-    error.status = 409;
-    throw error;
+    throw workflowRuntimeError('RunningHub AI 应用的兼容工作流已变化，请重新发布应用后再试。', 'adaptLegacyAnimaWebAppWorkflow', 'RUNNINGHUB_WEBAPP_COMPATIBILITY_DRIFT', 409);
   }
 
   // The published app still points at the legacy Anima LLLite node contract and

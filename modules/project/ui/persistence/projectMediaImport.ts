@@ -1,3 +1,4 @@
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import type { ProjectDocument } from './canvasProjectDocument';
 
 type RecordValue = Record<string, unknown>;
@@ -13,7 +14,7 @@ async function copyAsset(source: Source, projectId: string): Promise<Asset> {
   });
   const result = await response.json();
   if (!response.ok || !result.asset?.id || result.asset.projectId !== projectId)
-    throw new Error(result.error || '项目素材复制失败。');
+    throw new ProjectError(PROJECT_ERRORS.request, result.error || '项目素材复制失败。', { status: response.status, context: { operation: 'copyProjectAsset', projectId } });
   return result.asset;
 }
 
@@ -26,7 +27,7 @@ export async function prepareProjectMedia(
   const result: ProjectDocument = JSON.parse(JSON.stringify(document));
   const copied = new Map<string, Promise<Asset>>();
   const copy = (source: Source) => {
-    if (!valid()) throw new Error('项目导入已取消。');
+    if (!valid()) throw new ProjectError(PROJECT_ERRORS.stale, '项目导入已取消。', { context: { operation: 'importProjectMedia', projectId } });
     const key = JSON.stringify(source);
     if (!copied.has(key)) copied.set(key, transfer(source, projectId));
     return copied.get(key)!;

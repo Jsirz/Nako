@@ -1,6 +1,8 @@
+import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import * as React from 'react';
 import { ArrowRight, Images, X } from 'lucide-react';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { canvasProjectUi } from '../projectUiServices';
+import { showcaseArchiveSource } from '../../../contracts/showcaseArchive.js';
 import './shareShowcase.css';
 
 interface ShowcaseCase {
@@ -23,7 +25,7 @@ function parseCases(value: unknown): ShowcaseCase[] {
     if (!item || typeof item !== 'object') return [];
     const candidate = item as Record<string, unknown>;
     const cover = localSharePath(candidate.cover, '.png');
-    const archive = localSharePath(candidate.archive, '.nako');
+    const archive = showcaseArchiveSource(candidate.archive);
     if (!cover || !archive || typeof candidate.id !== 'string' || typeof candidate.title !== 'string')
       return [];
     return [{
@@ -45,7 +47,7 @@ function useShowcaseCases() {
     const controller = new AbortController();
     void fetch('/share/index.json', { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error('案例列表读取失败。');
+        if (!response.ok) throw new ProjectError(PROJECT_ERRORS.request, '案例列表读取失败。', { status: response.status, context: { operation: 'listShowcaseCases' } });
         return parseCases(await response.json());
       })
       .then(setCases)
@@ -69,7 +71,7 @@ function ShowcaseDetail({ item, onClose, onPreview }: {
   const root = React.useRef<HTMLDivElement>(null);
   const [opening, setOpening] = React.useState(false);
   const [error, setError] = React.useState('');
-  React.useEffect(() => root.current ? activateModal(root.current, onClose) : undefined, [onClose]);
+  React.useEffect(() => root.current ? canvasProjectUi().activateModal(root.current, onClose) : undefined, [onClose]);
   return (
     <div className="nako-share-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div ref={root} className="nako-share-detail" role="dialog" aria-modal="true" aria-label={item.title}>

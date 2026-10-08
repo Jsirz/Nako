@@ -14,7 +14,7 @@ function copy(nodes) {
 }
 
 describe('canvas clipboard connections', () => {
-  it('keeps downstream connections while removing external upstream connections', () => {
+  it('does not copy text-node upstream or downstream connections', () => {
     const nodes = [
       { id: 'a', type: 'Text', x: 0, y: 0 },
       { id: 'b', type: 'Text', x: 100, y: 0, parentIds: ['a'] },
@@ -26,10 +26,10 @@ describe('canvas clipboard connections', () => {
     });
 
     expect(copied.newNodes[0].parentIds).toEqual([]);
-    expect(result.find((node) => node.id === 'c').parentIds).toEqual(['b', 'copy-1']);
+    expect(result.find((node) => node.id === 'c').parentIds).toEqual(['b']);
   });
 
-  it('retains only copied internal upstream links', () => {
+  it('does not retain text-node upstream links', () => {
     const nodes = [
       { id: 'outside', type: 'Text', x: 0, y: 0 },
       { id: 'a', type: 'Text', x: 100, y: 0, parentIds: ['outside'] },
@@ -38,9 +38,19 @@ describe('canvas clipboard connections', () => {
     const copied = copy(nodes.slice(1));
 
     expect(copied.newNodes[0]).toMatchObject({ id: 'copy-1', parentIds: [] });
-    expect(copied.newNodes[1]).toMatchObject({
-      id: 'copy-2', parentIds: ['copy-1'], sourcePortIndices: [3],
-    });
+    expect(copied.newNodes[1]).toMatchObject({ id: 'copy-2', parentIds: [] });
+  });
+
+  it('retains external upstream links for copied image and video generation nodes', () => {
+    const nodes = [
+      { id: 'source', type: 'Upload Image', x: 0, y: 0 },
+      { id: 'image', type: 'Image', x: 100, y: 0, parentIds: ['source'] },
+      { id: 'video', type: 'Video', x: 100, y: 100, parentIds: ['source'] },
+    ];
+    const copied = copy(nodes.slice(1));
+
+    expect(copied.newNodes[0]).toMatchObject({ id: 'copy-1', parentIds: ['source'] });
+    expect(copied.newNodes[1]).toMatchObject({ id: 'copy-2', parentIds: ['source'] });
   });
 
   it('clears external ComfyUI slots without changing their port positions', () => {
@@ -53,7 +63,7 @@ describe('canvas clipboard connections', () => {
     ]);
 
     expect(copied.newNodes[1]).toMatchObject({
-      parentIds: ['', 'copy-1'], sourcePortIndices: [0, 2],
+      parentIds: ['', ''], sourcePortIndices: [0, 0],
     });
   });
 

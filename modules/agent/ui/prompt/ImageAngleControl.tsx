@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Box, X } from 'lucide-react';
@@ -39,7 +40,7 @@ export function ImageAngleControl({ node, referenceUrl, disabled, onUpdate }: Pr
             node={{ ...node, resultUrl: referenceUrl || node.resultUrl }}
             onClose={() => setOpen(false)}
             onApply={(id, imageAngle) => {
-              if (disabled) throw new Error('图片正在生成，请完成后再修改角度。');
+              if (disabled) throw new AgentOperationError('图片正在生成，请完成后再修改角度。', { operation: 'apply-image-angle', nodeId: id });
               onUpdate(id, { imageAngle });
             }}
           />,

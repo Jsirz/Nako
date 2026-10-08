@@ -35,6 +35,7 @@ export interface CanvasTextNodeContentProps {
   isDragging?: boolean;
   isResizing?: boolean;
   showControls?: boolean;
+  readOnly?: boolean;
   onUpdate(id: string, patch: Record<string, unknown>): void;
   onSelect?(id: string): void;
   renderHeader(children: ReactNode): ReactNode;
@@ -49,7 +50,12 @@ function nodeGenerating(node: TextNode) {
 
 /** Node and fullscreen share one editor host; moving it never creates a second draft. */
 export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
-  const { node, selected, isDragging, isResizing, showControls = true } = props;
+  const state = useTextNodeContentState(props);
+  return renderTextNodeContent(props, state);
+}
+
+function useTextNodeContentState(props: CanvasTextNodeContentProps) {
+  const { node, selected, isDragging, isResizing, showControls = true, readOnly = false } = props;
   const current = useRef(props);
   useLayoutEffect(() => {
     current.current = props;
@@ -84,7 +90,7 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
     () => false,
   );
   const generating = inFlight || ['loading', 'queued'].includes(node.status || '');
-  const disabled = generating || reading || Boolean(isDragging || isResizing);
+  const disabled = readOnly || generating || reading || Boolean(isDragging || isResizing);
 
   useEffect(() => {
     active.current = true;
@@ -151,7 +157,7 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
       return;
     }
     setFullscreen(next);
-    setEditing(true);
+    setEditing(!readOnly);
   };
   const closeFullscreen = () => changeFullscreen(false);
   const importText = (text: string, mode: 'append' | 'replace') => {
@@ -221,7 +227,17 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
     setEditing(true);
   };
 
-  const header = showControls ? (
+  return { current, editing, setEditing, fullscreen, setFullscreen, reading, setReading,
+    error, notice, pendingImport, setPendingImport, editorHost, inlineSlot, fullscreenSlot,
+    fullDialog, importDialog, root, fileInput, importButton, editor, reader, active,
+    composing, pendingFullscreen, generating, disabled, focusEditor, changeFullscreen,
+    closeFullscreen, importText, chooseFile, clearText };
+}
+
+function renderTextNodeHeader(props: CanvasTextNodeContentProps, state: ReturnType<typeof useTextNodeContentState>) {
+  const { node, selected, showControls = true, readOnly = false } = props;
+  const { importButton, disabled, fileInput, reading, reader, setReading, current, chooseFile } = state;
+  return showControls && !readOnly ? (
     <div
       className="af-text-primary-tools"
       onPointerDownCapture={(event) => {
@@ -283,16 +299,27 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
     </div>
   ) : null;
 
+}
+
+function renderTextNodeContent(props: CanvasTextNodeContentProps, state: ReturnType<typeof useTextNodeContentState>) {
+  const { node, readOnly = false, isResizing } = props;
+  const { root, setFullscreen, setEditing, editing, focusEditor, inlineSlot, fullscreen,
+    disabled, error, notice, clearText } = state;
   return (
     <>
-      {props.renderHeader(header)}
+      {props.renderHeader(renderTextNodeHeader(props, state))}
       <div
         ref={root}
         className="af-text-node-content text-node-content nowheel"
         data-testid="canvas-node-text-content"
         onDoubleClick={(event) => {
           event.stopPropagation();
-          focusEditor();
+          if (readOnly) {
+            setFullscreen(true);
+            setEditing(false);
+          } else {
+            focusEditor();
+          }
         }}
         onPointerDown={(event) => {
           if (editing && event.button !== 1) event.stopPropagation();
@@ -356,7 +383,17 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
           </div>
         )}
       </div>
-      {createPortal(
+      {renderTextNodeEditor(props, state)}
+      {renderTextNodeDialogs(props, state)}
+    </>
+  );
+}
+
+function renderTextNodeEditor(props: CanvasTextNodeContentProps, state: ReturnType<typeof useTextNodeContentState>) {
+  const { node, selected, showControls = true } = props;
+  const { composing, pendingFullscreen, active, current, changeFullscreen, focusEditor,
+    fullscreen, editing, editor, disabled, editorHost } = state;
+  return createPortal(
         <div
           className="af-text-editor-event-boundary"
           onCompositionStart={() => {
@@ -408,13 +445,20 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
           />
         </div>,
         editorHost,
-      )}
+      );
+}
+
+function renderTextNodeDialogs(props: CanvasTextNodeContentProps, state: ReturnType<typeof useTextNodeContentState>) {
+  const { node, readOnly = false } = props;
+  const { fullscreen, fullDialog, composing, closeFullscreen, fullscreenSlot, pendingImport,
+    importDialog, setPendingImport, importButton, generating, importText } = state;
+  return (<>
       {fullscreen &&
         createPortal(
           <dialog
             ref={fullDialog}
             className="af-text-fullscreen"
-            aria-label={`${node.title || '文本节点'} · 全屏编辑`}
+            aria-label={readOnly ? '只读文本详情' : '全屏文本编辑'}
             onPointerDown={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
             onContextMenu={(event) => event.stopPropagation()}
@@ -436,7 +480,7 @@ export function CanvasTextNodeContent(props: CanvasTextNodeContentProps) {
               </button>
             </header>
             <div ref={fullscreenSlot} className="af-text-fullscreen-slot" />
-            <footer>在当前节点中编辑 · 退出全屏不丢失内容 · Esc 退出</footer>
+            {readOnly ? <footer>只读预览 · Esc 退出</footer> : <footer>在当前节点中编辑 · 退出全屏不丢失内容 · Esc 退出</footer>}
           </dialog>,
           document.body,
         )}

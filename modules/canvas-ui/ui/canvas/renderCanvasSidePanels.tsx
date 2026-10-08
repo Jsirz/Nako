@@ -1,3 +1,4 @@
+import { canvasError } from '../../../contracts/canvasErrors.js';
 import './canvasWorkspace.css';
 import type { useCanvasDocumentEffects } from './useCanvasDocumentEffects';
 export function renderCanvasSidePanels(
@@ -80,7 +81,7 @@ export function renderCanvasSidePanels(
     selectedNodeIds,
     onCreateTextNode: (text: string) => {
       const runtime = getWorkflowEpoch() === documentEpoch ? controlRuntime.current() : null;
-      if (!runtime) throw new Error('当前画布不可编辑，请结束拖拽后重试。');
+      if (!runtime) throw canvasError('当前画布不可编辑，请结束拖拽后重试。', 'side-panel.create-text');
       const before = runtime.snapshot();
       const node = runtime.create(
         'Text',

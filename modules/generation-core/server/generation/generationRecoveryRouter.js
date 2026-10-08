@@ -1,4 +1,7 @@
 import express from 'express';
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
+const logger = createModuleLogger('generation-core');
 
 function taskResponse(task) {
   if (!task) return null;
@@ -42,7 +45,9 @@ function taskResponse(task) {
 
 export function createGenerationRecoveryRouter({ applicationContext = {}, coordinator, findMediaResult, recoverTask }) {
   if (!coordinator || typeof coordinator.getTask !== 'function') {
-    throw new Error('Generation recovery router requires a coordinator');
+    throw new PluginError(ERRORS.serviceMissing, 'Generation recovery router requires a coordinator', {
+      context: { moduleId: 'generation-core', operation: 'createGenerationRecoveryRouter', service: 'generation.coordinator' },
+    });
   }
   const router = express.Router();
 
@@ -104,7 +109,7 @@ export function createGenerationRecoveryRouter({ applicationContext = {}, coordi
       }
       return res.json({ status: 'missing' });
     } catch (error) {
-      console.error('Generation status recovery failed:', error);
+      logger.error('Generation status recovery failed', { error, nodeId: req.params.nodeId, operation: 'generation-status' });
       return res.status(500).json({
         error: '读取生成状态失败。',
         code: 'GENERATION_STATUS_READ_FAILED',

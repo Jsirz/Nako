@@ -1,7 +1,11 @@
 import { ERRORS, PluginError } from '../../../contracts/index.js';
 
 export function validateSharedProject(workflow) {
-  const invalid = () => { throw new PluginError(ERRORS.invalidProjectArchive, '画布工作流节点或分组数据无效。'); };
+  const invalid = () => {
+    throw new PluginError(ERRORS.invalidProjectArchive, '画布工作流节点或分组数据无效。', {
+      context: { moduleId: 'project', operation: 'validateSharedProject', projectId: workflow.id },
+    });
+  };
   if (!Array.isArray(workflow.nodes) || !Array.isArray(workflow.groups)) invalid();
   for (const collection of [workflow.nodes, workflow.groups]) {
     const ids = new Set();

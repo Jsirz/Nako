@@ -1,15 +1,6 @@
 import { getBrowserServices } from '../../../kernel/browser';
-import type { CatalogMode } from '../../../contracts/modelCatalog';
-export type VideoMediaInput = 'text' | 'image' | 'video' | 'audio';
-
-export type VideoModeDefinition = Pick<
-  CatalogMode,
-  'fixedDuration' | 'fixedAspectRatio' | 'referenceVideoDuration'
-> & {
-  value: string;
-  requiresVisualReference?: boolean;
-  allowedInputs?: Partial<Record<VideoMediaInput, number>>;
-};
+import type { VideoMediaInput, VideoModeDefinition } from '../../../contracts/generationUi';
+export type { VideoMediaInput, VideoModeDefinition } from '../../../contracts/generationUi';
 
 export type VideoInputCounts = {
   images: number;

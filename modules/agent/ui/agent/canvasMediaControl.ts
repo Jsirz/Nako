@@ -1,3 +1,4 @@
+import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { assetNode } from '../../../canvas-ui/api/ui/canvas/canvasAssetInsertion';
 import { loadCollageImage, renderImageCollage } from '../../../asset-media/api/ui/media/imageCollage';
 import { renderAnnotations } from '../../../canvas-ui/api/ui/dialogs/imageAnnotationDrawing';
@@ -23,29 +24,29 @@ function localMedia(url: unknown, projectId: string, type?: string): string | nu
 }
 export async function canvasImagePreview(url: string, signal: AbortSignal | undefined, fetcher: typeof fetch): Promise<string> {
   const response = await fetcher(url, { signal });
-  if (!response.ok) throw Error('Image unavailable');
-  if (Number(response.headers.get('content-length')) > 25 * 1024 * 1024) throw Error('Image too large');
+  if (!response.ok) throw new AgentOperationError('Image unavailable', { operation: 'canvas-image-preview', status: response.status });
+  if (Number(response.headers.get('content-length')) > 25 * 1024 * 1024) throw new AgentOperationError('Image too large', { operation: 'canvas-image-preview', reason: 'content-length' });
   const reader = response.body?.getReader(), chunks: Uint8Array<ArrayBuffer>[] = [];
   let size = 0;
-  if (!reader) throw Error('Image unavailable');
+  if (!reader) throw new AgentOperationError('Image unavailable', { operation: 'canvas-image-preview', reason: 'missing-body' });
   try {
     while (true) {
       const chunk = await reader.read(); if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > 25 * 1024 * 1024) throw Error('Image too large');
+      if (size > 25 * 1024 * 1024) throw new AgentOperationError('Image too large', { operation: 'canvas-image-preview', reason: 'body-limit' });
       chunks.push(new Uint8Array(chunk.value));
     }
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
   const blob = new Blob(chunks, { type: response.headers.get('content-type') || '' });
-  if (blob.size > 25 * 1024 * 1024 || !blob.type.startsWith('image/')) throw Error('Image too large');
+  if (blob.size > 25 * 1024 * 1024 || !blob.type.startsWith('image/')) throw new AgentOperationError('Image too large', { operation: 'canvas-image-preview', reason: 'invalid-blob' });
   const bitmap = await createImageBitmap(blob);
   try {
-    if (signal?.aborted || bitmap.width * bitmap.height > 64000000) throw Error('Image unavailable');
+    if (signal?.aborted || bitmap.width * bitmap.height > 64000000) throw new AgentOperationError('Image unavailable', { operation: 'canvas-image-preview', reason: 'bitmap-limit-or-abort' });
     const ratio = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(bitmap.width * ratio)); canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
     const context = canvas.getContext('2d');
-    if (!context) throw Error('Image unavailable');
+    if (!context) throw new AgentOperationError('Image unavailable', { operation: 'canvas-image-preview', reason: 'missing-context' });
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', 0.75);
   } finally { bitmap.close(); }
@@ -100,12 +101,12 @@ export function createCanvasMediaControl(
           ({ data, width, height } = renderImageCollage(images));
         } else {
           const image = await loadCollageImage(source, mediaSignal);
-          if (image.naturalWidth * image.naturalHeight > 64000000) throw Error('Image too large');
+          if (image.naturalWidth * image.naturalHeight > 64000000) throw new AgentOperationError('Image too large', { operation: 'annotate-image', reason: 'pixel-limit' });
           const dimensions = { width: image.naturalWidth, height: image.naturalHeight }, canvas = document.createElement('canvas'), overlay = document.createElement('canvas');
           ({ width, height } = dimensions);
           canvas.width = dimensions.width; canvas.height = dimensions.height;
           renderAnnotations(overlay, command.strokes, dimensions);
-          const context = canvas.getContext('2d'); if (!context) throw Error('Image unavailable');
+          const context = canvas.getContext('2d'); if (!context) throw new AgentOperationError('Image unavailable', { operation: 'annotate-image', reason: 'missing-context' });
           context.drawImage(image, 0, 0); context.globalCompositeOperation = command.mask ? 'destination-out' : 'source-over'; context.drawImage(overlay, 0, 0);
           data = canvas.toDataURL('image/png');
         }
