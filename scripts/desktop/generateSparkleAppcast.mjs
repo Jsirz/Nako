@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, writeFile, readFile, rm, mkdir, copyFile, readdir, appendFile } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm, mkdir, copyFile, readdir, appendFile, rename } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createPrivateKey, createPublicKey, verify } from 'node:crypto';
@@ -9,7 +9,7 @@ import configuration from '../../config/desktop-updates.json' with { type: 'json
 import metadata from '../../package.json' with { type: 'json' };
 import { readSparkleAppcast } from '../../modules/desktop-shell-observability/api/desktop/sparkleUpdater.mjs';
 import semver from 'semver';
-import { XMLParser } from 'fast-xml-parser';
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { sha256 } from './releaseAssets.mjs';
 
 assert.equal(process.platform, 'darwin');
@@ -57,7 +57,20 @@ try {
     '--download-url-prefix', updateFeed(), '--versions', metadata.version,
     '--maximum-deltas', '2', '--maximum-versions', '1',
     archive], { stdio: 'inherit' });
-  await copyFile(path.join(archive, 'appcast.xml'), path.resolve('release/appcast.xml'));
+  const xmlOptions = { ignoreAttributes: false, parseTagValue: false, cdataPropName: '__cdata' };
+  const generatedFeed = new XMLParser(xmlOptions).parse(await readFile(path.join(archive, 'appcast.xml'), 'utf8'));
+  const generatedDeltas = generatedFeed.rss.channel.item['sparkle:deltas']?.enclosure;
+  // Sparkle's default delta names omit CPU architecture, but both architectures share a GitHub release.
+  for (const enclosure of generatedDeltas ? (Array.isArray(generatedDeltas) ? generatedDeltas : [generatedDeltas]) : []) {
+    const url = new URL(enclosure['@_url']);
+    const original = decodeURIComponent(url.pathname.split('/').at(-1));
+    assert.match(original, /^[a-zA-Z0-9._-]+\.delta$/);
+    const name = original.replace(/\.delta$/, `-mac-${process.arch}.delta`);
+    await rename(path.join(archive, original), path.join(archive, name));
+    url.pathname = path.posix.join(path.posix.dirname(url.pathname), name);
+    enclosure['@_url'] = url.href;
+  }
+  await writeFile('release/appcast.xml', new XMLBuilder({ ...xmlOptions, format: true }).build(generatedFeed));
   // SURequireSignedFeed validates both the prompt's metadata and the native download check.
   execFileSync(path.join(tools, 'sign_update'), ['--ed-key-file', privateFile,
     path.resolve('release/appcast.xml')], { stdio: 'inherit' });
