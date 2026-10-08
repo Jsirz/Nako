@@ -128,6 +128,17 @@ try {
       'bundled ffmpeg', 'video upload and ffprobe metadata', 'restart',
       ...(mac ? [] : ['DPAPI credential encryption and restart recovery'])], errors }, null, 2));
   process.stdout.write('Packaged desktop smoke passed.\n');
+} catch (error) {
+  const page = app?.context().pages().find(page => page.url() === 'nako://app/');
+  const diagnostics = { ok: false, errors, failure: error.message,
+    page: page ? await page.locator('body').innerText().catch(() => '') : '',
+    settings: page ? await page.locator('[data-nako-settings-version]').evaluateAll(elements =>
+      elements.map(element => ({ html: element.outerHTML, inert: !!element.closest('[inert]') }))).catch(() => []) : [],
+  };
+  await page?.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {});
+  await writeFile(path.join(output, 'result.json'), JSON.stringify(diagnostics, null, 2));
+  process.stderr.write(JSON.stringify(diagnostics, null, 2) + '\n');
+  throw error;
 } finally {
   if (app) await app.close();
 }
