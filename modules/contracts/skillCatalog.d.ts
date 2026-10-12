@@ -7,6 +7,14 @@ export const SKILL_NEW_CANVAS_EVENT: string;
 export const SKILL_SELECT_EVENT: string;
 export interface NewSkillCanvasRequest { slug: string }
 export interface AgentSkillSelectionRequest extends NewSkillCanvasRequest { projectId: string }
+/** Saved selection for a conversation; display names come from the skill catalog. */
+export interface AgentSelectedSkill {
+  slug: string;
+  name: string;
+  source: 'official' | 'local';
+  version?: string;
+  projectId?: string;
+}
 export function skillCategory(value?: unknown): string;
 export interface AgentSkill {
   slug: string;

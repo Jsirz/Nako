@@ -275,6 +275,7 @@ function createSkillSelection({ store, skillLibrary }) {
     const skill = await findSkill(slug);
     const selectedSkill = {
       slug: skill.slug,
+      name: skill.name,
       source: skill.source,
       ...(skill.version ? { version: skill.version } : {}),
       projectId,

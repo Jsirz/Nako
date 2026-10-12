@@ -16,6 +16,8 @@ HTTP 前缀 `/api/agent/v2`、协议版本 2，事件与操作封套在 contract
 
 agent.persistence 由 storage.agent-files 提供会话、工作区、计划、预算等 store 工厂；agent.skills 提供技能目录；agent.archive 为项目包提供只读历史导出和独立导入。模型能力经 [AgentTextGenerationService](../../modules/contracts/agentTextGeneration.d.ts) 获取，Agent 只提交中立消息、工具和参数，不获取明文密钥、端点或构造 Authorization。wire 协议和来源参数位于 plugins/platform/text-transport；生成经业务服务或节点运行服务。
 
+技能选择使用 contracts/skillCatalog 的 `AgentSelectedSkill`，后端 `agentRouter.js` 从技能目录保存 `slug/name/source` 及版本、项目标识；客户端 `agentClient.ts` 引用并转出同一类型，快捷选择与制作计划可使用保存的展示名称。
+
 工具参数先校验 schema，再绑定项目/会话/操作身份；变更先写执行意图，确认后写回执。nodeTools 直接使用受限节点服务，不通过浏览器猜测节点参数。通用操作错误使用 contracts/agentErrors；保留的字符串诊断码和横向 UI 调用差异见 conformance。
 
 ## 数据模型
@@ -119,12 +121,12 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/agent/AgentSkillPicker.ts](../../modules/agent/ui/agent/AgentSkillPicker.ts) | 浏览器交互与状态辅助 | `createAgentSkillPicker` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/AgentTimelineActivity.tsx](../../modules/agent/ui/agent/AgentTimelineActivity.tsx) | 浏览器交互与状态辅助 | `AgentCardControllers`, `timelineActivities`, `AgentTimelineActivity`, `AgentTimelineCards`, `AgentUnlinkedActivity` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/agentActivity.css](../../modules/agent/ui/agent/agentActivity.css) | 界面样式 | 样式 | 无业务运行副作用 |
-| [modules/agent/ui/agent/agentClient.ts](../../modules/agent/ui/agent/agentClient.ts) | 客户端或传输 | `AgentNode`, `AgentMessageInput`, `AgentSelectedSkill`, `AgentSession`, `DramaConversationState`, `DramaConversationAction`, `AgentStreamResult`, `AgentClientError`, `createAgentClient`, `AgentClient`, `installAgentClient` | 含 HTTP/网络 调用；时机见实现 |
+| [modules/agent/ui/agent/agentClient.ts](../../modules/agent/ui/agent/agentClient.ts) | 客户端或传输 | `AgentSelectedSkill`, `AgentNode`, `AgentMessageInput`, `AgentSession`, `DramaConversationState`, `DramaConversationAction`, `AgentStreamResult`, `AgentClientError`, `createAgentClient`, `AgentClient`, `installAgentClient` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/agent/agentComposerOptions.css](../../modules/agent/ui/agent/agentComposerOptions.css) | 界面样式 | 样式 | 无业务运行副作用 |
 | [modules/agent/ui/agent/agentConversation.ts](../../modules/agent/ui/agent/agentConversation.ts) | 浏览器交互与状态辅助 | `DEFAULT_AGENT_SKILL`, `ConversationSnapshot`, `ConversationTools`, `createAgentConversation`, `AgentConversation` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/agentDocuments.ts](../../modules/agent/ui/agent/agentDocuments.ts) | 浏览器交互与状态辅助 | `AgentDocument`, `readAgentDocument`, `agentMessageWithDocuments`, `splitAgentDocumentMessage` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/agentGenerationApproval.ts](../../modules/agent/ui/agent/agentGenerationApproval.ts) | 浏览器交互与状态辅助 | `withGenerationApproval` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/ui/agent/agentPanelActions.ts](../../modules/agent/ui/agent/agentPanelActions.ts) | 界面呈现与交互 | `agentPanelActions`, `AgentPanelActions` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/agent/agentPanelActions.ts](../../modules/agent/ui/agent/agentPanelActions.ts) | 界面呈现与交互 | `agentPanelActions`, `AgentPanelActions` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/agentPanelWidth.ts](../../modules/agent/ui/agent/agentPanelWidth.ts) | 界面呈现与交互 | `agentPanelWidthLimits`, `clampAgentPanelWidth` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/agentPendingOperations.ts](../../modules/agent/ui/agent/agentPendingOperations.ts) | 浏览器交互与状态辅助 | `resumeAgentOperations` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/agent/agentRunSync.ts](../../modules/agent/ui/agent/agentRunSync.ts) | 浏览器交互与状态辅助 | `createAgentRunSync` | 未检出平台调用；不等于纯函数证明 |

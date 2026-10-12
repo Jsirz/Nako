@@ -1,6 +1,8 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import type { AgentActivity, AgentCardReference } from '../../../contracts/agentActivity.js';
+import type { AgentSelectedSkill } from '../../../contracts/skillCatalog.js';
+export type { AgentSelectedSkill } from '../../../contracts/skillCatalog.js';
 import { isAgentEvent, type AgentEvent, type AgentMediaReference } from '../../../contracts/agentProtocol.js';
 import type { DramaComposition, DramaExecution, DramaPlan } from './dramaClient';
 import {
@@ -33,13 +35,6 @@ export type AgentMessageInput = {
   modelParams?: Record<string, unknown>;
   projectId?: string;
   canvasControl?: boolean;
-};
-
-export type AgentSelectedSkill = {
-  slug: string;
-  source: 'official' | 'local';
-  version?: string;
-  projectId?: string;
 };
 
 export type AgentSession = {

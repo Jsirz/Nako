@@ -30,6 +30,8 @@
 
 `AgentSkill.source` 区分安装应用提供的官方预设（`official`）与用户独立导入（`local`）；`preset: true` 表示从 `builtin/presets` 直接读取的普通官方技能，不表示用户目录副本。官方展示信息、指令和封面随应用版本替换，用户自定义保存在私有目录且不继承同名官方内容。来源字段由存储服务确定，导入 JSON 不能授予官方身份；`source: 'official'` 本身也不授予受控制作权限，该权限仍由 `officialProductionProfiles.js` 的身份匹配确定。官方技能分类修改及删除通过 `AgentSkillError` 返回 403。
 
+`AgentSelectedSkill` 同样定义于 `skillCatalog.d.ts`，表示会话保存的技能选择，包含 `slug/name/source` 及可选 `version/projectId`。后端选择技能时从技能目录保存展示名称，Agent 客户端引用并转出该公共类型，用于已选技能和制作计划的名称展示。
+
 `officialProductionProfiles.js` 的官方制作目录仅定义文戏和武戏的 id、slug、version、mode 及 webAppId；展示名称、简介、分类等保存在各自技能目录的 `metadata.json`，不在公共协议中保存文案。`officialDramaBundle.js` 提供对应的文戏或武戏路由。不存在的组合标识由 `officialProductionBundle` 以 `ERRORS.invalidConfiguration` 拒绝。
 
 作品展示归档来源在 [showcaseArchive.js](../../modules/contracts/showcaseArchive.js) 校验，支持本地 `/share/*.nako` 和 HTTPS 对象地址；[showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) 定义 `{ archive: string }` 请求。后端还须核对应用案例目录，不能将协议校验视为任意 URL 授权。`ProjectFileStore` 新增 `downloadArchive(url,path,limit)` 和 `move(source,target)`，临时目录可指定父目录；存储适配器负责流式字节限额、超时、写入和原子改名。下载错误及未列出的地址分别使用 projectErrors 中的 `SHOWCASE_DOWNLOAD_FAILED`、`SHOWCASE_ARCHIVE_NOT_LISTED`。
@@ -130,8 +132,6 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/projectErrors.d.ts](../../modules/contracts/projectErrors.d.ts) | 类型或数据定义 | `PROJECT_ERRORS`, `PROJECT_TRANSFER_ERRORS`, `USER_SCOPE_ERRORS`, `ProjectTransferErrorCode`, `UserScopeErrorCode`, `ProjectErrorCode`, `ProjectError`, `ProjectTransferError`, `UserScopeError` | 无业务运行副作用 |
 | [modules/contracts/projectErrors.js](../../modules/contracts/projectErrors.js) | 模块内部辅助 | `PROJECT_ERRORS`, `PROJECT_TRANSFER_ERRORS`, `USER_SCOPE_ERRORS`, `ProjectError`, `ProjectTransferError`, `UserScopeError` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/projectFiles.d.ts](../../modules/contracts/projectFiles.d.ts) | 类型或数据定义 | `ProjectArchiveEntry`, `ProjectArchiveRequest`, `ProjectFileCopyOptions`, `ProjectArchiveCreateOptions`, `ProjectArchiveExtractOptions`, `ProjectArchiveValidation`, `ProjectFileStore` | 无业务运行副作用 |
-| [modules/contracts/showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) | 类型或数据定义 | `ShowcaseArchiveRequest`, `showcaseArchiveSource` | 无业务运行副作用 |
-| [modules/contracts/showcaseArchive.js](../../modules/contracts/showcaseArchive.js) | 协议、校验或数据规则 | `showcaseArchiveSource` | 无 I/O |
 | [modules/contracts/projectRepositoryExtensions.d.ts](../../modules/contracts/projectRepositoryExtensions.d.ts) | 类型或数据定义 | `ProjectSummary`, `ProjectFolder`, `ProjectFolderInput`, `ProjectDirectoryRepository`, `ProjectRecoveryPoint`, `ProjectQuarantineEntry`, `ProjectStartupRecovery`, `ProjectRecoveryRepository`, `ProjectCatalogTransaction`, `ProjectCatalog`, `ProjectNodeSanitizer`, `ProjectStorageServices` | 无业务运行副作用 |
 | [modules/contracts/projectUi.ts](../../modules/contracts/projectUi.ts) | 模块内部辅助 | `CanvasPoint`, `CanvasViewport`, `STABLE_MIN_ZOOM`, `STABLE_MAX_ZOOM` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/projectWorkflow.ts](../../modules/contracts/projectWorkflow.ts) | 模块内部辅助 | `WorkflowRecord`, `ProjectDocument`, `CanvasWorkflowProps`, `WorkflowSaveOptions`, `CanvasProjectUiService`, `ProjectMediaRecoveryService` | 未检出平台调用；不等于纯函数证明 |
@@ -146,7 +146,9 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/shared/midjourneyPrompt.js](../../modules/contracts/shared/midjourneyPrompt.js) | 模块内部辅助 | `normalizeMidjourneyPrompt`, `removeMidjourneyPreview` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/shared/modelOverrideKey.d.ts](../../modules/contracts/shared/modelOverrideKey.d.ts) | 类型或数据定义 | `modelOverrideKey`, `isLikelyProviderApiKey` | 无业务运行副作用 |
 | [modules/contracts/shared/modelOverrideKey.js](../../modules/contracts/shared/modelOverrideKey.js) | 模块内部辅助 | `modelOverrideKey`, `isLikelyProviderApiKey` | 未检出平台调用；不等于纯函数证明 |
-| [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `NewSkillCanvasRequest`, `AgentSkillSelectionRequest`, `skillCategory`, `AgentSkill` | 无业务运行副作用 |
+| [modules/contracts/showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) | 类型或数据定义 | `ShowcaseArchiveRequest`, `showcaseArchiveSource` | 无业务运行副作用 |
+| [modules/contracts/showcaseArchive.js](../../modules/contracts/showcaseArchive.js) | 模块内部辅助 | `showcaseArchiveSource` | 未检出平台调用；不等于纯函数证明 |
+| [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `NewSkillCanvasRequest`, `AgentSkillSelectionRequest`, `AgentSelectedSkill`, `skillCategory`, `AgentSkill` | 无业务运行副作用 |
 | [modules/contracts/skillCatalog.js](../../modules/contracts/skillCatalog.js) | 模块内部辅助 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `skillCategory` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/storageDramaPlan.d.ts](../../modules/contracts/storageDramaPlan.d.ts) | 类型或数据定义 | `StoredDramaAsset`, `StoredDramaSegment`, `StoredDramaPlan`, `DramaPlanValidation` | 无业务运行副作用 |
 | [modules/contracts/storageErrors.d.ts](../../modules/contracts/storageErrors.d.ts) | 类型或数据定义 | `STORAGE_ERRORS`, `StorageErrorCode`, `WorkspaceError`, `PlanError`, `PromptPresetError` | 无业务运行副作用 |
