@@ -108,6 +108,27 @@
   height: 100%;
   object-fit: cover;
 }
+.nako-share-detail-cover.has-video {
+  aspect-ratio: 16/9;
+  min-height: 0;
+  background: #000;
+}
+.nako-share-detail-cover video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.nako-share-video-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #0008;
+  color: white;
+  font-size: 14px;
+  pointer-events: none;
+}
 .nako-share-detail-cover button {
   position: absolute;
   top: 12px;

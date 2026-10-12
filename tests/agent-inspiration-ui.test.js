@@ -4,12 +4,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { AgentInspirationNavigator } from '../modules/agent/ui/agent/AgentInspirationNavigator';
 import { AgentMessageExport } from '../modules/agent/ui/agent/AgentMessageExport';
+import { renderAgentPanelHeader } from '../modules/agent/ui/agent/renderAgentPanelShell';
 
 afterEach(cleanup);
 function fixture(overrides = {}) {
   const state = {
-    prompt: '一座未来城市', isLoading: false, nodes: [], references: [], referencedNodes: [],
-    props: { onLocateNode: vi.fn() },
+    prompt: '一座未来城市', isLoading: false, hasMessages: false, nodes: [], references: [], referencedNodes: [],
+    props: { onLocateNode: vi.fn(), onClose: vi.fn() }, setShowHistory: vi.fn(),
     attachments: { documents: [], add: vi.fn() },
     composerRef: { current: { focus: vi.fn() } },
     setPrompt: vi.fn(), setExcludedNodes: vi.fn(), workspace: { patch: vi.fn() },
@@ -17,13 +18,28 @@ function fixture(overrides = {}) {
     ...overrides,
   };
   const actions = { chooseFile: vi.fn(), submit: vi.fn() };
-  const view = render(React.createElement(AgentInspirationNavigator, { state, actions }));
-  return { state, actions, view };
+  function Panel({ overrides = {} }) {
+    const [inspirationSource, setInspirationSource] = React.useState(null);
+    const current = { ...state, ...overrides, inspirationSource, setInspirationSource };
+    const icons = { Tooltip: ({ children }) => children, AddIcon: () => null,
+      HistoryIcon: () => null, CloseIcon: () => null };
+    return React.createElement(React.Fragment, null,
+      renderAgentPanelHeader(React, current, actions, icons),
+      React.createElement(AgentInspirationNavigator, { state: current, actions }));
+  }
+  const view = render(React.createElement(Panel));
+  return { state, actions, view, rerender: (overrides) => view.rerender(React.createElement(Panel, { overrides })) };
 }
 
 it('prepares an editable request while preserving input and requiring generation confirmation', () => {
   const { state, actions, view } = fixture();
+  expect(view.queryByRole('button', { name: '返回灵感来源' })).toBeNull();
   fireEvent.click(view.getByRole('button', { name: '从文字灵感开始' }));
+  fireEvent.click(view.getByRole('button', { name: '选择任务' }));
+  fireEvent.click(view.getByRole('button', { name: '返回灵感来源' }));
+  expect(view.queryByRole('button', { name: '返回灵感来源' })).toBeNull();
+  fireEvent.click(view.getByRole('button', { name: '从文字灵感开始' }));
+  expect(view.getByRole('button', { name: '返回选择来源' })).toBeTruthy();
   fireEvent.click(view.getByRole('button', { name: '选择任务' }));
   expect(state.setPrompt).not.toHaveBeenCalled();
   fireEvent.click(view.getByRole('button', { name: /分拆脚本/ }));
@@ -36,18 +52,14 @@ it('prepares an editable request while preserving input and requiring generation
 });
 
 it('requires source-matching media and blocks tasks while an upload or run is pending', () => {
-  const { state, actions, view } = fixture({ references: [{ type: 'audio', nodeId: 'a1' }] });
+  const { state, actions, view, rerender } = fixture({ references: [{ type: 'audio', nodeId: 'a1' }] });
   fireEvent.click(view.getByRole('button', { name: '从图片灵感开始' }));
   expect(view.getByRole('button', { name: '选择任务' }).disabled).toBe(true);
   fireEvent.click(view.getByRole('button', { name: '上传文件' }));
   expect(actions.chooseFile).toHaveBeenCalledWith('image/*');
-  view.rerender(React.createElement(AgentInspirationNavigator, {
-    state: { ...state, references: [{ type: 'image', nodeId: 'i1' }] }, actions,
-  }));
+  rerender({ references: [{ type: 'image', nodeId: 'i1' }] });
   fireEvent.click(view.getByRole('button', { name: '选择任务' }));
-  view.rerender(React.createElement(AgentInspirationNavigator, {
-    state: { ...state, references: [{ type: 'image', nodeId: 'i1' }], isLoading: true }, actions,
-  }));
+  rerender({ references: [{ type: 'image', nodeId: 'i1' }], isLoading: true });
   fireEvent.click(view.getByRole('button', { name: /图生视频/ }));
   expect(state.setPrompt).not.toHaveBeenCalled();
   expect(actions.submit).not.toHaveBeenCalled();

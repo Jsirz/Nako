@@ -1,11 +1,9 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
-import type { AgentSkill } from '../../../contracts/skillCatalog.js';
+import type { AgentSkill, AgentSkillFile, AgentSkillDocument, AgentSkillEditRequest } from '../../../contracts/skillCatalog.js';
 import { SKILL_CATALOG_CHANGED } from '../../../contracts/skillCatalog.js';
 import { AgentSkillError } from '../../../contracts/agentSkillError.js';
 export type { AgentSkill } from '../../../contracts/skillCatalog.js';
-
-type AgentSkillFile = { path: string; contentBase64: string };
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -33,7 +31,7 @@ export function createAgentSkillClient(fetcher: typeof fetch = globalThis.fetch)
     const response = await fetcher(url, { method, headers: { 'Content-Type': 'application/json' },
       body: value === undefined ? undefined : JSON.stringify(value) });
     const body = await response.json();
-    if (!response.ok) throw new AgentSkillError(body.error || '更新技能失败');
+    if (!response.ok) throw new AgentSkillError(body.error || '更新技能失败', response.status, body.code);
     window.dispatchEvent(new Event(SKILL_CATALOG_CHANGED));
     return body;
   }
@@ -50,6 +48,15 @@ export function createAgentSkillClient(fetcher: typeof fetch = globalThis.fetch)
       return body.skills;
     },
     async remove(slug: string): Promise<void> { await mutate(`/api/agent-skills/${encodeURIComponent(slug)}`, 'DELETE'); },
+    async readDocument(slug: string): Promise<AgentSkillDocument> {
+      const response = await fetcher(`/api/agent-skills/${encodeURIComponent(slug)}/edit`);
+      const body = await response.json();
+      if (!response.ok) throw new AgentSkillError(body.error || '读取技能失败', response.status, body.code);
+      return body;
+    },
+    async update(slug: string, request: Omit<AgentSkillEditRequest, 'files'>, files: readonly File[]): Promise<AgentSkill> {
+      return (await mutate(`/api/agent-skills/${encodeURIComponent(slug)}`, 'PUT', { ...request, files: await uploadFiles(files) })).skill;
+    },
     async updateCategory(slug: string, category: string): Promise<AgentSkill> {
       return (await mutate(`/api/agent-skills/${encodeURIComponent(slug)}`, 'PATCH', { category })).skill;
     },

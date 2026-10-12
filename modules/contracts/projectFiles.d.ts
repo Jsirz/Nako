@@ -1,4 +1,5 @@
 import type { Project } from './index.js';
+import type { ShowcaseVideoContentType } from './showcaseVideo.js';
 
 export interface ProjectArchiveEntry { path: string; type: string; size: number }
 export interface ProjectArchiveRequest extends AsyncIterable<Uint8Array> {
@@ -47,6 +48,7 @@ export interface ProjectFileStore {
   removeCreatedPaths(paths: string[]): Promise<void>;
   receiveArchive(request: ProjectArchiveRequest, archivePath: string, limit: number): Promise<void>;
   downloadArchive(url: string, archivePath: string, limit: number): Promise<void>;
+  downloadVideo(url: string, filename: string, limit: number): Promise<ShowcaseVideoContentType>;
   statLocalArchive(value: unknown, limit: number): Promise<string>;
   validateArchive(archivePath: string, limit: number, options: ProjectArchiveValidation): Promise<void>;
   writeSnapshot(filename: string, project: Project): string;

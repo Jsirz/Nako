@@ -21,6 +21,8 @@
 | `IdentityHttpSecurity` | [httpSecurity.d.ts](../../modules/contracts/httpSecurity.d.ts)；身份模块发布代理 Router、公共/私有库 Guard 和认证下载作用域；媒体通过服务注入调用，不依赖身份内部对象 |
 | `CanvasProjectUiService`、`ProjectMediaRecoveryService` | [projectWorkflow.ts](../../modules/contracts/projectWorkflow.ts)；画布发布图重映射、分组清理及提示/模态能力，媒体发布中断节点恢复；React hooks 和组件类型留在业务 UI |
 | `NewSkillCanvasRequest`、`AgentSkillSelectionRequest` | [skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts)；kernel 浏览器事件 `SKILL_NEW_CANVAS_EVENT` 接收 `{slug}`，画布创建并保存后以 `SKILL_SELECT_EVENT` 发送 `{slug, projectId}`；Agent 只在匹配的当前项目选择技能。事件无返回值，不触发生成；保存失败保留待选技能供手动保存后继续，切换项目取消 |
+| `AgentSkillFile`、`AgentSkillEditableFile`、`AgentSkillDocument`、`AgentSkillEditRequest` | [skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts)；技能服务 `readDocument` 返回当前技能、文件路径及可编辑文本，附件不返回二进制；`update` 接收元数据、读取时间戳、Base64 变更文件、删除路径与可选封面，返回新 `AgentSkill`。storage.agent-files 实现，Agent Router 与客户端消费；官方禁止编辑（403）、标识不存在（404）、时间戳冲突（409）、输入无效（400） |
+| `ShowcaseVideoCacheRequest`、`ShowcaseVideoCacheResult`、`ShowcaseVideoContentType` | [showcaseVideo.d.ts](../../modules/contracts/showcaseVideo.d.ts) 定义 `{video}` 请求、完成缓存后的 `{url}` 响应及 MP4/WebM MIME；[showcaseVideo.js](../../modules/contracts/showcaseVideo.js) 校验本地 share 视频或 HTTPS 来源。Project UI、缓存服务与存储适配器共用，后端另核对应用案例目录；客户端只获得同源播放接口地址 |
 
 错误基础定义在 [errors.js](../../modules/contracts/errors.js)，根入口转出保持同一类身份；协议校验直接依赖叶子模块避免初始化环。领域错误定义在 contracts/identityErrors、desktopErrors、providerErrors 等，均携带模块与操作上下文。尚未集中或收敛的具体项见 [规范差异](conformance.md)。
 
@@ -32,9 +34,13 @@
 
 `AgentSelectedSkill` 同样定义于 `skillCatalog.d.ts`，表示会话保存的技能选择，包含 `slug/name/source` 及可选 `version/projectId`。后端选择技能时从技能目录保存展示名称，Agent 客户端引用并转出该公共类型，用于已选技能和制作计划的名称展示。
 
+技能编辑保持 `slug` 和用户来源。`AgentSkillEditRequest.files` 仅包含要新增或替换的相对路径与 Base64 内容，`removedPaths` 指定要删除的已有文件；其它文件保留。`coverFile` 缺省保持原设置、`null` 移除展示、字符串指定存在的受支持图片。`updatedAt` 必须与读取时一致，保存生成递增的新值；根 `SKILL.md` 必须存在且非空，`metadata.json` 由服务生成，显式参考必须完整。编辑名称、简介与分类仅更新存储元数据，不自动改写指令 frontmatter。
+
 `officialProductionProfiles.js` 的官方制作目录仅定义文戏和武戏的 id、slug、version、mode 及 webAppId；展示名称、简介、分类等保存在各自技能目录的 `metadata.json`，不在公共协议中保存文案。`officialDramaBundle.js` 提供对应的文戏或武戏路由。不存在的组合标识由 `officialProductionBundle` 以 `ERRORS.invalidConfiguration` 拒绝。
 
 作品展示归档来源在 [showcaseArchive.js](../../modules/contracts/showcaseArchive.js) 校验，支持本地 `/share/*.nako` 和 HTTPS 对象地址；[showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) 定义 `{ archive: string }` 请求。后端还须核对应用案例目录，不能将协议校验视为任意 URL 授权。`ProjectFileStore` 新增 `downloadArchive(url,path,limit)` 和 `move(source,target)`，临时目录可指定父目录；存储适配器负责流式字节限额、超时、写入和原子改名。下载错误及未列出的地址分别使用 projectErrors 中的 `SHOWCASE_DOWNLOAD_FAILED`、`SHOWCASE_ARCHIVE_NOT_LISTED`。
+
+`ProjectFileStore.downloadVideo(url,filename,limit)` 流式写入调用方指定的临时文件，返回 `ShowcaseVideoContentType`，由 storage.sqlite 的 `projectFileStore.js` 装配 `showcaseVideoDownload.js` 实现。消费方负责失败清理与缓存目录原子提交。视频来源须经过 `showcaseVideoSource` 校验和应用案例目录核对；projectErrors 提供 `INVALID_SHOWCASE_VIDEO`、`SHOWCASE_VIDEO_NOT_LISTED`、`SHOWCASE_VIDEO_DOWNLOAD_FAILED`、`SHOWCASE_VIDEO_TOO_LARGE`，保留模块与操作上下文。完成缓存以来源、MIME、字节数为元数据，未完成文件不得返回播放地址。
 
 `Project` 包含 id/title/revision/nodes 和扩展文档字段；`MediaAsset` 标识项目归属、媒体类型和 URL。模型目录字段以 [modelCatalog.d.ts](../../modules/contracts/modelCatalog.d.ts) 为准。Node SDK、端口值、节点迁移、执行状态分别定义在 `nodeSdk.*`、`nodeValues.*`、`nodeMigrations.*`、`nodeExecution.*`。
 公共画布节点、分组及坐标定义在 canvasDocument.ts/projectUi.ts；生成 UI 模型、绑定、授权和运行能力定义在 generationUi.ts。生成恢复 reacquireObservation 使用 absoluteTimeoutMs，adopt 使用 absoluteDeadlineMs，含义和返回字段以实现为准。
@@ -148,7 +154,9 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/shared/modelOverrideKey.js](../../modules/contracts/shared/modelOverrideKey.js) | 模块内部辅助 | `modelOverrideKey`, `isLikelyProviderApiKey` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) | 类型或数据定义 | `ShowcaseArchiveRequest`, `showcaseArchiveSource` | 无业务运行副作用 |
 | [modules/contracts/showcaseArchive.js](../../modules/contracts/showcaseArchive.js) | 模块内部辅助 | `showcaseArchiveSource` | 未检出平台调用；不等于纯函数证明 |
-| [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `NewSkillCanvasRequest`, `AgentSkillSelectionRequest`, `AgentSelectedSkill`, `skillCategory`, `AgentSkill` | 无业务运行副作用 |
+| [modules/contracts/showcaseVideo.d.ts](../../modules/contracts/showcaseVideo.d.ts) | 类型或数据定义 | `ShowcaseVideoContentType`, `ShowcaseVideoCacheRequest`, `ShowcaseVideoCacheResult`, `showcaseVideoSource` | 无业务运行副作用 |
+| [modules/contracts/showcaseVideo.js](../../modules/contracts/showcaseVideo.js) | 模块内部辅助 | `showcaseVideoSource` | 未检出平台调用；不等于纯函数证明 |
+| [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `NewSkillCanvasRequest`, `AgentSkillSelectionRequest`, `AgentSelectedSkill`, `skillCategory`, `AgentSkill`, `AgentSkillFile`, `AgentSkillEditableFile`, `AgentSkillDocument`, `AgentSkillEditRequest` | 无业务运行副作用 |
 | [modules/contracts/skillCatalog.js](../../modules/contracts/skillCatalog.js) | 模块内部辅助 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `skillCategory` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/storageDramaPlan.d.ts](../../modules/contracts/storageDramaPlan.d.ts) | 类型或数据定义 | `StoredDramaAsset`, `StoredDramaSegment`, `StoredDramaPlan`, `DramaPlanValidation` | 无业务运行副作用 |
 | [modules/contracts/storageErrors.d.ts](../../modules/contracts/storageErrors.d.ts) | 类型或数据定义 | `STORAGE_ERRORS`, `StorageErrorCode`, `WorkspaceError`, `PlanError`, `PromptPresetError` | 无业务运行副作用 |

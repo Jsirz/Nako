@@ -62,5 +62,5 @@ export function createSkillCatalogState(rootDirectory, list) {
     delete state.categories[slug];
     await write(state);
   });
-  return { read, updateCategory, remove, serialize };
+  return { read, write, requireSkill, updateCategory, remove, serialize };
 }

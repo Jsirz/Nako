@@ -8,7 +8,6 @@ import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
 import { createAgentSkillClient } from './skillClient';
 import './skillShowcase.css';
 
-const manage = () => window.dispatchEvent(new Event('nako:open-skill-community'));
 function SkillDetail({ skill, onClose }: { skill: AgentSkill; onClose(): void }) {
   const root = React.useRef<HTMLDivElement>(null);
   const used = React.useRef(false);
@@ -38,7 +37,7 @@ function SkillDetail({ skill, onClose }: { skill: AgentSkill; onClose(): void })
       >
         <div className="nako-skill-preview-image">
           <img
-            src={skill.coverUrl || CARD_PLACEHOLDER_IMAGE}
+            src={skill.coverUrl ? `${skill.coverUrl}?v=${encodeURIComponent(skill.updatedAt || '')}` : CARD_PLACEHOLDER_IMAGE}
             alt=""
             onError={(event) => {
               event.currentTarget.src = CARD_PLACEHOLDER_IMAGE;
@@ -85,7 +84,7 @@ function useSkillShowcase() {
       setLoading(true);
       setError('');
       try {
-        const next = await client.list();
+        const next = (await client.list()).filter(skill => skill.source === 'official');
         if (alive && current === revision) {
           setSkills(next);
           setSelected((value) => next.find((item) => item.slug === value?.slug) || null);
@@ -101,7 +100,10 @@ function useSkillShowcase() {
       }
     };
     const refresh = () => void load();
-    const preview = (event: Event) => setSelected((event as CustomEvent<AgentSkill>).detail);
+    const preview = (event: Event) => {
+      const skill = (event as CustomEvent<AgentSkill>).detail;
+      if (skill?.source === 'official') setSelected(skill);
+    };
     refresh();
     window.addEventListener(SKILL_CATALOG_CHANGED, refresh);
     window.addEventListener(SKILL_PREVIEW_EVENT, preview);
@@ -147,7 +149,7 @@ export function SkillShowcase() {
         </div>
       ) : !visible.length ? (
         <div className="nako-showcase-empty">
-          还没有技能，导入你的第一个技能开始创作。<button onClick={manage}>导入技能</button>
+          暂无官方预设技能。
         </div>
       ) : (
         <div className="nako-showcase-grid">
@@ -159,7 +161,7 @@ export function SkillShowcase() {
             >
               <span className="nako-showcase-cover">
                 <img
-                  src={skill.coverUrl || CARD_PLACEHOLDER_IMAGE}
+                  src={skill.coverUrl ? `${skill.coverUrl}?v=${encodeURIComponent(skill.updatedAt || '')}` : CARD_PLACEHOLDER_IMAGE}
                   alt=""
                   onError={(event) => {
                     event.currentTarget.src = CARD_PLACEHOLDER_IMAGE;

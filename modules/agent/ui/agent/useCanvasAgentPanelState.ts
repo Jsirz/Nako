@@ -215,6 +215,7 @@ export function useCanvasAgentPanelState(React: Runtime, props: Props, models: A
   const { references } = attachments;
   const [dragOver, setDragOver] = React.useState(false);
   const [showHistory, setShowHistory] = React.useState(false);
+  const [inspirationSource, setInspirationSource] = React.useState<'text' | 'image' | 'video' | 'audio' | null>(null);
   const composerRef = React.useRef<HTMLTextAreaElement>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const { workspace, chat, epoch, sending } = session;
@@ -252,6 +253,7 @@ export function useCanvasAgentPanelState(React: Runtime, props: Props, models: A
     ...timeline.flatMap((message) => message.tools?.flatMap((tool) => tool.cards) || []),
   ];
   const hasMessages = messages.length > 0;
+  React.useEffect(() => { setInspirationSource(null); }, [isOpen, projectId, hasMessages]);
   const scroll = useAgentScroll(chat.sessionId || '', messages, isOpen);
   const sessions = chat.sessions.map((session) => ({
     id: String(session.id || ''),
@@ -262,7 +264,8 @@ export function useCanvasAgentPanelState(React: Runtime, props: Props, models: A
   }));
   return {
     ...session, ...model, ...layout, props, nodes, attachments, references, dragOver, setDragOver,
-    showHistory, setShowHistory, composerRef, fileRef, prompt, referencedNodes, isLoading,
+    showHistory, setShowHistory, inspirationSource, setInspirationSource,
+    composerRef, fileRef, prompt, referencedNodes, isLoading,
     messages, timeline, cardControllers, knownCards, hasMessages, scroll, sessions,
   };
 }

@@ -4,6 +4,7 @@ import type { AgentSkill, AgentSkillClient } from './skillClient';
 import { button, element, skillManagerCard } from './skillManagerCards';
 import { openSkillImportDialog } from './skillImportDialog';
 import { openSkillDetailView } from './skillDetailView';
+import { SKILL_CATALOG_CHANGED } from '../../../contracts/skillCatalog.js';
 
 export function openSkillManager(client: AgentSkillClient, select: (skill: AgentSkill) => void) {
   const overlay = element('div', 'nako-skill-overlay');
@@ -29,14 +30,15 @@ export function openSkillManager(client: AgentSkillClient, select: (skill: Agent
   let release: (() => void) | undefined;
   let closeImport: (() => void) | undefined;
   let closeDetail: (() => void) | undefined;
-  const close = () => { if (disposed) return; disposed = true; closeImport?.(); closeDetail?.(); release?.(); overlay.remove(); };
+  const refresh = () => void load();
+  const close = () => { if (disposed) return; disposed = true; window.removeEventListener(SKILL_CATALOG_CHANGED, refresh); closeImport?.(); closeDetail?.(); release?.(); overlay.remove(); };
   const choose = (skill: AgentSkill) => { close(); select(skill); };
   const showDetail = (skill: AgentSkill) => {
     closeDetail?.();
     let dispose: (() => void) | undefined;
     dispose = openSkillDetailView(skill, () => { dispose?.(); closeDetail = undefined; }, () => {
       dispose?.(); closeDetail = undefined; choose(skill);
-    });
+    }, client);
     closeDetail = dispose;
   };
   const render = () => {
@@ -84,6 +86,7 @@ export function openSkillManager(client: AgentSkillClient, select: (skill: Agent
   categories.addEventListener('change', render); search.addEventListener('input', render);
   overlay.addEventListener('mousedown', event => { if (event.target === overlay) close(); });
   release = activateModal(overlay, close, { initialFocus: dismiss });
+  window.addEventListener(SKILL_CATALOG_CHANGED, refresh);
   void load();
   return close;
 }

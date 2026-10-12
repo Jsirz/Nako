@@ -14,6 +14,7 @@ import { createSkillCatalogState } from './skillCatalogState.js';
 import { skillDisplayMetadata, skillFrontmatter, parseSkillMetadata } from './skillFrontmatter.js';
 import { DEFAULT_SKILL_PRESET_DIRECTORY, createBundledSkillPresets } from './userSkillPresets.js';
 import { bundledSkillCoverUrl, readBundledSkillCover } from './bundledSkillCovers.js';
+import { createSkillEditor } from './skillEditor.js';
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const MAX_FILE_COUNT = Infinity;
@@ -147,6 +148,7 @@ export function createAgentSkillLibrary({ libraryDirectory, privateDirectory = p
   const presets = createBundledSkillPresets(presetDirectory);
   const reservedSlugs = new Set();
   const catalog = createSkillCatalogState(rootDirectory, listStored);
+  const editor = createSkillEditor({ rootDirectory, catalog, rename: renameDirectoryWithRetry });
   let initialization;
   const initialize = () => initialization ??= catalog.serialize(async () => {
     for (const skill of await officialRegistry.list()) reservedSlugs.add(skill.slug);
@@ -324,6 +326,8 @@ export function createAgentSkillLibrary({ libraryDirectory, privateDirectory = p
     return { content: await fs.readFile(target), contentType };
   }
   return { rootDirectory, initialize, list, importFiles, importFolders, mentionedSlugs, loadInstructions,
+    readDocument: async slug => { await initialize(); return editor.read(slug); },
+    update: async (slug, request) => { await initialize(); return editor.save(slug, request); },
     readCover,
     remove: async slug => { await initialize(); return catalog.remove(slug); },
     updateCategory: async (slug, category) => { await initialize(); return catalog.updateCategory(slug, category); } };

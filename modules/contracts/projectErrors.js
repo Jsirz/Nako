@@ -8,6 +8,8 @@ export const PROJECT_ERRORS = Object.freeze({
   recoveryCorrupted: 'RECOVERY_POINT_CORRUPTED',
   storage: 'PROJECT_STORAGE_FAILED',
   configuration: 'PROJECT_CONFIGURATION_INVALID',
+  videoInvalid: 'INVALID_SHOWCASE_VIDEO', videoMissing: 'SHOWCASE_VIDEO_NOT_LISTED',
+  videoDownload: 'SHOWCASE_VIDEO_DOWNLOAD_FAILED', videoTooLarge: 'SHOWCASE_VIDEO_TOO_LARGE',
 });
 
 export const PROJECT_TRANSFER_ERRORS = Object.freeze({

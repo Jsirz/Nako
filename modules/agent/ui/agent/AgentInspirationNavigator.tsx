@@ -37,7 +37,7 @@ export function AgentInspirationNavigator({ state, actions }: {
   state: AgentPanelState;
   actions: AgentPanelActions;
 }) {
-  const [source, setSource] = useState<Source | null>(null);
+  const { inspirationSource: source, setInspirationSource: setSource } = state;
   const [step, setStep] = useState<'input' | 'task'>('input');
   const [showNodes, setShowNodes] = useState(false);
   const [prepared, setPrepared] = useState('');
@@ -120,7 +120,7 @@ export function AgentInspirationNavigator({ state, actions }: {
     </> : <>
       <div className="nako-agent-suggestions" aria-label="选择灵感来源">
         {sources.map(({ id, label, icon: Icon }) => <button type="button" key={id} disabled={state.isLoading}
-          onClick={() => { setSource(id); setPrepared(''); }}>
+          onClick={() => { setSource(id); setStep('input'); setShowNodes(false); setPrepared(''); }}>
           <Icon size={18} aria-hidden="true" /><span><strong>{label}</strong></span>
           <ArrowRight size={18} aria-hidden="true" />
         </button>)}

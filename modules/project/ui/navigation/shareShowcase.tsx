@@ -1,8 +1,10 @@
 import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import * as React from 'react';
-import { ArrowRight, Images, X } from 'lucide-react';
+import { ArrowRight, Images, LoaderCircle, X } from 'lucide-react';
 import { canvasProjectUi } from '../projectUiServices';
 import { showcaseArchiveSource } from '../../../contracts/showcaseArchive.js';
+import { showcaseVideoSource } from '../../../contracts/showcaseVideo.js';
+import { useShowcaseVideo } from './shareShowcaseVideo';
 import './shareShowcase.css';
 
 interface ShowcaseCase {
@@ -11,6 +13,7 @@ interface ShowcaseCase {
   description: string;
   category: string;
   cover: string;
+  video?: string;
   archive: string;
 }
 
@@ -34,6 +37,7 @@ function parseCases(value: unknown): ShowcaseCase[] {
       description: typeof candidate.description === 'string' ? candidate.description : '',
       category: typeof candidate.category === 'string' ? candidate.category : '创作案例',
       cover,
+      video: showcaseVideoSource(candidate.video) || undefined,
       archive,
     }];
   });
@@ -69,20 +73,37 @@ function ShowcaseDetail({ item, onClose, onPreview }: {
   onPreview(archive: string): Promise<void>;
 }) {
   const root = React.useRef<HTMLDivElement>(null);
+  const player = React.useRef<HTMLVideoElement>(null);
+  const video = useShowcaseVideo(item.video);
   const [opening, setOpening] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [videoFailed, setVideoFailed] = React.useState(false);
   React.useEffect(() => root.current ? canvasProjectUi().activateModal(root.current, onClose) : undefined, [onClose]);
+  React.useEffect(() => {
+    const element = player.current;
+    return () => { if (element) { element.pause(); element.removeAttribute('src'); element.load(); } };
+  }, [video.url, videoFailed]);
   return (
     <div className="nako-share-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div ref={root} className="nako-share-detail" role="dialog" aria-modal="true" aria-label={item.title}>
-        <div className="nako-share-detail-cover">
-          <img src={item.cover} alt="" />
+        <div className={`nako-share-detail-cover${video.url && !videoFailed ? ' has-video' : ''}`}>
+          {video.url && !videoFailed ? (
+            <video ref={player} src={video.url} poster={item.cover} controls playsInline preload="none"
+              aria-label={`${item.title}视频`} onError={() => setVideoFailed(true)} />
+          ) : <img src={item.cover} alt="" />}
+          {video.loading && <span className="nako-share-video-status" role="status" aria-label="视频加载中">
+            <LoaderCircle size={32} className="animate-spin" aria-hidden="true" />
+          </span>}
           <button type="button" aria-label="关闭案例" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="nako-share-detail-body">
           <span className="nako-share-category">{item.category}</span>
           <h2>{item.title}</h2>
           <p>{item.description || '精选创作案例'}</p>
+          {(videoFailed || video.error) && <p className="nako-share-error" role="alert">
+            {video.error || '视频暂时无法播放，请稍后重试。'}
+            <button type="button" className="nako-share-preview" onClick={() => { setVideoFailed(false); video.retry(); }}>重试播放</button>
+          </p>}
           {error && <p className="nako-share-error" role="alert">{error}</p>}
           <div className="nako-share-detail-actions">
             <button type="button" className="nako-share-preview" disabled={opening} onClick={async () => {

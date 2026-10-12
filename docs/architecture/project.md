@@ -33,6 +33,16 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 
 封面、说明及案例列表仍由 `public/share/index.json` 提供。`archive` 支持 `/share/*.nako` 和 HTTPS OSS 对象地址（可带签名查询参数），由 contracts/showcaseArchive.js 统一校验。前端仅发送 `{ archive }`：预览使用 `POST /api/workflows/preview`，导入使用 `POST /api/workflows/restore?copy=true`，不读取完整归档为 Blob。上传文件的二进制预览/恢复接口保留。
 
+案例可配置独立 `video` 字段，填写 `/share/*.mp4`、`/share/*.webm` 或 HTTPS/OSS 地址（保留签名查询参数，拒绝含凭据的地址），校验由 [showcaseVideo.js](../../modules/contracts/showcaseVideo.js) 在前后端共用。[shareShowcase.tsx](../../modules/project/ui/navigation/shareShowcase.tsx) 仅在详情顶部渲染原生播放器，提供播放、进度、音量和全屏控制；卡片继续使用 `cover`，播放器将其作为播放前的封面。未配置有效视频时显示封面，不从 `.nako` 中提取视频；编码须受客户端支持，推荐 H.264/AAC MP4。
+
+[shareShowcaseVideo.ts](../../modules/project/ui/navigation/shareShowcaseVideo.ts) 在打开详情后发送 `POST /api/showcase/videos`，请求为 `{video}`，完成后接收 `{url}`。首次下载期间显示居中的转圈加载动画，无可见缓存文字，保留“视频加载中”的无障碍状态标签；成功后才把本地接口地址交给播放器；`preload="none"` 且不自动播放，前端不读取视频为 Blob。下载或播放失败显示封面并提供重试；关闭或切换详情会中止前端等待、停止播放、释放播放器来源，已启动的后端共享下载继续完成并供下次复用。
+
+[showcaseVideoCache.js](../../modules/project/server/project/showcaseVideoCache.js) 只接受应用案例目录中列出的 `video`，按完整来源地址的 SHA-256 在当前用户 `cache/showcase-videos/<hash>/` 保存 `video.bin` 与 `video.json`（来源、MIME、大小）。同源并发请求共用任务，先下载到 `.download-*` 临时目录，成功后原子改名；失败清理本次临时目录。重启后核对元数据和大小再复用，不完整缓存重新下载；用户缓存目录互相独立，不自动过期。更新成片须更换 `video` 地址或删除该用户对应缓存，同地址不会主动查询远端版本。
+
+下载和文件读写均通过 [ProjectFileStore](../../modules/contracts/projectFiles.d.ts)，平台适配器 [showcaseVideoDownload.js](../../plugins/storage/sqlite/showcaseVideoDownload.js) 由 `projectFileStore.js` 装配，流式写入并核对 MIME、实际字节数和声明大小；最大 2 GiB、超时 10 分钟，不跟随重定向。源须能被后端直接 GET，无需前端跨域读取。[showcaseVideoRouter.js](../../modules/project/server/project/showcaseVideoRouter.js) 只调用注入缓存服务；`GET/HEAD /api/showcase/videos/:key` 重新核对目录，再以相对文件名和缓存根目录发送完成文件，提供正确视频 MIME、Range/206、缓存重验证和当前用户隔离，不将本地磁盘路径返回前端。无效来源返回 400/INVALID_SHOWCASE_VIDEO，未列出的来源或标识返回 404/SHOWCASE_VIDEO_NOT_LISTED，大小超限返回 413/SHOWCASE_VIDEO_TOO_LARGE，远端下载错误返回 502/SHOWCASE_VIDEO_DOWNLOAD_FAILED，其它缓存错误返回 500。
+
+当前“首尔来了个顺德大小姐”的 `video` 临时使用 MDN 的公开 CC0 花朵示例视频，仅用于测试播放器；可在 `public/share/index.json` 将该字段替换为作品成片地址。
+
 `serverPlugin.js` 将缓存配置为当前用户根目录的 `cache/showcase/`；`showcaseArchiveCache.js` 只接受应用目录中 index.json 已列出的归档地址。以完整源地址的 SHA-256 区分缓存，同源并发请求共享任务。下载和文件 I/O 通过 ProjectFileStore，由存储适配器执行；下载超时为 10 分钟，最大 2 GiB，不跟随重定向。先下载至 `.download-*` 临时目录，解压并验证包后原子改名为 `<hash>/project.nako` 与 `extracted/`；失败删除本次临时目录，后续可重试，未完成的下载不会命中缓存。
 
 已缓存归档跨应用重启复用；预览直接读取缓存解压目录的 workflow/manifest JSON，并通过现有预览素材接口发送媒体文件，不写项目数据库。复制复用缓存归档执行原有导入、引用重映射及事务流程，始终作为新副本导入。缓存不会按时间自动过期；案例文件更新需修改 archive 地址或清除该用户对应缓存，避免同一地址继续命中旧内容。OSS 地址必须能被后端直接 GET（公开读取或有效的签名 URL），无需前端 CORS；首次下载时地址失效会返回 SHOWCASE_DOWNLOAD_FAILED，非目录地址返回 SHOWCASE_ARCHIVE_NOT_LISTED。
@@ -41,7 +51,7 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 
 预览素材接口校验路径及目录边界后，通过 `sendFile(relativePath, { root: mediaDirectory })` 发送文件。Express 的隐藏文件检查仅作用于素材相对路径，避免应用父目录 `.desktop-dev` 导致所有素材被拒绝；素材目录内的隐藏文件仍不可读取，图片 MIME 和视频 Range 由 Express 处理。
 
-新增测试在 `tests/showcase-archive-cache.test.js`，覆盖分块下载、并发合并、离线缓存复用、本地源、目录限定、大小限制与失败清理，以及 `.desktop-dev` 下缓存图片响应、视频 Range 和隐藏文件拒绝；`tests/home-showcase.test.js` 核对前端仅发送 JSON。本次按项目要求未运行测试或构建。
+缓存测试位于 `tests/showcase-archive-cache.test.js` 与 `tests/showcase-video-cache.test.js`，覆盖分块下载、并发合并、重启后离线复用、本地源、来源限定、用户隔离、大小限制、失败清理及缓存目录中的 Range/HEAD；`tests/home-showcase.test.js` 验证前端只发送 JSON、使用本地播放地址、等待/错误/重试和关闭期间迟到结果处理。测试与源码目录分开维护。
 
 <!-- source-inventory:start -->
 ## 文件目录
@@ -62,7 +72,9 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/server/project/projectArchive.js](../../modules/project/server/project/projectArchive.js) | 服务端领域实现 | `createProjectArchive`, `readProjectArchive`, `readProjectArchiveDocument`, `restoreProjectArchive` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/project/projectTransferRouter.js](../../modules/project/server/project/projectTransferRouter.js) | HTTP 转换与校验 | `createProjectTransferRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/project/server/project/sharedProject.js](../../modules/project/server/project/sharedProject.js) | 服务端领域实现 | `validateSharedProject`, `resetSharedProject` | 未检出平台调用；不等于纯函数证明 |
-| [modules/project/server/project/showcaseArchiveCache.js](../../modules/project/server/project/showcaseArchiveCache.js) | 用户案例缓存与按需归档读取 | `createShowcaseArchiveCache` | 经 project.files 下载、读写及解压 |
+| [modules/project/server/project/showcaseArchiveCache.js](../../modules/project/server/project/showcaseArchiveCache.js) | 服务端领域实现 | `createShowcaseArchiveCache` | 未检出平台调用；不等于纯函数证明 |
+| [modules/project/server/project/showcaseVideoCache.js](../../modules/project/server/project/showcaseVideoCache.js) | 服务端领域实现 | `createShowcaseVideoCache` | 未检出平台调用；不等于纯函数证明 |
+| [modules/project/server/project/showcaseVideoRouter.js](../../modules/project/server/project/showcaseVideoRouter.js) | HTTP 转换与校验 | `createShowcaseVideoRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/project/server/workflow/workflowRouter.js](../../modules/project/server/workflow/workflowRouter.js) | HTTP 转换与校验 | `normalizeWorkflowCoverUrl`, `createWorkflowRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/project/server/workflow/workflowSnapshot.js](../../modules/project/server/workflow/workflowSnapshot.js) | 服务端领域实现 | `createWorkflowSnapshotWriter` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/workspace/resourceOwnership.js](../../modules/project/server/workspace/resourceOwnership.js) | 服务端领域实现 | `DEFAULT_SHARED_RESOURCE_ALLOWLIST`, `listResourceOwnership`, `getResourceOwnership`, `assertResourceOwnershipCoverage` | 未检出平台调用；不等于纯函数证明 |
@@ -92,6 +104,7 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/ui/navigation/shareShowcase.css](../../modules/project/ui/navigation/shareShowcase.css) | 界面样式 | 样式 | 无业务运行副作用 |
 | [modules/project/ui/navigation/shareShowcase.tsx](../../modules/project/ui/navigation/shareShowcase.tsx) | 浏览器交互与状态辅助 | `ShareShowcase` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/project/ui/navigation/shareShowcaseImport.ts](../../modules/project/ui/navigation/shareShowcaseImport.ts) | 浏览器交互与状态辅助 | `restoreShowcaseArchive`, `previewShowcaseArchive` | 含 HTTP/网络 调用；时机见实现 |
+| [modules/project/ui/navigation/shareShowcaseVideo.ts](../../modules/project/ui/navigation/shareShowcaseVideo.ts) | 浏览器交互与状态辅助 | `useShowcaseVideo` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/project/ui/navigation/useProjectDashboard.ts](../../modules/project/ui/navigation/useProjectDashboard.ts) | 浏览器交互与状态辅助 | `useProjectDashboard` | 含 DOM/事件 调用；时机见实现 |
 | [modules/project/ui/persistence/canvasAutoSave.ts](../../modules/project/ui/persistence/canvasAutoSave.ts) | 浏览器交互与状态辅助 | `AutoSaveReason`, `AutoSaveResult`, `AutoSaveDocumentState`, `CanvasAutoSaveController`, `CanvasAutoSaveOptions`, `CanvasAutoSaveAdapter`, `createCanvasAutoSaveController`, `installCanvasAutoSave` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/persistence/canvasAutoSaveLifecycle.ts](../../modules/project/ui/persistence/canvasAutoSaveLifecycle.ts) | 浏览器交互与状态辅助 | `CanvasAutoSaveProps`, `useCanvasAutoSave` | 含 DOM/事件 调用；时机见实现 |

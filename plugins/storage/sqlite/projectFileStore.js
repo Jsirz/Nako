@@ -6,6 +6,7 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import * as tar from 'tar';
 import { PROJECT_TRANSFER_ERRORS, ProjectTransferError } from '../../../modules/contracts/projectErrors.js';
+import { downloadShowcaseVideo } from './showcaseVideoDownload.js';
 
 async function copyNewTree(sourceDirectory, targetDirectory, createdPaths) {
   if (!fs.existsSync(sourceDirectory)) return;
@@ -132,6 +133,7 @@ export function createProjectFileStore() {
     },
     receiveArchive,
     downloadArchive,
+    downloadVideo: downloadShowcaseVideo,
     statLocalArchive,
     validateArchive,
     writeSnapshot(filename, snapshot) {

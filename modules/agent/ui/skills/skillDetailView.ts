@@ -2,8 +2,11 @@ import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js
 import type { AgentSkill } from '../../../contracts/skillCatalog.js';
 import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
 import { button, element } from './skillManagerCards';
+import { openSkillEditDialog } from './skillEditDialog';
+import type { AgentSkillClient } from './skillClient';
 
-export function openSkillDetailView(skill: AgentSkill, onClose: () => void, onUse?: () => void) {
+export function openSkillDetailView(skill: AgentSkill, onClose: () => void, onUse?: () => void, client?: AgentSkillClient) {
+  let closeEditor: (() => void) | undefined;
   const overlay = element('div', 'nako-skill-detail-overlay');
   const dialog = element('section', 'nako-skill-detail');
   dialog.setAttribute('role', 'dialog'); dialog.setAttribute('aria-modal', 'true');
@@ -23,6 +26,18 @@ export function openSkillDetailView(skill: AgentSkill, onClose: () => void, onUs
   dialog.append(hero, body);
   if (onUse) {
     const footer = element('footer', 'nako-skill-detail-footer');
+    if (skill.source === 'local') footer.append(button('编辑技能', () => {
+      closeEditor?.(); closeEditor = openSkillEditDialog(skill, updated => {
+        closeEditor = undefined;
+        if (!updated) { onClose(); return; }
+        delete skill.coverUrl; Object.assign(skill, updated);
+        dialog.setAttribute('aria-label', skill.name);
+        heading.querySelector('h2')!.textContent = skill.name;
+        heading.querySelector('span')!.textContent = `用户自定义 · ${skill.category || '其他'} · ${skill.fileCount} 个文件`;
+        description.querySelector('p')!.textContent = skill.description || '暂无简介';
+        cover.src = skill.coverUrl ? `${skill.coverUrl}?v=${encodeURIComponent(skill.updatedAt)}` : CARD_PLACEHOLDER_IMAGE;
+      }, client);
+    }));
     footer.append(button('使用技能', onUse));
     footer.lastElementChild?.classList.add('is-primary');
     dialog.append(footer);
@@ -30,5 +45,5 @@ export function openSkillDetailView(skill: AgentSkill, onClose: () => void, onUs
   overlay.append(dialog); document.body.append(overlay);
   const release = activateModal(overlay, onClose, { initialFocus: close });
   overlay.addEventListener('mousedown', event => { if (event.target === overlay) onClose(); });
-  return () => { release(); overlay.remove(); };
+  return () => { closeEditor?.(); release(); overlay.remove(); };
 }

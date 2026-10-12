@@ -13,7 +13,7 @@ const Message = bind(CanvasAgentMessage)(() => []);
 const modelChoices = canvasAgentModels<CatalogParameter>(TEXT_MODELS);
 export const agentSurfaces = {
   Home: SkillShowcase,
-  Launcher: bind(CanvasAgentLauncher)(() => []),
+  Launcher: bind(CanvasAgentLauncher)(() => [{ Tooltip }]),
   Panel: bind(CanvasAgentPanel)(() => [
     {
       Tooltip,

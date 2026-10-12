@@ -6,7 +6,7 @@ import { SkillShowcase } from '../modules/agent/ui/skills/skillShowcase';
 import { ProjectDashboardHome } from '../modules/project/ui/navigation/projectDashboardHome';
 import { DashboardCover } from '../modules/project/ui/navigation/dashboardCover';
 import { ProjectDashboardHeader } from '../modules/project/ui/navigation/projectDashboardHeader';
-import { SKILL_CATALOG_CHANGED } from '../modules/contracts/skillCatalog.js';
+import { SKILL_CATALOG_CHANGED, SKILL_PREVIEW_EVENT } from '../modules/contracts/skillCatalog.js';
 import { CARD_PLACEHOLDER_IMAGE } from '../modules/contracts/presentationAssets.js';
 import { ShareShowcase } from '../modules/project/ui/navigation/shareShowcase';
 import { previewShowcaseArchive, restoreShowcaseArchive } from '../modules/project/ui/navigation/shareShowcaseImport';
@@ -19,6 +19,7 @@ afterAll(releaseProjectUi);
 const records = () => [
   {
     slug: 'visual',
+    source: 'official',
     name: '角色设计',
     category: '图像设计',
     description: '画面设计指引',
@@ -26,6 +27,7 @@ const records = () => [
   },
   {
     slug: 'script',
+    source: 'official',
     name: '故事脚本',
     category: '文本创作',
     description: '剧本创作指引',
@@ -67,24 +69,38 @@ it('shows real skills, filters them, previews without generation, and refreshes 
   expect(skillCalls.every(([, options]) => !options?.method)).toBe(true);
   expect(view.container.querySelector('img').getAttribute('src')).toBe(CARD_PLACEHOLDER_IMAGE);
 });
-it('recovers from a skill list failure and exposes management in the empty state', async () => {
+it('recovers from a skill list failure and shows an official empty state', async () => {
   const fetcher = vi
     .fn()
     .mockResolvedValueOnce(Response.json({ error: '暂时不可用' }, { status: 503 }))
     .mockResolvedValue(Response.json({ skills: [] }));
   vi.stubGlobal('fetch', fetcher);
-  const manage = vi.fn();
-  window.addEventListener('nako:open-skill-community', manage);
-  try {
-    render(React.createElement(SkillShowcase));
-    await screen.findByRole('alert');
-    fireEvent.click(screen.getByText('重新加载'));
-    await screen.findByText('导入技能');
-    fireEvent.click(screen.getByText('导入技能'));
-    expect(manage).toHaveBeenCalledTimes(1);
-  } finally {
-    window.removeEventListener('nako:open-skill-community', manage);
-  }
+  render(React.createElement(SkillShowcase));
+  await screen.findByRole('alert');
+  fireEvent.click(screen.getByText('重新加载'));
+  await screen.findByText('暂无官方预设技能。');
+  expect(screen.queryByText('导入技能')).toBeNull();
+});
+it('shows only official skills and categories, including after catalog refresh or preview events', async () => {
+  const local = { ...records()[1], source: 'local', category: '用户分类' };
+  let skills = [records()[0], local, { ...local, slug: 'unknown', source: undefined }];
+  const fetcher = vi.fn(async () => Response.json({ skills }));
+  vi.stubGlobal('fetch', fetcher);
+  const view = render(React.createElement(SkillShowcase));
+  await screen.findByText('角色设计');
+  expect(view.container.querySelectorAll('.nako-showcase-card')).toHaveLength(1);
+  expect(screen.queryByText('故事脚本')).toBeNull();
+  expect(screen.queryByRole('button', { name: '用户分类' })).toBeNull();
+  fireEvent(window, new CustomEvent(SKILL_PREVIEW_EVENT, { detail: local }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  fireEvent.click(view.container.querySelector('.nako-showcase-card'));
+  expect(screen.queryByRole('button', { name: '编辑技能' })).toBeNull();
+  fireEvent.click(screen.getByLabelText('关闭技能详情'));
+  skills = [local];
+  fireEvent(window, new Event(SKILL_CATALOG_CHANGED));
+  await screen.findByText('暂无官方预设技能。');
+  expect(view.container.querySelectorAll('.nako-showcase-card')).toHaveLength(0);
+  expect(screen.queryByText('故事脚本')).toBeNull();
 });
 it('orders recent projects and opens the all-project browser without carousel controls', () => {
   const onNewProject = vi.fn(),
@@ -211,6 +227,72 @@ it('requests a non-persistent archive preview', async () => {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ archive: '/share/test1.nako' }),
   }]);
+});
+it.each(['/share/sample.mp4', 'https://example.oss-cn-hangzhou.aliyuncs.com/sample.mp4?signature=demo'])(
+  'plays the cached showcase video %s only in details and releases it on close', async video => {
+  const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  const load = vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  const cachedUrl = `/api/showcase/videos/${'a'.repeat(64)}`;
+  const fetcher = vi.fn(async url => url === '/api/showcase/videos' ? Response.json({ url: cachedUrl })
+    : Response.json([{ id: 'sample', title: '示例作品', cover: '/share/Default_cover.png', archive: '/share/sample.nako', video }]));
+  vi.stubGlobal('fetch', fetcher);
+  const preview = vi.fn(), view = render(React.createElement(ShareShowcase, { onPreview: preview }));
+  await screen.findByText('示例作品');
+  expect(view.container.querySelector('video')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /示例作品/ }));
+  const player = await screen.findByLabelText('示例作品视频');
+  expect(player.getAttribute('src')).toBe(cachedUrl);
+  expect(player.poster).toContain('/share/Default_cover.png');
+  expect(player.controls).toBe(true); expect(player.preload).toBe('none'); expect(player.autoplay).toBe(false);
+  expect(fetcher).toHaveBeenCalledTimes(2); expect(preview).not.toHaveBeenCalled();
+  expect(fetcher.mock.calls[1][1]).toMatchObject({ method: 'POST', body: JSON.stringify({ video }) });
+  fireEvent.click(screen.getByLabelText('关闭案例'));
+  expect(pause).toHaveBeenCalledOnce(); expect(load).toHaveBeenCalledOnce();
+  expect(player.hasAttribute('src')).toBe(false); expect(screen.queryByRole('dialog')).toBeNull();
+});
+it('falls back to the cover after a video failure and permits retry without opening the canvas', async () => {
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  const cachedUrl = `/api/showcase/videos/${'b'.repeat(64)}`;
+  vi.stubGlobal('fetch', vi.fn(async url => url === '/api/showcase/videos' ? Response.json({ url: cachedUrl })
+    : Response.json([{ id: 'sample', title: '示例作品', cover: '/share/Default_cover.png', archive: '/share/sample.nako', video: '/share/sample.webm' }])));
+  const preview = vi.fn(), view = render(React.createElement(ShareShowcase, { onPreview: preview }));
+  await screen.findByText('示例作品'); fireEvent.click(screen.getByRole('button', { name: /示例作品/ }));
+  fireEvent.error(await screen.findByLabelText('示例作品视频'));
+  expect(view.container.querySelector('.nako-share-detail-cover img').getAttribute('src')).toBe('/share/Default_cover.png');
+  expect(screen.getByRole('alert').textContent).toContain('视频暂时无法播放');
+  fireEvent.click(screen.getByRole('button', { name: '重试播放' }));
+  expect((await screen.findByLabelText('示例作品视频')).getAttribute('src')).toBe(cachedUrl);
+  expect(screen.queryByRole('alert')).toBeNull(); expect(preview).not.toHaveBeenCalled();
+});
+it('shows caching status, retries failed downloads and ignores completed requests after closing details', async () => {
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {});
+  let finish;
+  const fetcher = vi.fn().mockResolvedValueOnce(Response.json([{ id: 'sample', title: '示例作品', cover: '/share/Default_cover.png', archive: '/share/sample.nako', video: '/share/sample.mp4' }]))
+    .mockResolvedValueOnce(Response.json({ error: '视频下载中断' }, { status: 502 }))
+    .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  vi.stubGlobal('fetch', fetcher);
+  const view = render(React.createElement(ShareShowcase, { onPreview: vi.fn() }));
+  await screen.findByText('示例作品'); fireEvent.click(screen.getByRole('button', { name: /示例作品/ }));
+  expect(screen.getByRole('status', { name: '视频加载中' }).textContent).toBe('');
+  await screen.findByText('视频下载中断');
+  expect(view.container.querySelector('video')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '重试播放' }));
+  expect(screen.getByRole('status', { name: '视频加载中' }).textContent).toBe('');
+  fireEvent.click(screen.getByLabelText('关闭案例'));
+  expect(fetcher.mock.calls[2][1].signal.aborted).toBe(true);
+  finish(Response.json({ url: `/api/showcase/videos/${'c'.repeat(64)}` }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(view.container.querySelector('video')).toBeNull();
+});
+it.each(['javascript:alert(1)', 'https://name:password@example.com/video.mp4', '/share/%2e%2e/video.mp4'])(
+  'rejects the unsupported video source %s while keeping the showcase usable', async video => {
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json([{ id: 'sample', title: '示例作品', cover: '/share/Default_cover.png', archive: '/share/sample.nako', video }])));
+  const view = render(React.createElement(ShareShowcase, { onPreview: vi.fn() }));
+  await screen.findByText('示例作品'); fireEvent.click(screen.getByRole('button', { name: /示例作品/ }));
+  expect(view.container.querySelector('video')).toBeNull();
+  expect(view.container.querySelector('.nako-share-detail-cover img')).toBeTruthy();
 });
 it('restores showcase archives as independent project copies', async () => {
   const fetcher = vi

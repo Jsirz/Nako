@@ -26,7 +26,7 @@ export function createAgentSkillRouter({ skillLibrary }) {
   router.get('/api/agent-skills/:slug/cover', async (request, response) => {
     try {
       const cover = await skillLibrary.readCover(request.params.slug);
-      response.set('Content-Type', cover.contentType).set('X-Content-Type-Options', 'nosniff').send(cover.content);
+      response.set('Content-Type', cover.contentType).set('X-Content-Type-Options', 'nosniff').set('Cache-Control', 'no-cache').send(cover.content);
     } catch {
       response.status(404).end();
     }
@@ -41,6 +41,8 @@ export function createAgentSkillRouter({ skillLibrary }) {
     }
   };
   router.patch('/api/agent-skills/:slug', execute(async req => ({ skill: await skillLibrary.updateCategory(req.params.slug, req.body?.category) })));
+  router.get('/api/agent-skills/:slug/edit', execute(async req => skillLibrary.readDocument(req.params.slug)));
+  router.put('/api/agent-skills/:slug', execute(async req => ({ skill: await skillLibrary.update(req.params.slug, req.body) })));
   router.delete('/api/agent-skills/:slug', execute(async req => {
     await skillLibrary.remove(req.params.slug);
     return { success: true };

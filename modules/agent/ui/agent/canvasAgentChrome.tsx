@@ -7,6 +7,7 @@ import { AgentMarkdown } from './AgentMarkdown';
 import { AgentMessageExport } from './AgentMessageExport';
 import { splitAgentDocumentMessage } from './agentDocuments';
 import { AgentDocumentCard } from './AgentDocumentCard';
+import type { Icons } from './canvasAgentPanelTypes';
 type Runtime = Pick<typeof ReactTypes, 'createElement'>;
 interface MessageProps {
   role: string;
@@ -100,17 +101,21 @@ export function CanvasAgentMessage(
 export function CanvasAgentLauncher(
   React: Runtime,
   { onClick, isOpen }: { onClick(): void; isOpen: boolean },
+  { Tooltip }: Pick<Icons, 'Tooltip'>,
 ) {
   return isOpen ? null : (
-    <button
-      type="button"
-      aria-label="打开 Nako Agent"
-      title="Nako Agent"
-      onClick={onClick}
-      data-nako-agent-launcher="true"
-      className="nako-agent-launcher fixed rounded-full flex items-center justify-center z-50"
-    >
-      <Bot size={36} aria-hidden="true" />
-    </button>
+    <div className="nako-agent-launcher-anchor fixed z-50">
+      <Tooltip text="nako agent" delay={0} position="top">
+        <button
+          type="button"
+          aria-label="打开 Nako Agent"
+          onClick={onClick}
+          data-nako-agent-launcher="true"
+          className="nako-agent-launcher rounded-full flex items-center justify-center"
+        >
+          <Bot size={36} aria-hidden="true" />
+        </button>
+      </Tooltip>
+    </div>
   );
 }

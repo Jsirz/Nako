@@ -31,3 +31,19 @@ export interface AgentSkill {
   version?: string;
   bundleId?: string;
 }
+export interface AgentSkillFile { path: string; contentBase64: string }
+export interface AgentSkillEditableFile { path: string; text?: string }
+export interface AgentSkillDocument {
+  skill: AgentSkill;
+  files: AgentSkillEditableFile[];
+  coverFile?: string;
+}
+export interface AgentSkillEditRequest {
+  updatedAt: string;
+  name: string;
+  description: string;
+  category: string;
+  files: AgentSkillFile[];
+  removedPaths: string[];
+  coverFile?: string | null;
+}

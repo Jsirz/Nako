@@ -6,6 +6,8 @@ import { createWorkflowSnapshotWriter } from './server/workflow/workflowSnapshot
 import { createFolderRouter } from './server/project/folderRouter.js';
 import { createProjectTransferRouter } from './server/project/projectTransferRouter.js';
 import { createShowcaseArchiveCache } from './server/project/showcaseArchiveCache.js';
+import { createShowcaseVideoCache } from './server/project/showcaseVideoCache.js';
+import { createShowcaseVideoRouter } from './server/project/showcaseVideoRouter.js';
 import { DEFAULT_MAX_ARCHIVE_BYTES, DEFAULT_MAX_ARCHIVE_ENTRIES } from './server/project/archiveCommon.js';
 import { getWorkspacePaths } from './server/workspace/workspacePaths.js';
 
@@ -43,6 +45,11 @@ export default defineApplicationPlugin({
       maxArchiveBytes: DEFAULT_MAX_ARCHIVE_BYTES,
       maxArchiveEntries: DEFAULT_MAX_ARCHIVE_ENTRIES,
     });
+    app.use('/api', createShowcaseVideoRouter({ cache: createShowcaseVideoCache({
+      files,
+      shareDirectory: path.join(RUNTIME_PATHS.PUBLIC_DIR, 'share'),
+      cacheDirectory: path.join(path.dirname(RUNTIME_PATHS.PRIVATE_DIR), 'cache', 'showcase-videos'),
+    }) }));
     const { sanitizeWorkflowNodes } = context.services.get('media.projectFiles');
     const writeProjectJsonSnapshot = createWorkflowSnapshotWriter({
       mediaDirectory: path.join(BASE_LIBRARY_DIR, 'media'),

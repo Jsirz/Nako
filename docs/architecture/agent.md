@@ -18,6 +18,8 @@ agent.persistence 由 storage.agent-files 提供会话、工作区、计划、�
 
 技能选择使用 contracts/skillCatalog 的 `AgentSelectedSkill`，后端 `agentRouter.js` 从技能目录保存 `slug/name/source` 及版本、项目标识；客户端 `agentClient.ts` 引用并转出同一类型，快捷选择与制作计划可使用保存的展示名称。
 
+用户技能编辑协议定义在 [skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts)。[agentSkillRouter.js](../../modules/agent/server/agent/agentSkillRouter.js) 将 `GET /api/agent-skills/:slug/edit` 转发到注入技能服务的 `readDocument(slug)`，返回元数据、可编辑文本及附件路径；`PUT /api/agent-skills/:slug` 调用 `update(slug, request)`，返回 `{skill}`。请求包含读取时的 `updatedAt`、名称/简介/分类、变更文件、删除路径及可选封面路径，未传的文件保留。不存在返回 404，官方条目返回 403，过期编辑返回 409，路径、元数据或参考文件错误通过 contracts 的 `AgentSkillError` 返回 400；非领域异常返回 500。Router 不操作文件系统。
+
 工具参数先校验 schema，再绑定项目/会话/操作身份；变更先写执行意图，确认后写回执。nodeTools 直接使用受限节点服务，不通过浏览器猜测节点参数。通用操作错误使用 contracts/agentErrors；保留的字符串诊断码和横向 UI 调用差异见 conformance。
 
 ## 数据模型
@@ -38,13 +40,13 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 
 普通导入优先读取同目录的 `metadata.json`，缺少时从 `SKILL.md` frontmatter 提取名称、简介；导入弹窗将用户填写的展示信息写入独立 `metadata.json`，保留指令 frontmatter。用户技能保存于 `private/agent-skills`，始终为 `source: 'local'`，不按名称继承官方文案、封面或身份；同名导入分配独立标识，`preset-` 前缀保留给官方。官方分类修改与删除由 `skillCatalogState.js` 拒绝，HTTP 返回 403；用户自定义仍可通过现有接口管理。过去自动复制且含 `presetId` 的副本不再进入目录，文件本身不删除；旧官方隐藏和分类记录不控制发布目录。前端技能标签及制作组合说明使用技能服务或会话选择的名称，不从执行配置推导文案。Agent 模块中的通用官方注册表仅接收显式注入的条目，不读取文件系统。
 
-欢迎页 `AgentInspirationNavigator.tsx` 按“文字/图片/视频/音频来源 → 提供输入 → 选择任务”导航，输入复用现有编辑框、文档及媒体附件；文件选择器按来源限制类型，画布选择通过 `onLocateNode` 及现有选择引用机制提供上下文。来源、步骤和已整理任务只保存在组件内，切换画布随面板实例重置；输入仍由现有工作区草稿管理。无对应输入、上传未完成或助手运行中时不允许选任务。
+欢迎页 `AgentInspirationNavigator.tsx` 按“文字/图片/视频/音频来源 → 提供输入 → 选择任务”导航，输入复用现有编辑框、文档及媒体附件；文件选择器按来源限制类型，画布选择通过 `onLocateNode` 及现有选择引用机制提供上下文。来源保存在 `useCanvasAgentPanelState.ts` 的临时 UI 状态中，步骤和已整理任务留在导航组件内；切换画布、开关面板或空会话状态变化时重置来源，输入仍由现有工作区草稿管理。选中来源后，`renderAgentPanelShell.tsx` 在右上角收起按钮左侧显示独立回退按钮，返回来源列表且不清空输入或附件；原步骤栏回退和对话历史入口保留，再次选择来源从输入步骤开始。无对应输入、上传未完成或助手运行中时不允许选任务。
 
 任务名称明确区分图像描述、提示词提取、视频生成计划、要素/分镜、技能草稿和音频转写；选择任务只追加可编辑请求并将生成执行方式切为手动确认，不发送消息、不调用模型、不创建或运行工作流。用户显式发送后由现有 Agent 流程分析并预览结果，媒体能力不足时请求说明限制。`AgentMessageExport.tsx` 可编辑单条回复的导出草稿，再显式创建文本节点并复制编辑后文本；草稿不改写已归档的助手回复，创建后的节点沿用画布编辑和连接流程。媒体生成仍经既有授权卡确认。
 
 空会话副标题显示“纳科画布智能体”，面板收起按钮沿用减号图标；输入框上方不显示左侧“技能”标题，保留右侧“选择技能”入口，编辑框保留“调用技能”。文本模型选择 AUTO 时，`useCanvasAgentPanelState.ts` 优先使用已配置且可用的默认文本模型；没有可用默认模型时，按可选列表顺序使用第一个已连接的文本模型，不写回默认设置或工作区模型选择。手动指定模型仍优先，发送给后端的是解析后的具体模型。`agentPanelActions.ts` 在无模型时拦截发送并弹出提示，区分模型读取中、读取失败和没有可用模型，保留输入与附件；用户可在设置中连接服务后重试。
 
-`CanvasAgentLauncher` 在面板收起时显示，入口按钮为 72px、机器人图标为 36px，固定距窗口右侧 80px、底部 76px，尺寸及位置由 `agentWorkspace.css` 管理。
+`CanvasAgentLauncher` 在面板收起时显示，入口按钮为 72px、机器人图标为 36px，外层容器固定距窗口右侧 80px、底部 76px，尺寸及位置由 `agentWorkspace.css` 管理。`surfaces.ts` 注入现有 `CanvasTooltip`，鼠标悬停或键盘聚焦时在图标上方显示“nako agent”，延迟设为 0；离开、失焦或按 Escape 隐藏提示。
 
 `dramaConversationShortcut.ts` 的技能选择区以输入框上方浮层展示紧凑单列列表，名称和简介各占一行；分类与搜索并排，底部“查看更多”打开现有技能管理面板。`AgentSkillPicker.ts` 复用技能封面及默认封面，在悬停或键盘聚焦时于列表侧边展示预览；空间不足时保留“详情”入口，滚动、收起、切换会话和面板卸载会清理预览。点击条目沿用技能选择动作，“详情”打开现有详情弹窗，只有点击条目或“使用技能”才选择技能，不自动发送对话或生成。
 
@@ -53,7 +55,11 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 发送校验 -> 会话锁和唯一 operationId -> pi 工具循环 -> 写会话/意图 -> 执行业务 -> 写回执 -> SSE 投影 -> run_end。断流读取快照，不重发消息；应用退出等待停止及持久化。
 模型 stream 的 textDelta 是暂态显示，工具参数必须完整并校验后才进入 pi；截断或非法 JSON 明确拒绝，不自动重发。usage 和 stopReason 经公共结果映射，AbortSignal 覆盖凭据解析、提交及响应消费。
 
-关闭面板只断前端观察；退出或切换项目停止相应 Agent 运行。Skill 导入、分类、封面、中文展示及删除由同一存储服务维护，脚本不执行。技能管理由 `skillManager.ts` 提供“官方预设”和“用户自定义”来源页签，默认官方，切换来源重置分类与搜索，导入成功转到用户自定义。卡片只展示封面、名称和简介，点击查看详情；卡片不提供分类输入、保存分类或删除控件，保留分类筛选、搜索和导入。详情显示来源，底部仅显示“使用技能”按钮，关闭通过右上角按钮、Escape 或点击遮罩完成。面板展示与时间线渲染分担职责，保留工具确认原位置和焦点恢复。
+关闭面板只断前端观察；退出或切换项目停止相应 Agent 运行。Skill 导入、分类、封面、中文展示及删除由同一存储服务维护，脚本不执行。技能管理由 `skillManager.ts` 提供“官方预设”和“用户自定义”来源页签，默认官方，切换来源重置分类与搜索，导入成功转到用户自定义。卡片只展示封面、名称和简介，点击查看详情；卡片不提供分类输入、保存分类或删除控件，保留分类筛选、搜索和导入。详情显示来源，底部提供“使用技能”，用户自定义另在左侧提供“编辑技能”；管理页和对话选择器详情使用相同编辑窗口。首页仅展示官方预设，分类和预览事件均排除用户自定义技能，空状态不提供导入入口。关闭通过右上角按钮、Escape 或点击遮罩完成。面板展示与时间线渲染分担职责，保留工具确认原位置和焦点恢复。
+
+[skillEditDialog.ts](../../modules/agent/ui/skills/skillEditDialog.ts) 编辑名称、简介、分类、封面和文本文件，支持新增文本、上传替换与删除附件；根 `SKILL.md` 不可删除，存储元数据由表单生成。附件仅返回路径，不整包回传二进制。保存只上传变更文件，点击删除技能打开独立 `alertdialog` 确认窗口，展示技能名称及删除后果，默认聚焦取消；取消、Escape 或点击遮罩只关闭确认窗口并返回编辑，确认后才调用删除接口。窗口复用 `activateModal` 隔离背景并恢复焦点，关闭编辑时同步清理确认窗口；请求期间禁用编辑，失败保留草稿。客户端成功后广播 `SKILL_CATALOG_CHANGED`，管理页、首页和选择器刷新；首页封面地址附带修改时间，封面 HTTP 响应要求缓存重验证。
+
+存储侧 [skillEditor.js](../../plugins/storage/agent-files/skillEditor.js) 由 `agentSkillLibrary.js` 装配，复用 `skillCatalogState.js` 的用户目录共享队列及官方保护。保存保持 slug，复制原目录到暂存目录后写变更，拒绝越界、链接、Windows 非法路径和大小写重名，检查根指令与显式参考清单，生成新 `updatedAt` 及文件数并同步分类记录。目录替换或分类写入失败时恢复备份；未修改文件原样保留。更新不改写官方目录，不执行附带脚本，已运行对话仍使用本轮已加载上下文。
 `renderAgentPanelConversation` 将连续的无正文、无附件且无分支入口的助手操作消息合并到默认折叠的操作记录组，摘要显示记录总数及执行中/需核对状态，展开后按原消息顺序查看。画布操作详情也默认折叠；`AgentTimelineCards` 将生成及授权等操作卡独立呈现于折叠记录外，不改动消息、回执或执行流程。
 聊天控制器分为历史、会话动作、单轮请求和生命周期职责，仍按 active/epoch/项目身份拒绝迟到结果，断流只读回执不重放。Skill 快捷选择分为状态、选择动作、DOM 挂载及绑定；面板状态、操作与会话/编辑区/外壳渲染独立维护。模型传输文件已迁至 plugins/platform/text-transport，源码目录不再列旧 Agent 路径。
 
@@ -196,6 +202,7 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/skills/skillCommunity.ts](../../modules/agent/ui/skills/skillCommunity.ts) | 浏览器交互与状态辅助 | `installSkillCommunity` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/skills/skillCommunityStyles.ts](../../modules/agent/ui/skills/skillCommunityStyles.ts) | 浏览器交互与状态辅助 | `installSkillStyles` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/skills/skillDetailView.ts](../../modules/agent/ui/skills/skillDetailView.ts) | 界面呈现与交互 | `openSkillDetailView` | 含 DOM/事件 调用；时机见实现 |
+| [modules/agent/ui/skills/skillEditDialog.ts](../../modules/agent/ui/skills/skillEditDialog.ts) | 界面呈现与交互 | `openSkillEditDialog` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/skills/skillImportDialog.ts](../../modules/agent/ui/skills/skillImportDialog.ts) | 界面呈现与交互 | `openSkillImportDialog` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/skills/skillManager.ts](../../modules/agent/ui/skills/skillManager.ts) | 浏览器交互与状态辅助 | `openSkillManager` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/skills/skillManagerCards.ts](../../modules/agent/ui/skills/skillManagerCards.ts) | 界面呈现与交互 | `element`, `button`, `skillManagerCard` | 含 DOM/事件 调用；时机见实现 |

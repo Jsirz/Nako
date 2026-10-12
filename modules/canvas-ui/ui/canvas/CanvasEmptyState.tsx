@@ -16,7 +16,6 @@ export function CanvasEmptyState({ onCreate, onMore }: {
   return (
     <div className="nako-canvas-empty">
       <div className="nako-canvas-empty-content">
-        <span className="nako-canvas-empty-mark" aria-hidden="true"><Plus size={24} strokeWidth={1.25} /></span>
         <h1>从一个想法开始</h1>
         <p>双击画布添加节点，或拖入本地素材</p>
         <div className="nako-canvas-shortcuts" aria-label="快速创建节点">

@@ -1,5 +1,6 @@
 /** @jsxRuntime classic */
 /** @jsx React.createElement */
+import { Undo2 } from 'lucide-react';
 import type { Icons, Runtime } from './canvasAgentPanelTypes';
 import type { AgentPanelState } from './useCanvasAgentPanelState';
 import type { AgentPanelActions } from './agentPanelActions';
@@ -162,6 +163,19 @@ export function renderAgentPanelHeader(
             <HistoryIcon size={18} />
           </button>
         </Tooltip>
+        {!hasMessages && state.inspirationSource && (
+          <Tooltip text="返回灵感来源" position="bottom">
+            <button
+              type="button"
+              aria-label="返回灵感来源"
+              disabled={isLoading}
+              onClick={() => state.setInspirationSource(null)}
+              className="p-1.5 rounded-lg transition-colors hover:bg-[var(--nk-surface)] text-[var(--nk-text-secondary)] hover:text-[var(--nk-text)] disabled:opacity-40"
+            >
+              <Undo2 size={18} aria-hidden="true" />
+            </button>
+          </Tooltip>
+        )}
         <button
           type="button"
           aria-label="收起 Nako Agent"
