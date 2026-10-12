@@ -8,7 +8,7 @@ export function createAgentSkillRouter({ skillLibrary }) {
     try {
       response.json({ skills: await skillLibrary.list() });
     } catch {
-      response.status(500).json({ error: '读取 SKILL 社区失败', code: 'AGENT_SKILL_LIST_FAILED' });
+      response.status(500).json({ error: '读取技能社区失败', code: 'AGENT_SKILL_LIST_FAILED' });
     }
   });
   router.post('/api/agent-skills/import', async (request, response) => {
@@ -20,7 +20,7 @@ export function createAgentSkillRouter({ skillLibrary }) {
         response.status(error.status).json({ error: error.message, code: error.code });
         return;
       }
-      response.status(500).json({ error: '导入 SKILL 失败', code: 'AGENT_SKILL_IMPORT_FAILED' });
+      response.status(500).json({ error: '导入技能失败', code: 'AGENT_SKILL_IMPORT_FAILED' });
     }
   });
   router.get('/api/agent-skills/:slug/cover', async (request, response) => {
@@ -35,7 +35,7 @@ export function createAgentSkillRouter({ skillLibrary }) {
     try { response.json(await action(request)); }
     catch (error) {
       response.status(error instanceof AgentSkillError ? error.status : 500).json({
-        error: error instanceof AgentSkillError ? error.message : '更新 SKILL 失败',
+        error: error instanceof AgentSkillError ? error.message : '更新技能失败',
         code: error instanceof AgentSkillError ? error.code : 'AGENT_SKILL_UPDATE_FAILED',
       });
     }

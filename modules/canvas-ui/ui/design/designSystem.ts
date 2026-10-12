@@ -607,7 +607,7 @@ function enhanceSettings(root: ParentNode): string[] {
   if (panel) {
     panel.dataset.nakoSettings = 'true';
     panel.setAttribute('role', panel.getAttribute('role') ?? 'dialog');
-    panel.setAttribute('aria-label', 'Nako 画布设置');
+    panel.setAttribute('aria-label', 'NAKO Agent 纳科画布智能体设置');
     panel.setAttribute('aria-modal', 'true');
     const sidebar = panel.querySelector('nav')?.parentElement;
     if (sidebar) sidebar.dataset.nakoSettingsSidebar = 'true';

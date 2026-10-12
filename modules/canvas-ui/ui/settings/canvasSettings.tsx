@@ -141,7 +141,7 @@ function renderCanvasSettings(React: Runtime, props: CanvasSettingsProps, depend
         data-nako-settings-owned="true"
         data-nako-settings-domains="appearance models storage local-service network"
         role="dialog"
-        aria-label="Nako 画布设置"
+        aria-label="NAKO Agent 纳科画布智能体设置"
         aria-modal="true"
         className="bg-[var(--nk-surface-raised)] border border-[var(--nk-border)] rounded-lg shadow-2xl flex overflow-hidden w-full max-w-7xl h-[90vh]"
       >

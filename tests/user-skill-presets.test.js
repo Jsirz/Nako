@@ -9,16 +9,16 @@ import { resolvePresetSkillCover } from '../plugins/storage/agent-files/presetSk
 const roots = [];
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); });
 async function setup() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'nako-preset-seed-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nako-official-presets-'));
   roots.push(root);
   const presetDirectory = path.join(root, 'app', 'presets');
-  const options = { libraryDirectory: path.join(root, 'user-a', 'library'), presetDirectory };
   await mkdir(presetDirectory, { recursive: true });
-  return { root, options, presetDirectory };
+  return { root, presetDirectory, options: { libraryDirectory: path.join(root, 'user', 'library'), presetDirectory } };
 }
 async function preset(directory, id, files = {}) {
   for (const [relative, content] of Object.entries({
-    'SKILL.md': '---\nname: ' + id + '\ndescription: >\n  多行描述第一行\n  第二行\n---\n# 独立模板\n',
+    'SKILL.md': `---\nname: ${id}\n---\n# 官方第一版`,
+    'metadata.json': JSON.stringify({ name: id, description: '官方介绍', category: '文本创作' }),
     ...files,
   })) {
     const filename = path.join(directory, id, relative);
@@ -26,140 +26,122 @@ async function preset(directory, id, files = {}) {
     await writeFile(filename, content);
   }
 }
-it('copies full assets, loads explicit text references, and preserves user edits across restart', async () => {
+const upload = text => [{ path: 'SKILL.md', contentBase64: Buffer.from(text).toString('base64') }];
+
+it.each([
+  ['gif', 'image/gif'], ['webp', 'image/webp'], ['png', 'image/png'],
+  ['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'],
+])('provides official %s cover URLs and returns the original bytes with the correct MIME type', async (extension, contentType) => {
   const { options, presetDirectory } = await setup();
-  const binary = Buffer.from([0, 1, 2, 255]);
+  const content = Buffer.from(`official ${extension} cover`);
+  await preset(presetDirectory, 'template', { [`cover.${extension}`]: content });
+  const library = createAgentSkillLibrary(options);
+  const skill = (await library.list()).find(item => item.slug === 'preset-template');
+  expect(skill.coverUrl).toBe('/api/agent-skills/preset-template/cover');
+  expect(await library.readCover(skill.slug)).toEqual({ content, contentType });
+});
+
+it('reflects official metadata, instructions, references and cover changes while preserving imported files', async () => {
+  const { options, presetDirectory } = await setup();
   await preset(presetDirectory, 'template', {
-    'reference/GUIDE.md': '# 场景参考',
-    'templates/report.template.md': '# 模板正文',
-    'assets/image.png': binary,
-    'cover.webp': binary,
-    'COVER-SOURCE.md': '# 封面授权，不是技能指令',
-    'scripts/example.py': 'raise RuntimeError("must not execute")',
+    'references/guide.md': '# 第一版参考',
+    'agent-skill.json': '{"instructionReferences":["references/guide.md"]}',
+    'cover.webp': 'first artwork',
   });
   const library = createAgentSkillLibrary(options);
-  const skill = (await library.list()).find(item => item.preset);
-  expect(skill.description).toBe('多行描述第一行 第二行');
-  const target = path.join(library.rootDirectory, skill.slug);
-  expect(await readFile(path.join(target, 'assets/image.png'))).toEqual(binary);
-  expect(skill.coverUrl).toBe(`/api/agent-skills/${skill.slug}/cover`);
-  expect((await library.readCover(skill.slug)).content).toEqual(binary);
-  expect(await readFile(path.join(target, 'COVER-SOURCE.md'), 'utf8')).toContain('封面授权');
-  const instructions = await library.loadInstructions([skill.slug]);
-  expect(instructions).toContain('# 场景参考');
-  expect(instructions).toContain('# 模板正文');
-  expect(instructions).not.toContain('raise RuntimeError');
-  expect(instructions).not.toContain('封面授权');
-  await writeFile(path.join(target, 'SKILL.md'), '# 用户编辑');
-  await library.updateCategory(skill.slug, '我的分类');
-  await preset(presetDirectory, 'template', { 'SKILL.md': '# 上游变更' });
+  const imported = await library.importFiles(upload('---\nname: template\n---\n# 用户正文'));
+  await library.updateCategory(imported.slug, '用户分类');
+  const userDirectory = path.join(library.rootDirectory, imported.slug);
+  const before = await Promise.all(['metadata.json', 'SKILL.md'].map(file => readFile(path.join(userDirectory, file))));
+  const official = (await library.list()).find(skill => skill.preset);
+  expect(official).toMatchObject({ slug: 'preset-template', source: 'official', name: 'template' });
+  expect(await library.loadInstructions([official.slug])).toContain('第一版参考');
+  await preset(presetDirectory, 'template', {
+    'metadata.json': JSON.stringify({ name: '新版官方', description: '新版介绍', category: '视频制作', source: 'local', bundleId: 'forged' }),
+    'SKILL.md': '---\nname: changed-name\n---\n# 官方第二版',
+    'references/guide.md': '# 第二版参考',
+    'cover.gif': 'GIF89a second artwork',
+  });
   const reopened = createAgentSkillLibrary(options);
-  expect(await reopened.loadInstructions([skill.slug])).toContain('# 用户编辑');
-  expect((await reopened.list()).find(item => item.slug === skill.slug).category).toBe('我的分类');
+  expect((await reopened.list()).find(skill => skill.slug === official.slug)).toMatchObject({
+    name: '新版官方', description: '新版介绍', category: '视频制作', source: 'official',
+  });
+  expect((await reopened.list()).find(skill => skill.slug === official.slug).bundleId).toBeUndefined();
+  const instructions = await reopened.loadInstructions([official.slug]);
+  expect(instructions).toContain('官方第二版'); expect(instructions).toContain('第二版参考');
+  expect(instructions).not.toContain('第一版参考');
+  expect(await reopened.readCover(official.slug)).toEqual({ content: Buffer.from('GIF89a second artwork'), contentType: 'image/gif' });
+  expect((await reopened.list()).find(skill => skill.slug === imported.slug).category).toBe('用户分类');
+  expect(await reopened.loadInstructions([imported.slug])).toContain('用户正文');
+  expect(await Promise.all(['metadata.json', 'SKILL.md'].map(file => readFile(path.join(userDirectory, file))))).toEqual(before);
+  expect(await readdir(library.rootDirectory)).not.toContain(official.slug);
+  expect(await readdir(library.rootDirectory)).not.toContain('preset-state.json');
 });
-it('serializes concurrent instances and isolates initialization and deletion between users', async () => {
+
+it('reflects added and deleted official skills for every user without restoring stale copies', async () => {
   const { root, options, presetDirectory } = await setup();
   await preset(presetDirectory, 'template');
-  const a = createAgentSkillLibrary(options), duplicate = createAgentSkillLibrary(options);
-  const b = createAgentSkillLibrary({ ...options, privateDirectory: path.join(root, 'user-b', 'private') });
-  const [first, second, other] = await Promise.all([a.list(), duplicate.list(), b.list()]);
-  expect(first.filter(item => item.preset)).toHaveLength(1);
-  expect(second.filter(item => item.preset)).toHaveLength(1);
-  expect(other.filter(item => item.preset)).toHaveLength(1);
-  await a.remove('template');
-  expect((await createAgentSkillLibrary(options).list()).some(item => item.slug === 'template')).toBe(false);
-  expect((await b.list()).some(item => item.slug === 'template')).toBe(true);
-});
-it('inherits newly shipped artwork for existing presets without rewriting user data', async () => {
-  const { options, presetDirectory } = await setup();
-  await preset(presetDirectory, 'template');
-  const original = createAgentSkillLibrary(options);
-  await original.initialize();
-  const target = path.join(original.rootDirectory, 'template');
-  await writeFile(path.join(target, 'SKILL.md'), '# 用户编辑');
-  await original.updateCategory('template', '我的分类');
-  const metadata = await readFile(path.join(target, 'metadata.json'));
-  const ledger = await readFile(path.join(original.rootDirectory, 'preset-state.json'));
-  const image = Buffer.from('shipped artwork');
-  await preset(presetDirectory, 'template', { 'cover.webp': image });
+  const a = createAgentSkillLibrary(options);
+  const b = createAgentSkillLibrary({ ...options, privateDirectory: path.join(root, 'other-user') });
+  await a.initialize();
+  const stale = path.join(a.rootDirectory, 'old-copy');
+  await mkdir(stale);
+  await writeFile(path.join(stale, 'metadata.json'), JSON.stringify({ slug: 'old-copy', presetId: 'template', name: '旧副本' }));
+  await writeFile(path.join(stale, 'SKILL.md'), '# 旧副本');
+  await writeFile(path.join(a.rootDirectory, 'catalog.json'), JSON.stringify({ version: 1, removed: ['preset-template', 'minimax-drama-prompt'], categories: { 'preset-template': '旧分类' } }));
+  expect((await a.list()).find(skill => skill.slug === 'preset-template').category).toBe('文本创作');
+  expect((await a.list()).some(skill => skill.slug === 'minimax-drama-prompt')).toBe(true);
+  expect((await a.list()).some(skill => skill.slug === 'old-copy')).toBe(false);
+  await rm(path.join(presetDirectory, 'template'), { recursive: true });
+  await preset(presetDirectory, 'added');
+  for (const library of [a, b]) {
+    const all = await library.list();
+    expect(all.some(skill => skill.slug === 'preset-template')).toBe(false);
+    expect(all.some(skill => skill.slug === 'preset-added')).toBe(true);
+    expect(await library.loadInstructions(['preset-template'])).toBe('');
+    await expect(library.readCover('preset-template')).rejects.toMatchObject({ status: 404 });
+  }
+  expect(await readFile(path.join(stale, 'SKILL.md'), 'utf8')).toBe('# 旧副本');
+  await rm(presetDirectory, { recursive: true });
   const reopened = createAgentSkillLibrary(options);
-  expect((await reopened.list()).find(skill => skill.slug === 'template')).toMatchObject({
-    category: '我的分类', coverUrl: '/api/agent-skills/template/cover',
-  });
-  expect((await reopened.readCover('template')).content).toEqual(image);
-  expect(await reopened.loadInstructions(['template'])).toContain('# 用户编辑');
-  expect(await readFile(path.join(target, 'metadata.json'))).toEqual(metadata);
-  expect(await readFile(path.join(original.rootDirectory, 'preset-state.json'))).toEqual(ledger);
-  expect(await readdir(target)).not.toContain('cover.webp');
-  await reopened.remove('template');
-  const afterDeletion = createAgentSkillLibrary(options);
-  expect((await afterDeletion.list()).some(skill => skill.slug === 'template')).toBe(false);
-  await expect(afterDeletion.readCover('template')).rejects.toThrow();
+  expect((await reopened.list()).some(skill => skill.preset)).toBe(false);
+  expect((await reopened.list()).some(skill => skill.slug === 'minimax-drama-prompt')).toBe(true);
 });
-it('prefers user artwork and does not infer preset identity from an imported name', async () => {
+
+it('rejects changes to official presets and allows independent imports with the same name', async () => {
   const { options, presetDirectory } = await setup();
+  await preset(presetDirectory, 'minimax-drama-prompt');
   const library = createAgentSkillLibrary(options);
-  await library.initialize();
-  await library.importFiles([{ path: 'SKILL.md', contentBase64:
-    Buffer.from('---\nname: template\n---\n# 用户导入').toString('base64') }]);
-  const userCover = Buffer.from('user artwork');
-  await preset(presetDirectory, 'template', { 'cover.webp': userCover });
-  const seeded = createAgentSkillLibrary(options);
-  await seeded.initialize();
-  await writeFile(path.join(presetDirectory, 'template', 'cover.webp'), 'new shipped artwork');
-  const reopened = createAgentSkillLibrary(options);
-  expect((await reopened.list()).find(skill => skill.slug === 'template').coverUrl).toBeUndefined();
-  await expect(reopened.readCover('template')).rejects.toThrow();
-  expect((await reopened.readCover('template-2')).content).toEqual(userCover);
+  const all = await library.list();
+  expect(all.find(skill => skill.slug === 'minimax-drama-prompt').bundleId).toBe('minimax-drama');
+  const generic = all.find(skill => skill.slug === 'preset-minimax-drama-prompt');
+  expect(generic.source).toBe('official'); expect(generic.bundleId).toBeUndefined();
+  await expect(library.remove(generic.slug)).rejects.toMatchObject({ status: 403 });
+  await expect(library.updateCategory(generic.slug, '用户分类')).rejects.toMatchObject({ status: 403 });
+  const imported = await library.importFiles(upload('---\nname: preset-minimax-drama-prompt\n---\n# 自定义'));
+  expect(imported).toMatchObject({ slug: 'custom-minimax-drama-prompt', source: 'local' });
+  await library.remove(imported.slug);
+  expect((await library.list()).some(skill => skill.slug === generic.slug)).toBe(true);
 });
-it('supports Chinese preset folders and rejects missing or escaping cover identities', async () => {
+
+it('uses stable identities for Chinese folders and reports malformed official metadata', async () => {
+  const { options, presetDirectory } = await setup();
+  await preset(presetDirectory, '中文技能', { 'cover.gif': 'GIF89a' });
+  const library = createAgentSkillLibrary(options), skill = (await library.list()).find(item => item.preset);
+  expect(skill.slug).toMatch(/^preset-[a-f0-9]{24}$/);
+  await writeFile(path.join(presetDirectory, '中文技能', 'SKILL.md'), '# 新指令');
+  expect((await library.list()).find(item => item.preset).slug).toBe(skill.slug);
+  expect(await library.readCover(skill.slug)).toMatchObject({ contentType: 'image/gif' });
+  await writeFile(path.join(presetDirectory, '中文技能', 'metadata.json'), '{');
+  await expect(library.list()).rejects.toThrow('不是有效 JSON');
+});
+
+it('rejects escaping cover identities and executable or traversal instruction references', async () => {
   const { presetDirectory } = await setup();
-  await preset(presetDirectory, '中文技能', { 'cover.webp': 'artwork' });
-  expect(await resolvePresetSkillCover(presetDirectory, '中文技能'))
-    .toBe(path.join(presetDirectory, '中文技能', 'cover.webp'));
+  await preset(presetDirectory, '中文技能', { 'cover.gif': 'GIF89a' });
+  expect(await resolvePresetSkillCover(presetDirectory, '中文技能')).toBe(path.join(presetDirectory, '中文技能', 'cover.gif'));
   for (const id of ['../outside', '..\\outside', 'C:\\outside', '..', '', null, 'missing'])
     expect(await resolvePresetSkillCover(presetDirectory, id)).toBeNull();
-  expect(await resolvePresetSkillCover(null, '中文技能')).toBeNull();
-});
-it('keeps a preset with a business-reserved name local and does not overwrite existing imports', async () => {
-  const { options, presetDirectory } = await setup();
-  const before = createAgentSkillLibrary({ ...options, presetDirectory: null });
-  const imported = await before.importFiles([{ path: 'SKILL.md', contentBase64: Buffer.from('---\nname: template\n---\n# 用户内容').toString('base64') }]);
-  await preset(presetDirectory, 'template');
-  await preset(presetDirectory, 'minimax-drama-prompt');
-  const library = createAgentSkillLibrary(options), all = await library.list();
-  expect(all.find(item => item.slug === 'minimax-drama-prompt').source).toBe('official');
-  expect(all.find(item => item.name === 'minimax-drama-prompt' && item.preset)).toMatchObject({ source: 'local', slug: 'minimax-drama-prompt-2' });
-  expect(all.find(item => item.name === 'template' && item.preset).slug).toBe('template-2');
-  expect(await library.loadInstructions([imported.slug])).toContain('# 用户内容');
-});
-it('recovers a copied preset missing its ledger commit without duplicating or replacing files', async () => {
-  const { options, presetDirectory } = await setup();
-  await preset(presetDirectory, 'template');
-  const library = createAgentSkillLibrary(options);
-  await library.initialize();
-  await rm(path.join(library.rootDirectory, 'preset-state.json'));
-  await writeFile(path.join(library.rootDirectory, 'template', 'SKILL.md'), '# 保留副本');
-  const reopened = createAgentSkillLibrary(options);
-  expect((await reopened.list()).filter(item => item.preset)).toHaveLength(1);
-  expect(await reopened.loadInstructions(['template'])).toContain('# 保留副本');
-  expect(await readdir(library.rootDirectory)).not.toContain('template-2');
-});
-it('fails clearly on corrupt initialization state without overwriting it and permits retry after repair', async () => {
-  const { options, presetDirectory } = await setup();
-  await preset(presetDirectory, 'template');
-  const library = createAgentSkillLibrary(options);
-  await mkdir(library.rootDirectory, { recursive: true });
-  const state = path.join(library.rootDirectory, 'preset-state.json');
-  await writeFile(state, '{"version":2}');
-  await expect(library.list()).rejects.toThrow('初始化记录损坏');
-  expect(await readFile(state, 'utf8')).toBe('{"version":2}');
-  await rm(state);
-  expect((await library.list()).filter(item => item.preset)).toHaveLength(1);
-});
-it('rejects traversal and executable references while allowing explicit text template paths', () => {
-  for (const reference of ['references/../../outside.md', 'templates/../outside.md', 'scripts/run.py', 'assets/image.png']) {
+  for (const reference of ['references/../../outside.md', 'templates/../outside.md', 'scripts/run.py', 'assets/image.png'])
     expect(() => parseSkillInstructionManifest(JSON.stringify({ instructionReferences: [reference] }))).toThrow();
-  }
-  expect(parseSkillInstructionManifest('{"instructionReferences":["templates/report.template.md"]}')).toEqual(['templates/report.template.md']);
 });

@@ -1,16 +1,10 @@
 import { AgentOperationError, AGENT_ERROR_CODES } from '../../../contracts/agentErrors.js';
-import {
-  OFFICIAL_DRAMA_SKILL_METADATA,
-  OFFICIAL_PRODUCTION_SKILLS,
-} from './drama/officialDramaBundle.js';
+import { OFFICIAL_DRAMA_BUNDLE } from './drama/officialDramaBundle.js';
 
-export const DEFAULT_OFFICIAL_SKILL_SLUG = OFFICIAL_DRAMA_SKILL_METADATA.slug;
-
-const bundledSkills = reader => OFFICIAL_PRODUCTION_SKILLS.map(metadata => ({ metadata, readInstructions: () => reader(metadata.bundleId) }));
+export const DEFAULT_OFFICIAL_SKILL_SLUG = OFFICIAL_DRAMA_BUNDLE.skillSlug;
 
 /** Only trusted bundled code registers official skills; imports never populate this registry. */
-export function createOfficialSkillRegistry(entries, readInstructions) {
-  entries ??= bundledSkills(readInstructions);
+export function createOfficialSkillRegistry(entries) {
   const registry = new Map();
   for (const entry of entries) {
     const metadata = entry?.metadata;
@@ -18,7 +12,7 @@ export function createOfficialSkillRegistry(entries, readInstructions) {
       || metadata.slug.startsWith('local--') || registry.has(metadata.slug)
       || typeof metadata.version !== 'string' || !metadata.version
       || typeof entry.readInstructions !== 'function') {
-      throw new AgentOperationError('官方 SKILL 注册信息无效或重复', { operation: 'register-official-skill' }, AGENT_ERROR_CODES.invalidRequest);
+      throw new AgentOperationError('官方技能注册信息无效或重复', { operation: 'register-official-skill' }, AGENT_ERROR_CODES.invalidRequest);
     }
     registry.set(metadata.slug, {
       metadata: Object.freeze({ ...metadata, category: metadata.category || '视频制作', openness: metadata.openness === 'closed' ? 'closed' : 'open', source: 'official' }),
@@ -29,7 +23,7 @@ export function createOfficialSkillRegistry(entries, readInstructions) {
     list: () => [...registry.values()].map(({ metadata }) => ({ ...metadata })),
     readInstructions: async (slug, context) => {
       const skill = registry.get(slug);
-      if (!skill) throw new AgentOperationError('官方 SKILL 尚未就绪', { operation: 'read-official-skill', slug }, AGENT_ERROR_CODES.unavailable);
+      if (!skill) throw new AgentOperationError('官方技能尚未就绪', { operation: 'read-official-skill', slug }, AGENT_ERROR_CODES.unavailable);
       return skill.readInstructions(context);
     },
   });

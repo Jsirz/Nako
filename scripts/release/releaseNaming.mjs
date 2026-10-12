@@ -1,5 +1,5 @@
 export const RELEASE_CONTRACT = Object.freeze({
-  product: 'Nako 画布',
+  product: 'NAKO Agent 纳科画布智能体',
   controlCenter: 'Nako 控制中心',
   executable: 'Nako 控制中心.exe',
   installScript: 'Install-Nako-Canvas.bat',

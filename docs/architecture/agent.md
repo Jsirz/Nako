@@ -4,6 +4,10 @@
 
 负责对话 Harness、受控工具、会话投影、Skill、Drama 制作、分镜与提示词。pi-agent-core/pi-ai 仅本模块内部使用，不成为公共契约。禁止 Agent 直接导入 fs、SQLite 或 Provider，实现通过 agent.persistence、media.agent、generation.textTransport、节点及业务服务。
 
+用户界面的技能标题、操作按钮、输入提示、无障碍标签及错误文案统一使用“技能”；协议字段、代码标识和导入文件名 `SKILL.md` 保留原名。
+
+首页 `skillShowcase.tsx` 的详情按钮通过 kernel 浏览器事件总线发送 `SKILL_NEW_CANVAS_EVENT`；画布保存后发送带项目 id 的 `SKILL_SELECT_EVENT`，`dramaConversationShortcut.ts` 核对当前项目并复用技能选择流程打开 Agent、等待原生会话绑定和历史恢复、保存选择并聚焦输入框。`agentConversation.snapshot().ready` 表示原生会话是否已绑定；事件只选择技能，不提交对话或生成。接口及事件载荷位于 contracts/skillCatalog。
+
 核心 [serverPlugin.js](../../modules/agent/serverPlugin.js) 注册会话归档与通用 Router；dramaServerPlugin、storyboardServerPlugin、promptServerPlugin 各有独立 manifest/路由。浏览器 browser.ts 发布 ui.agent.surfaces，promptPlugin 安装独立提示词能力。当前核心显式依赖 Drama，不承诺任意子插件热卸载。
 
 ## 接口契约
@@ -16,16 +20,39 @@ agent.persistence 由 storage.agent-files 提供会话、工作区、计划、�
 
 ## 数据模型
 
-v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/receipts/metadata。工作区草稿保留选中会话、模型、执行方式与思考设置；技能目录按用户私有域存放，导入文件只作提示上下文。
+v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/receipts/metadata。工作区草稿保留选中会话、模型、执行方式与思考设置；官方技能从安装应用读取，用户导入技能按用户私有域存放，导入文件只作提示上下文。
 
 制作计划和预算有独立 revision、授权和回执，分支或压缩不回滚画布/费用。归档保留聊天显示历史和附件引用，不恢复生成卡片操作、运行检查点、API Key 或 Skill 文件。旧会话不自动加载/转换。
 
 ## 功能结构
 
+官方制作技能仅保留“剧本文戏”和“打斗武戏”，身份定义在 `modules/contracts/officialProductionProfiles.js`，指令由存储适配器加载 `builtin/minimax-drama-prompt` 和 `builtin/minimax-fight-assets`。每个技能目录的 `metadata.json` 保存名称、简介、分类、开放状态及文件数；存储侧官方注册表的 `list()` 异步读取展示信息，身份、版本及执行绑定仍来自 contracts，JSON 不能授予官方身份。高配剧本文戏的注册、专用路由与封面已移除，技能服务不再提供该条目。
+
+技能导入支持 PNG、JPEG、WebP 和 GIF 封面，保存原始文件并由封面接口返回对应 MIME 类型，不转码或抽取首帧。官方技能与预设源目录通过存储适配器 `presetSkillCovers.js` 按 `cover.gif`、`cover.webp`、`cover.png`、`cover.jpg`、`cover.jpeg` 顺序查找并返回对应 MIME 类型；用户技能按 `metadata.json` 的 `coverFile` 读取。首页、管理卡片、详情及侧边预览均用原生图片元素显示 GIF 动画；缺失或加载失败时使用现有默认封面。
+
+各技能的展示描述包含适用场景、输入、处理步骤、交付内容与执行边界，保存在对应 `metadata.json` 的 `description` 中，可使用换行分段。描述长度上限统一使用 contracts/skillCatalog 的 `SKILL_DESCRIPTION_MAX_LENGTH`（4000 字符），导入表单、元数据校验和用户技能读取共用该限制。紧凑列表和卡片保留摘要布局，详情弹窗显示完整描述与分段。
+
+官方预设直接从安装应用的 `builtin` 读取，不再复制到用户目录。普通预设位于 `builtin/presets`，由存储适配器 `userSkillPresets.js` 的 `createBundledSkillPresets` 列目录、加载指令和封面；受控制作技能由存储侧 `officialSkillRegistry.js` 读取。更新应用后，官方名称、简介、分类、正文、显式参考及封面均使用新包内容，官方新增或移除也同步生效。普通预设使用稳定的 `preset-` 调用标识，中文目录以目录名哈希生成；修改正文或展示名称不改变身份。普通官方预设不获得受控文戏或武戏执行权限，专用流程仍核对 contracts 的制作身份。
+
+普通导入优先读取同目录的 `metadata.json`，缺少时从 `SKILL.md` frontmatter 提取名称、简介；导入弹窗将用户填写的展示信息写入独立 `metadata.json`，保留指令 frontmatter。用户技能保存于 `private/agent-skills`，始终为 `source: 'local'`，不按名称继承官方文案、封面或身份；同名导入分配独立标识，`preset-` 前缀保留给官方。官方分类修改与删除由 `skillCatalogState.js` 拒绝，HTTP 返回 403；用户自定义仍可通过现有接口管理。过去自动复制且含 `presetId` 的副本不再进入目录，文件本身不删除；旧官方隐藏和分类记录不控制发布目录。前端技能标签及制作组合说明使用技能服务或会话选择的名称，不从执行配置推导文案。Agent 模块中的通用官方注册表仅接收显式注入的条目，不读取文件系统。
+
+欢迎页 `AgentInspirationNavigator.tsx` 按“文字/图片/视频/音频来源 → 提供输入 → 选择任务”导航，输入复用现有编辑框、文档及媒体附件；文件选择器按来源限制类型，画布选择通过 `onLocateNode` 及现有选择引用机制提供上下文。来源、步骤和已整理任务只保存在组件内，切换画布随面板实例重置；输入仍由现有工作区草稿管理。无对应输入、上传未完成或助手运行中时不允许选任务。
+
+任务名称明确区分图像描述、提示词提取、视频生成计划、要素/分镜、技能草稿和音频转写；选择任务只追加可编辑请求并将生成执行方式切为手动确认，不发送消息、不调用模型、不创建或运行工作流。用户显式发送后由现有 Agent 流程分析并预览结果，媒体能力不足时请求说明限制。`AgentMessageExport.tsx` 可编辑单条回复的导出草稿，再显式创建文本节点并复制编辑后文本；草稿不改写已归档的助手回复，创建后的节点沿用画布编辑和连接流程。媒体生成仍经既有授权卡确认。
+
+空会话副标题显示“纳科画布智能体”，面板收起按钮沿用减号图标；输入框上方不显示左侧“技能”标题，保留右侧“选择技能”入口，编辑框保留“调用技能”。文本模型选择 AUTO 时，`useCanvasAgentPanelState.ts` 优先使用已配置且可用的默认文本模型；没有可用默认模型时，按可选列表顺序使用第一个已连接的文本模型，不写回默认设置或工作区模型选择。手动指定模型仍优先，发送给后端的是解析后的具体模型。`agentPanelActions.ts` 在无模型时拦截发送并弹出提示，区分模型读取中、读取失败和没有可用模型，保留输入与附件；用户可在设置中连接服务后重试。
+
+`CanvasAgentLauncher` 在面板收起时显示，入口按钮为 72px、机器人图标为 36px，固定距窗口右侧 80px、底部 76px，尺寸及位置由 `agentWorkspace.css` 管理。
+
+`dramaConversationShortcut.ts` 的技能选择区以输入框上方浮层展示紧凑单列列表，名称和简介各占一行；分类与搜索并排，底部“查看更多”打开现有技能管理面板。`AgentSkillPicker.ts` 复用技能封面及默认封面，在悬停或键盘聚焦时于列表侧边展示预览；空间不足时保留“详情”入口，滚动、收起、切换会话和面板卸载会清理预览。点击条目沿用技能选择动作，“详情”打开现有详情弹窗，只有点击条目或“使用技能”才选择技能，不自动发送对话或生成。
+
+`canvasAgentPanel.tsx` 不挂载顶部 `renderAgentHarnessControls` 工具栏，因此不显示“对话分支”、分支选择、“压缩上下文”和“刷新运行状态”，也不占用工具栏空间；`renderAgentPanelConversation.tsx` 不显示回复下方的“从此处分支”按钮。聊天控制器中的相关能力仍保留。
+
 发送校验 -> 会话锁和唯一 operationId -> pi 工具循环 -> 写会话/意图 -> 执行业务 -> 写回执 -> SSE 投影 -> run_end。断流读取快照，不重发消息；应用退出等待停止及持久化。
 模型 stream 的 textDelta 是暂态显示，工具参数必须完整并校验后才进入 pi；截断或非法 JSON 明确拒绝，不自动重发。usage 和 stopReason 经公共结果映射，AbortSignal 覆盖凭据解析、提交及响应消费。
 
-关闭面板只断前端观察；退出或切换项目停止相应 Agent 运行。Skill 导入、分类、封面、中文展示、删除及初始化由同一存储服务维护；预设删除后不重建，脚本不执行。面板展示与时间线渲染分担职责，保留工具确认原位置和焦点恢复。
+关闭面板只断前端观察；退出或切换项目停止相应 Agent 运行。Skill 导入、分类、封面、中文展示及删除由同一存储服务维护，脚本不执行。技能管理由 `skillManager.ts` 提供“官方预设”和“用户自定义”来源页签，默认官方，切换来源重置分类与搜索，导入成功转到用户自定义。卡片只展示封面、名称和简介，点击查看详情；卡片不提供分类输入、保存分类或删除控件，保留分类筛选、搜索和导入。详情显示来源，底部仅显示“使用技能”按钮，关闭通过右上角按钮、Escape 或点击遮罩完成。面板展示与时间线渲染分担职责，保留工具确认原位置和焦点恢复。
+`renderAgentPanelConversation` 将连续的无正文、无附件且无分支入口的助手操作消息合并到默认折叠的操作记录组，摘要显示记录总数及执行中/需核对状态，展开后按原消息顺序查看。画布操作详情也默认折叠；`AgentTimelineCards` 将生成及授权等操作卡独立呈现于折叠记录外，不改动消息、回执或执行流程。
 聊天控制器分为历史、会话动作、单轮请求和生命周期职责，仍按 active/epoch/项目身份拒绝迟到结果，断流只读回执不重放。Skill 快捷选择分为状态、选择动作、DOM 挂载及绑定；面板状态、操作与会话/编辑区/外壳渲染独立维护。模型传输文件已迁至 plugins/platform/text-transport，源码目录不再列旧 Agent 路径。
 
 <!-- source-inventory:start -->
@@ -58,7 +85,7 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/server/agent/drama/dramaPlanRouter.js](../../modules/agent/server/agent/drama/dramaPlanRouter.js) | HTTP 转换与校验 | `createDramaPlanRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/server/agent/drama/dramaScriptImport.js](../../modules/agent/server/agent/drama/dramaScriptImport.js) | 服务端领域实现 | `DramaScriptImportError`, `importDramaScript`, `createDramaScriptImportRouter` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/agent/server/agent/drama/dramaTurn.js](../../modules/agent/server/agent/drama/dramaTurn.js) | 服务端领域实现 | `prepareDramaTurn` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/server/agent/drama/officialDramaBundle.js](../../modules/agent/server/agent/drama/officialDramaBundle.js) | 服务端领域实现 | `OFFICIAL_DRAMA_BUNDLE`, `OFFICIAL_DRAMA_SKILL_METADATA`, `officialProductionBundle`, `OFFICIAL_PRODUCTION_SKILLS`, `SKILL_INSTRUCTION_LIMITS` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/server/agent/drama/officialDramaBundle.js](../../modules/agent/server/agent/drama/officialDramaBundle.js) | 服务端领域实现 | `OFFICIAL_DRAMA_BUNDLE`, `officialProductionBundle`, `SKILL_INSTRUCTION_LIMITS` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/server/agent/officialSkillRegistry.js](../../modules/agent/server/agent/officialSkillRegistry.js) | 服务端领域实现 | `DEFAULT_OFFICIAL_SKILL_SLUG`, `createOfficialSkillRegistry` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/server/agent/prompts/system.js](../../modules/agent/server/agent/prompts/system.js) | 服务端领域实现 | `CHAT_AGENT_SYSTEM_PROMPT` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/server/agent/tools/canvasTools.js](../../modules/agent/server/agent/tools/canvasTools.js) | 服务端领域实现 | `searchCanvasNodes` | 未检出平台调用；不等于纯函数证明 |
@@ -81,6 +108,7 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/agent/AgentConversationOptions.tsx](../../modules/agent/ui/agent/AgentConversationOptions.tsx) | 浏览器交互与状态辅助 | `AgentConversationOptions` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/AgentDocumentCard.tsx](../../modules/agent/ui/agent/AgentDocumentCard.tsx) | 界面呈现与交互 | `AgentDocumentCard` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/AgentGenerationBatches.tsx](../../modules/agent/ui/agent/AgentGenerationBatches.tsx) | 浏览器交互与状态辅助 | `AgentGenerationBatches` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/agent/AgentInspirationNavigator.tsx](../../modules/agent/ui/agent/AgentInspirationNavigator.tsx) | 浏览器交互与状态辅助 | `AgentInspirationNavigator` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/AgentMarkdown.tsx](../../modules/agent/ui/agent/AgentMarkdown.tsx) | 浏览器交互与状态辅助 | `AgentMarkdown` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/AgentMessageExport.tsx](../../modules/agent/ui/agent/AgentMessageExport.tsx) | 浏览器交互与状态辅助 | `AgentMessageExport` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/AgentModelMenu.tsx](../../modules/agent/ui/agent/AgentModelMenu.tsx) | 浏览器交互与状态辅助 | `AgentModelMenu` | 未检出平台调用；不等于纯函数证明 |
@@ -88,7 +116,8 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/agent/AgentOptionPopover.tsx](../../modules/agent/ui/agent/AgentOptionPopover.tsx) | 浏览器交互与状态辅助 | `AgentOptionPopover` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/AgentProductRequests.tsx](../../modules/agent/ui/agent/AgentProductRequests.tsx) | 浏览器交互与状态辅助 | `AgentProductRequests` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/AgentProjectRequests.tsx](../../modules/agent/ui/agent/AgentProjectRequests.tsx) | 浏览器交互与状态辅助 | `AgentProjectRequests` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/ui/agent/AgentTimelineActivity.tsx](../../modules/agent/ui/agent/AgentTimelineActivity.tsx) | 浏览器交互与状态辅助 | `AgentCardControllers`, `timelineActivities`, `AgentTimelineActivity`, `AgentUnlinkedActivity` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/agent/AgentSkillPicker.ts](../../modules/agent/ui/agent/AgentSkillPicker.ts) | 浏览器交互与状态辅助 | `createAgentSkillPicker` | 含 DOM/事件 调用；时机见实现 |
+| [modules/agent/ui/agent/AgentTimelineActivity.tsx](../../modules/agent/ui/agent/AgentTimelineActivity.tsx) | 浏览器交互与状态辅助 | `AgentCardControllers`, `timelineActivities`, `AgentTimelineActivity`, `AgentTimelineCards`, `AgentUnlinkedActivity` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/agentActivity.css](../../modules/agent/ui/agent/agentActivity.css) | 界面样式 | 样式 | 无业务运行副作用 |
 | [modules/agent/ui/agent/agentClient.ts](../../modules/agent/ui/agent/agentClient.ts) | 客户端或传输 | `AgentNode`, `AgentMessageInput`, `AgentSelectedSkill`, `AgentSession`, `DramaConversationState`, `DramaConversationAction`, `AgentStreamResult`, `AgentClientError`, `createAgentClient`, `AgentClient`, `installAgentClient` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/agent/agentComposerOptions.css](../../modules/agent/ui/agent/agentComposerOptions.css) | 界面样式 | 样式 | 无业务运行副作用 |
@@ -125,7 +154,7 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/agent/dramaCanvas.ts](../../modules/agent/ui/agent/dramaCanvas.ts) | 浏览器交互与状态辅助 | `DramaAssetOutput`, `DramaAssetExecution`, `DramaExecutionSnapshot`, `DramaCanvasComposition`, `DramaCanvasNode`, `dramaAssetNodeId`, `buildDramaAssetNodes`, `buildDramaCanvasNodes`, `mergeDramaCanvasNodes` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/dramaCanvasBridge.ts](../../modules/agent/ui/agent/dramaCanvasBridge.ts) | 浏览器交互与状态辅助 | `DramaCanvasRecord`, `DramaCanvasBridge`, `createDramaCanvasBridge`, `installDramaCanvasBridge` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/dramaClient.ts](../../modules/agent/ui/agent/dramaClient.ts) | 客户端或传输 | `DramaAsset`, `DramaSegment`, `DramaPlan`, `DramaAssetExecution`, `DramaExecution`, `DramaComposition`, `DramaClientError`, `createDramaClient`, `DramaClient` | 含 HTTP/网络 调用；时机见实现 |
-| [modules/agent/ui/agent/dramaConversationShortcut.ts](../../modules/agent/ui/agent/dramaConversationShortcut.ts) | 浏览器交互与状态辅助 | `DRAMA_SHORTCUT_LABEL`, `SELECT_AGENT_SKILL_EVENT`, `installDramaConversationShortcut` | 含 DOM/事件 调用；时机见实现 |
+| [modules/agent/ui/agent/dramaConversationShortcut.ts](../../modules/agent/ui/agent/dramaConversationShortcut.ts) | 浏览器交互与状态辅助 | `SELECT_AGENT_SKILL_EVENT`, `installDramaConversationShortcut` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/dramaConversationTools.ts](../../modules/agent/ui/agent/dramaConversationTools.ts) | 浏览器交互与状态辅助 | `installDramaConversationTools` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/generationPlanClient.ts](../../modules/agent/ui/agent/generationPlanClient.ts) | 客户端或传输 | `GenerationPlanRecord`, `createGenerationPlanClient`, `GenerationPlanClient` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/agent/nodeTaskObservation.ts](../../modules/agent/ui/agent/nodeTaskObservation.ts) | 浏览器交互与状态辅助 | `observeNodeTask` | 含 HTTP/网络 调用；时机见实现 |

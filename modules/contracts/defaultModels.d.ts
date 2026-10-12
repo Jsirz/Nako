@@ -12,6 +12,7 @@ export interface DefaultModelsService {
   resolve(kind: ModelKind, requested?: string): Promise<string>;
 }
 export interface DefaultModelsClient {
+  /** Returns only a configured default candidate; preserves an explicit requested model. */
   get(kind: ModelKind, requested?: string): string;
   resolve(kind: ModelKind, requested?: string): string;
   read(): Promise<DefaultModelsSnapshot>;

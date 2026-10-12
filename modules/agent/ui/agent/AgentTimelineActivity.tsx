@@ -84,9 +84,13 @@ const statuses: Record<string, string> = {
 export function AgentTimelineActivity({
   tools = [],
   controllers,
+  showCards = true,
+  expanded = false,
 }: {
   tools?: AgentActivity[];
   controllers: AgentCardControllers;
+  showCards?: boolean;
+  expanded?: boolean;
 }) {
   if (!tools.length) return null;
   const active = tools.some((tool) => tool.status === 'running');
@@ -95,7 +99,7 @@ export function AgentTimelineActivity({
     <div className="my-2 space-y-2" data-agent-timeline-activity="true">
       <details
         className="rounded-lg bg-[var(--nk-surface)] p-3 text-xs text-[var(--nk-text-secondary)]"
-        open={active || unresolved}
+        open={expanded || active || unresolved}
       >
         <summary className="cursor-pointer">
           {active ? '正在执行' : unresolved ? '操作需要核对' : '操作记录'} · {tools.length} 项
@@ -109,13 +113,18 @@ export function AgentTimelineActivity({
           ))}
         </div>
       </details>
-      {tools.flatMap((tool) =>
-        (tool.cards || []).map((card) => (
-          <Card key={keyOf(card)} card={card} controllers={controllers} />
-        )),
-      )}
+      {showCards && <AgentTimelineCards tools={tools} controllers={controllers} />}
     </div>
   );
+}
+
+export function AgentTimelineCards({ tools = [], controllers }: {
+  tools?: AgentActivity[];
+  controllers: AgentCardControllers;
+}) {
+  return <>{tools.flatMap((tool) => (tool.cards || []).map((card) => (
+    <Card key={keyOf(card)} card={card} controllers={controllers} />
+  )))}</>;
 }
 
 const empty: never[] = [];

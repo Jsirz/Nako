@@ -65,7 +65,7 @@ async function installDependencies() {
     "import sharp from 'sharp'; import sqlite3 from 'sqlite3'; await sharp({create:{width:1,height:1,channels:4,background:'#000'}}).png().toBuffer(); await new Promise((resolve,reject)=>{const db=new sqlite3.Database(':memory:',error=>error?reject(error):db.close(error=>error?reject(error):resolve()));});"], stage);
   const { devDependencies, scripts, nakoRuntime, ...production } = metadata;
   await writeFile(path.join(stage, 'package.json'), JSON.stringify({ ...production,
-    main: 'apps/desktop/src/main.mjs', productName: 'Nako 画布', author: 'Nako',
+    main: 'apps/desktop/src/main.mjs', productName: electron.productName, author: 'Nako',
   }, null, 2) + '\n');
 }
 

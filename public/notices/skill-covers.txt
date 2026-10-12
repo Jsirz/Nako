@@ -104,7 +104,6 @@ https://commons.wikimedia.org/wiki/File:Clapperboard,_O2_film,_September_2008.jp
 使用位置：
 modules/agent/server/agent/builtin/presets/script-director-shooting-v3-7/cover.webp
 <user-skills>/script-director-shooting-v3-7/cover.webp
-modules/agent/server/agent/builtin/minimax-drama-high/cover.webp
 
 剧本到拍摄提示
 作者：Bernd Schwabe in Hannover

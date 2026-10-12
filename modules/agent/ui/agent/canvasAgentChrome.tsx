@@ -1,6 +1,8 @@
 /** @jsxRuntime classic */
 /** @jsx React.createElement */
 import type * as ReactTypes from 'react';
+import { Bot } from 'lucide-react';
+import './agentWorkspace.css';
 import { AgentMarkdown } from './AgentMarkdown';
 import { AgentMessageExport } from './AgentMessageExport';
 import { splitAgentDocumentMessage } from './agentDocuments';
@@ -106,16 +108,9 @@ export function CanvasAgentLauncher(
       title="Nako Agent"
       onClick={onClick}
       data-nako-agent-launcher="true"
-      className="fixed bottom-6 right-6 rounded-full flex items-center justify-center z-50 transition-all hover:scale-105"
-      style={{
-        width: '48px',
-        height: '48px',
-        background: 'var(--nk-surface)',
-        border: '1px solid var(--nk-border)',
-        boxShadow: 'var(--nk-shadow)',
-      }}
+      className="nako-agent-launcher fixed rounded-full flex items-center justify-center z-50"
     >
-      <img src="/nako-logo.png" alt="" className="w-6 h-7 object-contain select-none" />
+      <Bot size={36} aria-hidden="true" />
     </button>
   );
 }

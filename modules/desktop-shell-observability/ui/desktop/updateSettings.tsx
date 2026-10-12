@@ -63,7 +63,7 @@ export function UpdateSettings({ bridge, version }: { bridge?: DesktopUpdateBrid
   return <section className="nako-update-settings" aria-label="应用版本">
     <button type="button" className="nako-update-version" onClick={() => void check()}
       disabled={busy || !bridge || state.phase === 'disabled'} title="检查更新" aria-label={`当前版本 ${state.version}，检查更新`}>
-      <span>Nako <strong>v{state.version}</strong></span><RefreshCw size={14} aria-hidden="true" />
+      <span>NAKO Agent <strong>v{state.version}</strong></span><RefreshCw size={14} aria-hidden="true" />
     </button>
     <p role="status" aria-live="polite">{error || state.message}
       {state.phase === 'downloading' ? ` ${Math.floor(state.percent ?? 0)}%` : ''}</p>
@@ -140,7 +140,7 @@ export function UpdateModal({ bridge, version }: { bridge?: DesktopUpdateBridge;
     <div className="nako-update-modal">
       <button className="nako-update-close" type="button" onClick={() => setClosed(true)} disabled={state.phase === 'installing'} aria-label="关闭更新提示">×</button>
       <div className="nako-update-mark" aria-hidden="true">N</div>
-      <p className="nako-update-kicker">Nako 画布 · 应用更新</p>
+      <p className="nako-update-kicker">NAKO Agent 纳科画布智能体 · 应用更新</p>
       <h2 id="nako-update-title">{title}</h2>
       <p className="nako-update-message">{error || state.message}</p>
       {state.releaseNotes && state.phase === 'available' && <div className="nako-update-notes">{state.releaseNotes}</div>}

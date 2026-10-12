@@ -224,7 +224,7 @@ it('restores showcase archives as independent project copies', async () => {
     body: JSON.stringify({ archive: '/share/test1.nako' }),
   }]);
 });
-it('keeps settings and creation in the header without the removed search and view controls', () => {
+it('keeps settings in the header without the removed creation, search and view controls', () => {
   const settings = vi.fn(),
     onNewProject = vi.fn();
   window.addEventListener('nako:open-settings', settings);
@@ -236,12 +236,9 @@ it('keeps settings and creation in the header without the removed search and vie
     expect(view.container.querySelector('input')).toBeNull();
     expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
       '设置',
-      '新建项目',
     ]);
     fireEvent.click(screen.getByRole('button', { name: '设置' }));
     expect(settings).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole('button', { name: '新建项目' }));
-    expect(onNewProject).toHaveBeenCalledTimes(1);
   } finally {
     window.removeEventListener('nako:open-settings', settings);
   }

@@ -212,7 +212,7 @@ function validateArtifacts({ binary, skill, expectedSkillMd5 }) {
   if (actualSkillMd5 !== expectedSkillMd5) {
     throw new DreaminaCliInstallError(
       'DREAMINA_SKILL_INTEGRITY_FAILED',
-      '即梦官方 SKILL 校验失败，安装已停止。',
+      '即梦官方技能校验失败，安装已停止。',
       502,
     );
   }

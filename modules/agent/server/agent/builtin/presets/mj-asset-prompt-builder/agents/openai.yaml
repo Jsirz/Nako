@@ -1,4 +1,0 @@
-interface:
-  display_name: "MJ资产提示词"
-  short_description: "为角色道具场景生成和诊断Midjourney资产提示词"
-  default_prompt: "Use $mj-asset-prompt-builder to create bilingual Midjourney asset prompts for these characters and props."

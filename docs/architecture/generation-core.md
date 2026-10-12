@@ -14,6 +14,8 @@ GenerationProvider/GenerationHandler/GenerationRequest/GenerationTaskStore 定�
 
 模型贡献由 config/model-plugins.json 明确声明，脚本生成应用组合根 [modelContributions.ts](../../apps/canvas/modelContributions.ts) 和后端 JSON 快照，不再生成业务层 Provider import。[installModelCatalog.ts](../../apps/canvas/installModelCatalog.ts) 在浏览器插件加载前注入，生成核心校验并复制数据、保持四类数组身份和排序；显示名/来源读取当前目录，不缓存注入前空快照。默认模型与来源目录见 [统一默认模型](../统一默认模型说明.md)。
 
+浏览器 `generation.defaults.get` 仅返回仍在候选目录中且已配置的默认模型，失效时返回空值，避免新节点记录已删除的模型；`read` 保留原设置供用户修正，`resolve` 对失效默认值抛出明确错误。并发接口对无法解析的模型返回 400 与 contracts 的 `INVALID_MODEL_CONFIGURATION`，客户端保留该错误码供画布区分配置问题和临时请求失败。
+
 ## 数据模型
 
 协调器管理 modelIdKey 并发、lease、nodeId/attemptId、admittedAttemptIds、remoteTask/提交标记、结果及 commit proof。任务状态包含 loading/queued/success/failed/cancelled/unknown；具体转移以协调实现为准。准入查询持久化记录并拒绝重复 attempt，新 attempt 才是显式新请求；保存较新尝试不清除历史准入身份。

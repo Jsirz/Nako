@@ -33,7 +33,7 @@ export function createAgentSkillClient(fetcher: typeof fetch = globalThis.fetch)
     const response = await fetcher(url, { method, headers: { 'Content-Type': 'application/json' },
       body: value === undefined ? undefined : JSON.stringify(value) });
     const body = await response.json();
-    if (!response.ok) throw new AgentSkillError(body.error || '更新 SKILL 失败');
+    if (!response.ok) throw new AgentSkillError(body.error || '更新技能失败');
     window.dispatchEvent(new Event(SKILL_CATALOG_CHANGED));
     return body;
   }
@@ -41,12 +41,12 @@ export function createAgentSkillClient(fetcher: typeof fetch = globalThis.fetch)
     async list(): Promise<AgentSkill[]> {
       const response = await fetcher('/api/agent-skills');
       const body = await response.json() as { skills?: AgentSkill[]; error?: string };
-      if (!response.ok) throw new AgentOperationError(body.error || '读取 SKILL 社区失败', { operation: 'list-skills', status: response.status });
+      if (!response.ok) throw new AgentOperationError(body.error || '读取技能社区失败', { operation: 'list-skills', status: response.status });
       return body.skills || [];
     },
     async importFolders(files: readonly File[], category?: string): Promise<AgentSkill[]> {
       const body = await mutate('/api/agent-skills/import', 'POST', { files: await uploadFiles(files), category });
-      if (!body.skills?.length) throw new AgentSkillError(body.error || '导入 SKILL 失败');
+      if (!body.skills?.length) throw new AgentSkillError(body.error || '导入技能失败');
       return body.skills;
     },
     async remove(slug: string): Promise<void> { await mutate(`/api/agent-skills/${encodeURIComponent(slug)}`, 'DELETE'); },

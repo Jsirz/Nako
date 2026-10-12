@@ -8,12 +8,14 @@ export function AgentCanvasActions({
   sessionId,
   execute,
   disabled,
+  expanded = false,
 }: {
   actions: CanvasActionLog[];
   projectId: string;
   sessionId: string;
   execute?: CanvasActionHandler;
   disabled: boolean;
+  expanded?: boolean;
 }) {
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string>();
@@ -51,7 +53,7 @@ export function AgentCanvasActions({
     }
   };
   return (
-    <details className="mt-2 text-xs text-[var(--nk-text-secondary)]" open={actions.length <= 3}>
+    <details className="mt-2 text-xs text-[var(--nk-text-secondary)]" open={expanded}>
       <summary className="cursor-pointer">画布操作 · {actions.length}</summary>
       <div className="mt-1 space-y-1" aria-live="polite">
         {actions.map((action, index) => (

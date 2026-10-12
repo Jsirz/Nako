@@ -44,13 +44,17 @@ export function createDefaultModelsClient(
     queue = next;
     return next;
   };
-  const get = (kind: ModelKind, requested?: string) =>
-    requested?.trim() || snapshot?.defaults[kind] || '';
+  const get = (kind: ModelKind, requested?: string) => {
+    if (requested?.trim()) return requested.trim();
+    const name = snapshot?.defaults[kind] || '';
+    return snapshot?.candidates[kind].some((model) => model.name === name && model.configured)
+      ? name : '';
+  };
   return {
     get,
     resolve(kind, requested) {
       if (requested?.trim()) return requested.trim();
-      const name = get(kind);
+      const name = snapshot?.defaults[kind] || '';
       if (!name) throw new PluginError(ERRORS.invalidModel, '请先在设置中选择默认模型，或为当前操作指定模型。', {
         context: { moduleId: 'generation-core', operation: 'resolveDefaultModel', kind },
       });

@@ -2,20 +2,54 @@
 /** @jsx React.createElement */
 /** @jsxFrag React.Fragment */
 import { AgentAttachmentPreview } from './AgentAttachmentPreview';
+import { AgentInspirationNavigator } from './AgentInspirationNavigator';
+import type { AgentPanelActions } from './agentPanelActions';
 import { AgentCanvasActions } from './AgentCanvasActions';
-import { AgentTimelineActivity, AgentUnlinkedActivity } from './AgentTimelineActivity';
+import { AgentTimelineActivity, AgentTimelineCards, AgentUnlinkedActivity } from './AgentTimelineActivity';
 import type { Icons, Runtime } from './canvasAgentPanelTypes';
 import type { AgentPanelState } from './useCanvasAgentPanelState';
+
+function conversationGroups(timeline: AgentPanelState['timeline']) {
+  const groups: { messages: AgentPanelState['timeline']; operationsOnly: boolean }[] = [];
+  for (const message of timeline) {
+    const operationsOnly = message.role === 'assistant' && !message.content?.trim() &&
+      !message.media?.length && !message.branchable &&
+      !!(message.tools?.length || message.actions?.length);
+    const previous = groups.at(-1);
+    if (operationsOnly && previous?.operationsOnly) previous.messages.push(message);
+    else groups.push({ messages: [message], operationsOnly });
+  }
+  return groups;
+}
 
 export function renderAgentPanelConversation(
   React: Runtime,
   state: AgentPanelState,
   { Message }: Icons,
+  actions: AgentPanelActions,
 ) {
   const {
     scroll, hasMessages, messages, timeline, cardControllers, knownCards, isLoading,
     props, chat, project,
   } = state;
+  const renderOperations = (message: AgentPanelState['timeline'][number], showCards = true) => (
+    <>
+      {message.actions?.length ? (
+        <AgentCanvasActions
+          actions={message.actions}
+          projectId={project}
+          sessionId={chat.sessionId || ''}
+          execute={props.onCanvasAction}
+          disabled={isLoading}
+          expanded={!showCards}
+        />
+      ) : null}
+      <AgentTimelineActivity
+        tools={message.tools} controllers={cardControllers}
+        showCards={showCards} expanded={!showCards}
+      />
+    </>
+  );
   return (
     <div
       ref={scroll.viewportRef}
@@ -27,7 +61,32 @@ export function renderAgentPanelConversation(
         <AgentUnlinkedActivity controllers={cardControllers} knownCards={knownCards} />
         {hasMessages ? (
           <div className="space-y-1">
-            {timeline.map((message) => (
+            {conversationGroups(timeline).map((group) => group.operationsOnly ? (
+              <div key={group.messages[0].id}>
+                <details
+                  data-agent-operation-group="true"
+                  className="my-2 rounded-lg bg-[var(--nk-surface)] px-3 py-2 text-xs text-[var(--nk-text-secondary)]"
+                >
+                  <summary className="cursor-pointer hover:text-[var(--nk-text)]">
+                    操作记录 · {group.messages.reduce((count, message) =>
+                      count + (message.tools?.length || 0) + (message.actions?.length || 0), 0)} 项
+                    {group.messages.some((message) => message.tools?.some((tool) => tool.status === 'running'))
+                      ? ' · 执行中'
+                      : group.messages.some((message) => message.tools?.some((tool) =>
+                        ['failed', 'unknown', 'pending', 'interrupted'].includes(tool.status)) ||
+                        message.actions?.some((action) => !action.ok)) ? ' · 需核对' : ''}
+                  </summary>
+                  {group.messages.map((message) => (
+                    <div key={message.id} data-agent-message-id={message.id}>
+                      {renderOperations(message, false)}
+                    </div>
+                  ))}
+                </details>
+                {group.messages.map((message) => (
+                  <AgentTimelineCards key={message.id} tools={message.tools} controllers={cardControllers} />
+                ))}
+              </div>
+            ) : group.messages.map((message) => (
               <div key={message.id} data-agent-message-id={message.id}>
                 {message.content || message.media?.length ? (
                   <Message
@@ -41,29 +100,9 @@ export function renderAgentPanelConversation(
                     actionsDisabled={isLoading}
                   />
                 ) : null}
-                {message.branchable && (
-                  <button
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => void chat.createBranch(message.id)}
-                    title="从此回复创建分支，已执行的画布操作和预算记录不会回滚或重跑"
-                    className="ml-3 text-xs text-[var(--nk-text-muted)] hover:text-[var(--nk-text)] disabled:opacity-40"
-                  >
-                    从此处分支
-                  </button>
-                )}
-                {message.actions?.length ? (
-                  <AgentCanvasActions
-                    actions={message.actions}
-                    projectId={project}
-                    sessionId={chat.sessionId || ''}
-                    execute={props.onCanvasAction}
-                    disabled={isLoading}
-                  />
-                ) : null}
-                <AgentTimelineActivity tools={message.tools} controllers={cardControllers} />
+                {renderOperations(message)}
               </div>
-            ))}
+            )))}
             {isLoading && (
               <div className="af-agent-activity" role="status" aria-live="polite">
                 <span className="af-agent-activity-grid" aria-hidden="true">
@@ -80,7 +119,6 @@ export function renderAgentPanelConversation(
             <div data-nako-agent-intro="true" className="mb-6">
               <div
                 className="text-[10px] font-semibold uppercase text-[var(--nk-text-muted)] mb-3"
-                style={{ letterSpacing: '.22em' }}
               >
                 Nako AGENT · CANVAS INTELLIGENCE
               </div>
@@ -90,36 +128,7 @@ export function renderAgentPanelConversation(
               <h1 className="text-2xl font-bold mb-2 text-[var(--nk-text)]">今天一起创作点什么？</h1>
               <p className="nako-agent-intro-note">让灵感成为画面，让想法连接成作品。</p>
             </div>
-            <div className="nako-agent-suggestions" aria-label="对话建议">
-              {[
-                {
-                  title: '打磨一个创意',
-                  description: '从灵感出发，整理成可用的提示词',
-                  prompt: '帮我打磨一个创意，先问我想表达的主题和风格，再整理成图像提示词。',
-                },
-                {
-                  title: '规划一段故事',
-                  description: '梳理叙事节奏，构思分镜与画面',
-                  prompt: '我想创作一段故事，请先和我讨论主题，再帮我规划分镜和画面。',
-                },
-              ].map((item) => (
-                <button
-                  type="button"
-                  key={item.title}
-                  disabled={isLoading}
-                  onClick={() => {
-                    state.setPrompt(item.prompt);
-                    state.composerRef.current?.focus();
-                  }}
-                >
-                  <span>
-                    <strong>{item.title}</strong>
-                    <small>{item.description}</small>
-                  </span>
-                  <span aria-hidden="true">↗</span>
-                </button>
-              ))}
-            </div>
+            <AgentInspirationNavigator state={state} actions={actions} />
           </div>
         )}
         <div data-nako-agent-conversation-content="true" />

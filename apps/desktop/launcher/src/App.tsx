@@ -43,7 +43,7 @@ export default function App() {
     <main className="auth-shell local-startup-error">
       <section className="auth-stage" aria-label="打开工作区">
         <section className="auth-card">
-          <h1>Nako</h1>
+          <h1>NAKO Agent 纳科画布智能体</h1>
           <p role="alert">{problem}</p>
           <p>项目与 API Key 保留在本机，无需注册或登录。</p>
           <button className="primary-button" onClick={() => void enter(true)}>

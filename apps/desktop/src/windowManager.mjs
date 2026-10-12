@@ -73,7 +73,7 @@ export function createMainWindow({
     minHeight: 520,
     center: true,
     show: false,
-    title: 'Nako 画布',
+    title: 'NAKO Agent 纳科画布智能体',
     icon,
     backgroundColor: LAUNCHER_SURFACE,
     autoHideMenuBar: true,

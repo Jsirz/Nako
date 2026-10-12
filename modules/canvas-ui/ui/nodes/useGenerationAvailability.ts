@@ -1,5 +1,6 @@
 import type * as ReactTypes from 'react';
 import { generationUi } from '../../../kernel/browser';
+import { ERRORS, PluginError } from '../../../contracts/errors.js';
 type Runtime = Pick<typeof ReactTypes, 'useState' | 'useEffect'>;
 interface Availability {
   checking: boolean;
@@ -19,6 +20,7 @@ export function useGenerationAvailability(React: Runtime, model: string, mode: s
     let timer: ReturnType<typeof setTimeout> | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let request: AbortController | undefined;
+    let invalidModel = false;
     const check = async () => {
       if (disposed) return;
       request = new AbortController();
@@ -35,22 +37,24 @@ export function useGenerationAvailability(React: Runtime, model: string, mode: s
               ? `${result.modelId || model} 并发已满 ${result.inFlight}/${result.maxConcurrent}`
               : '',
           });
-      } catch {
+      } catch (error) {
+        invalidModel = error instanceof PluginError && error.code === ERRORS.invalidModel;
         if (!disposed)
           setState({
             key,
             checking: false,
-            blocked: false,
-            warning: '暂时无法读取并发状态，生成前会再次检查',
+            blocked: invalidModel,
+            warning: invalidModel && error instanceof Error
+              ? error.message : '暂时无法读取并发状态，生成前会再次检查',
           });
       } finally {
         clearTimeout(timeout);
-        if (!disposed) timer = setTimeout(() => void check(), 2000);
+        if (!disposed && !invalidModel) timer = setTimeout(() => void check(), 2000);
       }
     };
     setState({ key, checking: true, blocked: false, warning: '' });
     if (model) void check();
-    else setState({ key, checking: false, blocked: true, warning: '请先连接模型' });
+    else setState({ key, checking: false, blocked: true, warning: '请选择模型，或在设置中配置有效的默认模型' });
     return () => {
       disposed = true;
       clearTimeout(timer);

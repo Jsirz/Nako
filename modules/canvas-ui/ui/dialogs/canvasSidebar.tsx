@@ -31,7 +31,7 @@ export function CanvasSidebar(React: Runtime, props: Props, components: Componen
     { label: '资产', action: props.onAssetsClick, icon: <Image size={20} /> },
     { label: '工作流节点', action: props.onWorkflowsClick, icon: <Workflow size={20} /> },
     {
-      label: 'SKILL 管理',
+      label: '技能管理',
       action: props.onWorkflowPresetsClick,
       community: true,
       icon: (

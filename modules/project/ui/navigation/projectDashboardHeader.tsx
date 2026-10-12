@@ -8,16 +8,16 @@ export interface DashboardHeaderIcons {
 }
 export function ProjectDashboardHeader(
   _React: DashboardRuntime,
-  { onNewProject }: DashboardHeaderProps,
-  { SettingsIcon, AddIcon }: DashboardHeaderIcons,
+  _props: DashboardHeaderProps,
+  { SettingsIcon }: DashboardHeaderIcons,
 ) {
   return (
     <header className="nako-dashboard-header">
       <div className="nako-dashboard-nav">
         <div className="nako-dashboard-brand">
-          <img src="/nako-logo.png" alt="Nako 画布 Logo" />
-          <b>Nako</b>
-          <span>画布</span>
+          <img src="/nako-logo.png" alt="NAKO Agent 纳科画布智能体 Logo" />
+          <b>NAKO Agent</b>
+          <span>纳科画布智能体</span>
         </div>
         <div className="nako-dashboard-actions">
           <button
@@ -27,14 +27,6 @@ export function ProjectDashboardHeader(
           >
             <SettingsIcon size={16} />
             <span>设置</span>
-          </button>
-          <button
-            type="button"
-            className="nako-dashboard-button nako-dashboard-primary"
-            onClick={onNewProject}
-          >
-            <AddIcon size={17} />
-            <span>新建项目</span>
           </button>
         </div>
       </div>

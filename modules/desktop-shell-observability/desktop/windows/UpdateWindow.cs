@@ -17,7 +17,7 @@ namespace Nako.Update {
     bool running, completed;
     UpdateWindow(UpdateWorker worker) {
       this.worker = worker;
-      Text = "Nako 画布 更新";
+      Text = "NAKO Agent 纳科画布智能体 更新";
       ClientSize = new Size(540, 350);
       FormBorderStyle = FormBorderStyle.FixedSingle;
       MaximizeBox = false;
@@ -27,8 +27,8 @@ namespace Nako.Update {
       AutoScaleMode = AutoScaleMode.Dpi;
       Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
       Controls.Add(new PictureBox { Image = Icon.ToBitmap(), Location = new Point(32, 28), Size = new Size(36, 36), SizeMode = PictureBoxSizeMode.Zoom });
-      AddLabel("Nako 画布", 80, 28, 260, 32, 17, true);
-      AddLabel("版本 " + worker.Version, 350, 36, 165, 24, 10, true);
+      AddLabel("NAKO Agent 纳科画布智能体", 80, 28, 428, 32, 15, true);
+      AddLabel("版本 " + worker.Version, 80, 62, 428, 24, 10, true);
       var line = new Panel { Location = new Point(32, 90), Size = new Size(476, 3), BackColor = Color.FromArgb(28, 28, 28) };
       Controls.Add(line);
       heading = AddLabel("正在安装新版本", 32, 117, 476, 36, 21, true);
@@ -114,7 +114,7 @@ namespace Nako.Update {
         }
         return 0;
       } catch (Exception error) {
-        MessageBox.Show("更新程序无法启动：" + error.Message, "Nako 画布 更新", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show("更新程序无法启动：" + error.Message, "NAKO Agent 纳科画布智能体 更新", MessageBoxButtons.OK, MessageBoxIcon.Error);
         return 1;
       }
     }

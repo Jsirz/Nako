@@ -3,7 +3,7 @@ const feed = updateFeed();
 const sparkle = process.platform === 'darwin' ? require('./scripts/desktop/sparkleBuild.cjs').sparkleBuild(feed) : null;
 module.exports = {
   appId: 'app.nako.canvas',
-  productName: 'Nako 画布',
+  productName: 'NAKO Agent 纳科画布智能体',
   directories: { app: '.packaging/app', output: 'release', buildResources: 'public' },
   electronVersion: '44.3.0',
   asar: false,
@@ -15,14 +15,14 @@ module.exports = {
   ...(sparkle ? { extraFiles: sparkle.extraFiles, afterPack: sparkle.afterPack } : {}),
   artifactName: 'Nako-${version}-${os}-${arch}.${ext}',
   publish: feed && !sparkle ? [{ provider: 'generic', url: feed }] : null,
-  win: { target: ['nsis', 'zip'], icon: 'public/nako-app.ico' },
+  win: { target: ['nsis', 'zip'], icon: 'public/nako-app.ico', executableName: 'Nako 画布' },
   nsis: {
     oneClick: false,
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     deleteAppDataOnUninstall: false,
     createDesktopShortcut: true,
-    shortcutName: 'Nako 画布',
+    shortcutName: 'NAKO Agent 纳科画布智能体',
     artifactName: 'Nako-${version}-windows-${arch}-setup.${ext}',
   },
   mac: {
@@ -37,5 +37,5 @@ module.exports = {
     entitlementsInherit: 'apps/desktop/entitlements.mac.plist',
     binaries: ['Contents/Resources/app/bin/ffmpeg', 'Contents/Resources/app/bin/ffprobe'],
   },
-  dmg: { title: 'Nako 画布 ${version}', ...(sparkle ? { writeUpdateInfo: false } : {}) },
+  dmg: { title: 'NAKO Agent 纳科画布智能体 ${version}', ...(sparkle ? { writeUpdateInfo: false } : {}) },
 };

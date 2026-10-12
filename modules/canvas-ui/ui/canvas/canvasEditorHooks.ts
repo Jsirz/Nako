@@ -77,7 +77,11 @@ export function useCanvasHistory<T>(hooks: Hooks, initial: T, limit = 50) {
   };
 }
 
-export function useCanvasTitle(hooks: Hooks, initial = 'Untitled') {
+export function defaultCanvasTitle() {
+  return new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' }).format(new Date());
+}
+
+export function useCanvasTitle(hooks: Hooks, initial = defaultCanvasTitle()) {
   const [canvasTitle, setCanvasTitle] = hooks.useState(initial);
   const [isEditingTitle, setIsEditingTitle] = hooks.useState(false);
   const [editingTitleValue, setEditingTitleValue] = hooks.useState(initial);

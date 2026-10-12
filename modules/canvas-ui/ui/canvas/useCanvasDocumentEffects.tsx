@@ -1,4 +1,5 @@
-import { browserServices } from '../../../kernel/browser';
+import { browserHost, browserServices } from '../../../kernel/browser';
+import { SKILL_SELECT_EVENT } from '../../../contracts/skillCatalog.js';
 import type { CanvasNode } from '../nodes/canvasNodeOperations';
 import './canvasWorkspace.css';
 import type { useCanvasAgentRuntime } from './useCanvasAgentRuntime';
@@ -161,6 +162,7 @@ function useCanvasWorkspaceEffects(context: ReturnType<typeof useCanvasAgentRunt
     React, selectedNodeIds, nodes, NodeType, selectedCoverRef, view,
     newProjectPendingRef, save, cleanupInvalidGroups, setNodes, setView,
     setSettingsOpen, focusOnNodes, setSelectedNodeIds,
+    newProjectSkillRef, navigationRef, workflowId,
   } = context;
   React.useEffect(() => {
     if (selectedNodeIds.length === 1) {
@@ -181,9 +183,24 @@ function useCanvasWorkspaceEffects(context: ReturnType<typeof useCanvasAgentRunt
   React.useEffect(() => {
     if (view === 'canvas' && newProjectPendingRef.current) {
       newProjectPendingRef.current = false;
-      save();
+      const pending = newProjectSkillRef.current;
+      void save(pending ? { reportFailure: true } : undefined).catch((cause) => {
+        if (pending && pending.navigation === navigationRef.current)
+          window.alert(`画布保存失败，请手动保存后继续使用技能。\n${cause instanceof Error ? cause.message : '请检查网络连接。'}`);
+      });
     }
   }, [view, save]);
+  React.useEffect(() => {
+    const pending = newProjectSkillRef.current;
+    if (!pending) return;
+    if (pending.navigation !== navigationRef.current || view !== 'canvas') {
+      newProjectSkillRef.current = null;
+      return;
+    }
+    if (!workflowId) return;
+    newProjectSkillRef.current = null;
+    browserHost.events.emit(SKILL_SELECT_EVENT, { slug: pending.slug, projectId: workflowId });
+  }, [view, workflowId, navigationRef, newProjectSkillRef]);
   React.useEffect(() => {
     cleanupInvalidGroups(nodes, setNodes);
   }, [nodes, cleanupInvalidGroups, setNodes]);

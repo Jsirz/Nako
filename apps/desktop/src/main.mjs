@@ -33,7 +33,7 @@ import {
 } from './windowManager.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-app.setName('Nako 画布');
+app.setName('NAKO Agent 纳科画布智能体');
 const installation = resolveInstallation({
   packaged: app.isPackaged,
   executablePath: process.execPath,
@@ -154,7 +154,7 @@ async function openCanvas() {
   keepCanvasAlive(true);
   // The canvas loads after the backend is ready, so its preferences hydrate on first paint.
   await appContents.loadURL(CANVAS_URL);
-  mainWindow.setTitle('Nako 画布');
+  mainWindow.setTitle('NAKO Agent 纳科画布智能体');
   return { opened: true, message: '画布已打开。' };
 }
 

@@ -22,6 +22,7 @@ export type ConversationSnapshot = {
   state: DramaConversationState | null; error: string | null;
   selectedSkill: AgentSelectedSkill | null;
   restoring: boolean;
+  ready: boolean;
 };
 export type ConversationTools = {
   current(): boolean;
@@ -138,7 +139,7 @@ export function createAgentConversation(
     snapshot(): ConversationSnapshot {
       const id = sessionId(); const project = projectId();
       const state = cached?.session.id === id && cached.session.workflow?.projectId === project && isDramaSkill(currentSkill()) ? cached : null;
-      return { sessionId: id, projectId: project, busy: starting || working || restoring || Boolean(native?.isLoading), state, error, selectedSkill: currentSkill(), restoring };
+      return { sessionId: id, projectId: project, busy: starting || working || restoring || Boolean(native?.isLoading), state, error, selectedSkill: currentSkill(), restoring, ready: Boolean(native) };
     },
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     refresh,
@@ -150,7 +151,7 @@ export function createAgentConversation(
       if (disposed || starting || working || restoring || native?.isLoading) return false;
       if (!native) throw new AgentOperationError('Agent 尚未就绪，请稍后再试。', { operation: 'select-skill' });
       const project = projectId();
-      if (!project) throw new AgentOperationError('请先打开一个画布项目，再选择 SKILL。', { operation: 'select-skill' });
+      if (!project) throw new AgentOperationError('请先打开一个画布项目，再选择技能。', { operation: 'select-skill' });
       const binding = native;
       const currentId = binding.ensureSession();
       pendingSession = currentId;
@@ -168,14 +169,14 @@ export function createAgentConversation(
       try {
         const session = client.selectSkill ? await client.selectSkill(currentId, project, slug)
           : slug === DEFAULT_AGENT_SKILL.slug && client.startOfficialDrama ? await client.startOfficialDrama(currentId, project)
-          : (() => { throw new AgentOperationError('SKILL 选择接口尚未就绪。', { operation: 'select-skill' }); })();
+          : (() => { throw new AgentOperationError('技能选择接口尚未就绪。', { operation: 'select-skill' }); })();
         if (!stillCurrent()) return false;
         // Selection is not a chat turn. Never replace native messages, drafts or attachments.
         readSelection(session); cached = null; error = null; readEpoch += 1; notify();
         await refresh(currentId, project);
         return true;
       } catch (cause) {
-        if (stillCurrent()) { error = cause instanceof Error ? cause.message : 'SKILL 切换失败，请重试。'; notify(); }
+        if (stillCurrent()) { error = cause instanceof Error ? cause.message : '技能切换失败，请重试。'; notify(); }
         throw cause;
       } finally {
         starting = false;
@@ -189,7 +190,7 @@ export function createAgentConversation(
       if (disposed || starting || working || native?.isLoading) return false;
       if (sessionId() && !selectionKnown) await refresh();
       if (error) throw new AgentOperationError(error, { operation: 'ensure-drama-skill' });
-      if (!isDramaSkill(currentSkill())) throw new AgentOperationError('当前对话选择了其他 SKILL，请先切回剧本文戏。', { operation: 'ensure-drama-skill' });
+      if (!isDramaSkill(currentSkill())) throw new AgentOperationError('当前对话选择了其他技能，请先切回剧本文戏。', { operation: 'ensure-drama-skill' });
       if (api.snapshot().state) return true;
       if (!(await api.selectSkill(currentSkill()!.slug))) return false;
       if (error) throw new AgentOperationError(error, { operation: 'ensure-drama-skill' });

@@ -5,15 +5,44 @@
   z-index: 50;
   display: flex;
   align-items: center;
+  gap: 8px;
+  height: 48px;
+  color: var(--nk-text-secondary);
+}
+.nako-project-header-main {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  min-width: 0;
   height: 48px;
   padding: 8px 14px 8px 8px;
   border: 1px solid var(--nk-border);
   border-radius: 14px;
   background: color-mix(in srgb, var(--nk-surface-raised) 94%, transparent);
   box-shadow: 0 4px 20px #00000018;
-  color: var(--nk-text-secondary);
 }
+.nako-canvas-exit {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--nk-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.nako-canvas-exit:hover { background: var(--nk-hover); color: var(--nk-text); }
+.nako-canvas-exit:disabled { opacity: .5; cursor: wait; }
 .nako-project-identity { min-width: 0; }
 .nako-project-identity > :last-child { min-width: 0; }
 .nako-project-title { display: block; max-width: min(220px, 24vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
@@ -24,7 +53,7 @@ html[data-nk-integrated-titlebar] .nako-window-drag-region {
   display: block; position: fixed; inset: 0 148px auto 0; height: 36px; z-index: 49; -webkit-app-region: drag;
 }
 html[data-nk-integrated-titlebar] .af-canvas-header.nako-project-header {
-  top: 44px; width: auto !important; height: 48px; padding: 8px 14px 8px 8px !important; -webkit-app-region: no-drag;
+  top: 44px; width: auto !important; height: 48px; padding: 0 !important; -webkit-app-region: no-drag;
 }
 html[data-nk-integrated-titlebar] .nako-project-header [aria-label="项目菜单"] img { width: 30px; height: 30px; }
 [data-nako-workspace] [aria-label="画布工具"] { border-radius: 18px; padding: 6px; gap: 4px; background: var(--nk-surface-raised); box-shadow: 0 8px 32px #00000024; }
@@ -55,7 +84,7 @@ html[data-nk-integrated-titlebar] .nako-project-header [aria-label="项目菜单
   [data-nako-workspace]:has([data-nako-agent-panel]) .nako-viewport-controls { visibility: hidden; }
 }
 @media (max-height: 600px) {
-  [data-nako-workspace] [aria-label="画布工具"] { top: 100px; transform: none; max-height: calc(100dvh - 180px); overflow-y: auto; }
+  [data-nako-workspace] [aria-label="画布工具"] { top: 148px; transform: none; max-height: calc(100dvh - 228px); overflow-y: auto; }
 }
 #canvas-background[data-read-only] [data-nako-connector-node-id] { display: none !important; }
 .canvas-preview-readonly-composer { pointer-events: none; }

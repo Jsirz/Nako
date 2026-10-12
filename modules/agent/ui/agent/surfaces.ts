@@ -24,7 +24,7 @@ export const agentSurfaces = {
       HistoryIcon: Icons.History,
       DeleteIcon: Icons.Trash2,
       AddIcon: Icons.Plus,
-      CloseIcon: Icons.X,
+      CloseIcon: Icons.Minus,
       UploadIcon: Icons.Paperclip,
       ChatIcon: Icons.MessageSquare,
       SettingsIcon: Icons.SlidersHorizontal,

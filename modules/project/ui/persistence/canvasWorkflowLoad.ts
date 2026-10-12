@@ -10,7 +10,7 @@ const logger = createModuleLogger('project.workflow');
 
 export function useWorkflowLoad(hooks: ProjectHooks, state: WorkflowState, ui: WorkflowView) {
   const { epoch, loading, queue, base, targetId, pendingView, blocked, dismiss,
-    setId, setRevision, current, setPanel, setPanelY } = state;
+    setId, setRevision, current, setPanel, setPanelY, defaultTitle } = state;
   const { apply, displayedView } = ui;
   const handleLoadWorkflow = hooks.useCallback(async (id: string) => {
     const owner = ++epoch.current;
@@ -76,10 +76,11 @@ export function useWorkflowLoad(hooks: ProjectHooks, state: WorkflowState, ui: W
     setPanel(false);
     return document;
   }, [apply, dismiss, displayedView]);
-  const resetWorkflowId = hooks.useCallback(() => {
+  const resetWorkflowId = hooks.useCallback((title?: string) => {
     epoch.current += 1;
     loading.current = false;
     base.current = null;
+    defaultTitle.current = title;
     pendingView.current = null;
     targetId.current = null;
     queue.current = Promise.resolve();

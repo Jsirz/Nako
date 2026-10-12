@@ -8,6 +8,7 @@ export function useWorkflowState(hooks: ProjectHooks, props: CanvasWorkflowProps
   const [workflowPanelY, setPanelY] = hooks.useState(0);
   const current = hooks.useRef(props);
   const base = hooks.useRef<WorkflowRecord | null>(null);
+  const defaultTitle = hooks.useRef<string | undefined>(undefined);
   const targetId = hooks.useRef<string | null>(null);
   const epoch = hooks.useRef(0);
   const loading = hooks.useRef(false);
@@ -34,7 +35,7 @@ export function useWorkflowState(hooks: ProjectHooks, props: CanvasWorkflowProps
   return {
     workflowId, setId, workflowRevision, setRevision, isWorkflowPanelOpen,
     setPanel, workflowPanelY, setPanelY, current, base, targetId, epoch,
-    loading, queue, notice, blocked, pendingView, dismiss,
+    loading, queue, notice, blocked, pendingView, dismiss, defaultTitle,
   };
 }
 export type WorkflowState = ReturnType<typeof useWorkflowState>;

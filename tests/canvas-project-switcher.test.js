@@ -52,7 +52,7 @@ it('saves the current canvas before leaving for the dashboard', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json([])));
   const onBack = vi.fn();
   const { onSave } = mount({ onBack });
-  fireEvent.click(screen.getByRole('button', { name: '退出项目' }));
+  fireEvent.click(screen.getByRole('button', { name: '退出画布' }));
   await waitFor(() => expect(onBack).toHaveBeenCalledOnce());
   expect(onSave).toHaveBeenCalledOnce();
 });
@@ -61,7 +61,7 @@ it('keeps the canvas open if its exit save is unconfirmed', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json([])));
   const onBack = vi.fn();
   mount({ onSave: async () => null, onBack });
-  fireEvent.click(screen.getByRole('button', { name: '退出项目' }));
+  fireEvent.click(screen.getByRole('button', { name: '退出画布' }));
   await screen.findByRole('alert');
   expect(onBack).not.toHaveBeenCalled();
 });

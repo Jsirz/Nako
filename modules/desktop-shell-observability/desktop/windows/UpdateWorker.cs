@@ -59,7 +59,7 @@ namespace Nako.Update {
       try { parent = Process.GetProcessById(parentPid); }
       catch (ArgumentException) { return; }
       using (parent) {
-        if (!parent.WaitForExit(60000)) throw new TimeoutException("应用尚未退出，请先退出 Nako 画布，然后重试。");
+        if (!parent.WaitForExit(60000)) throw new TimeoutException("应用尚未退出，请先退出 NAKO Agent 纳科画布智能体，然后重试。");
       }
     }
     void VerifyPackage() {

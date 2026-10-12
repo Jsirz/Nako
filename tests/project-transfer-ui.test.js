@@ -48,11 +48,11 @@ it('ignores late import responses after switching projects and blocks duplicate 
 it('exposes both menu actions, disables them during transfer and reports export failure', async () => {
   const props = { busy: false, onImport: vi.fn(), onExport: vi.fn(async () => { throw Error('素材不可读'); }), close: vi.fn(), onError: vi.fn() };
   const view = render(React.createElement(CanvasTransferMenu, props));
-  fireEvent.click(view.getByText('导入画布工作流'));
+  fireEvent.click(view.getByText('导入画布'));
   expect(props.onImport).toHaveBeenCalledTimes(1);
-  await act(async () => { fireEvent.click(view.getByText('导出画布工作流')); });
+  await act(async () => { fireEvent.click(view.getByText('导出画布')); });
   expect(props.onError).toHaveBeenCalledWith('素材不可读');
   view.rerender(React.createElement(CanvasTransferMenu, { ...props, busy: true }));
-  expect(view.getByText('导入画布工作流').disabled).toBe(true);
-  expect(view.getByText('导出画布工作流').disabled).toBe(true);
+  expect(view.getByText('导入画布').disabled).toBe(true);
+  expect(view.getByText('导出画布').disabled).toBe(true);
 });

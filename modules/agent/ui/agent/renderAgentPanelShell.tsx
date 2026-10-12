@@ -132,9 +132,8 @@ export function renderAgentPanelHeader(
           {!chat.topic && !hasMessages && (
             <span
               className="block text-[9px] uppercase text-[var(--nk-text-muted)] mt-0.5"
-              style={{ letterSpacing: '.18em' }}
             >
-              画布智能体
+              纳科画布智能体
             </span>
           )}
         </div>
@@ -165,7 +164,8 @@ export function renderAgentPanelHeader(
         </Tooltip>
         <button
           type="button"
-          aria-label="关闭 Nako Agent"
+          aria-label="收起 Nako Agent"
+          title="收起 Nako Agent"
           onClick={props.onClose}
           className="p-1.5 rounded-lg transition-colors hover:bg-[var(--nk-surface)] text-[var(--nk-text-secondary)] hover:text-[var(--nk-text)]"
         >

@@ -20,10 +20,17 @@
 | `AgentTextGenerationService` | [agentTextGeneration.d.ts](../../modules/contracts/agentTextGeneration.d.ts)；resolveModel 返回无密钥模型元数据，generate 接收中立消息/工具/参数，返回完整 content/usage；provisional textDelta 不触发部分工具执行 |
 | `IdentityHttpSecurity` | [httpSecurity.d.ts](../../modules/contracts/httpSecurity.d.ts)；身份模块发布代理 Router、公共/私有库 Guard 和认证下载作用域；媒体通过服务注入调用，不依赖身份内部对象 |
 | `CanvasProjectUiService`、`ProjectMediaRecoveryService` | [projectWorkflow.ts](../../modules/contracts/projectWorkflow.ts)；画布发布图重映射、分组清理及提示/模态能力，媒体发布中断节点恢复；React hooks 和组件类型留在业务 UI |
+| `NewSkillCanvasRequest`、`AgentSkillSelectionRequest` | [skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts)；kernel 浏览器事件 `SKILL_NEW_CANVAS_EVENT` 接收 `{slug}`，画布创建并保存后以 `SKILL_SELECT_EVENT` 发送 `{slug, projectId}`；Agent 只在匹配的当前项目选择技能。事件无返回值，不触发生成；保存失败保留待选技能供手动保存后继续，切换项目取消 |
 
 错误基础定义在 [errors.js](../../modules/contracts/errors.js)，根入口转出保持同一类身份；协议校验直接依赖叶子模块避免初始化环。领域错误定义在 contracts/identityErrors、desktopErrors、providerErrors 等，均携带模块与操作上下文。尚未集中或收敛的具体项见 [规范差异](conformance.md)。
 
 ## 数据模型
+
+`skillCatalog.js` 与其声明文件提供 `SKILL_DESCRIPTION_MAX_LENGTH`，技能展示描述最多 4000 字符；前端导入、存储校验及读取按同一限制处理，技能的具体描述仍位于各自目录的 `metadata.json`。
+
+`AgentSkill.source` 区分安装应用提供的官方预设（`official`）与用户独立导入（`local`）；`preset: true` 表示从 `builtin/presets` 直接读取的普通官方技能，不表示用户目录副本。官方展示信息、指令和封面随应用版本替换，用户自定义保存在私有目录且不继承同名官方内容。来源字段由存储服务确定，导入 JSON 不能授予官方身份；`source: 'official'` 本身也不授予受控制作权限，该权限仍由 `officialProductionProfiles.js` 的身份匹配确定。官方技能分类修改及删除通过 `AgentSkillError` 返回 403。
+
+`officialProductionProfiles.js` 的官方制作目录仅定义文戏和武戏的 id、slug、version、mode 及 webAppId；展示名称、简介、分类等保存在各自技能目录的 `metadata.json`，不在公共协议中保存文案。`officialDramaBundle.js` 提供对应的文戏或武戏路由。不存在的组合标识由 `officialProductionBundle` 以 `ERRORS.invalidConfiguration` 拒绝。
 
 作品展示归档来源在 [showcaseArchive.js](../../modules/contracts/showcaseArchive.js) 校验，支持本地 `/share/*.nako` 和 HTTPS 对象地址；[showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) 定义 `{ archive: string }` 请求。后端还须核对应用案例目录，不能将协议校验视为任意 URL 授权。`ProjectFileStore` 新增 `downloadArchive(url,path,limit)` 和 `move(source,target)`，临时目录可指定父目录；存储适配器负责流式字节限额、超时、写入和原子改名。下载错误及未列出的地址分别使用 projectErrors 中的 `SHOWCASE_DOWNLOAD_FAILED`、`SHOWCASE_ARCHIVE_NOT_LISTED`。
 
@@ -114,7 +121,7 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/nodeSdk.js](../../modules/contracts/nodeSdk.js) | 模块内部辅助 | `NODE_SDK_VERSION`, `NODE_MEDIA_TYPES`, `NODE_CATEGORIES`, `NODE_RENDERERS`, `NODE_AGENT_SIDE_EFFECTS`, `validateNodeDefinition`, `validateNodePackageManifest`, `createMissingNodeDefinition`, `cloneNodeDefinition` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/nodeValues.d.ts](../../modules/contracts/nodeValues.d.ts) | 类型或数据定义 | `declaredNodeOutput` | 无业务运行副作用 |
 | [modules/contracts/nodeValues.js](../../modules/contracts/nodeValues.js) | 协议、校验或数据规则 | `declaredNodeOutput` | 未检出平台调用；不等于纯函数证明 |
-| [modules/contracts/officialDramaBundle.js](../../modules/contracts/officialDramaBundle.js) | 模块内部辅助 | `OFFICIAL_DRAMA_BUNDLE`, `OFFICIAL_DRAMA_SKILL_METADATA`, `officialProductionBundle`, `OFFICIAL_PRODUCTION_SKILLS`, `SKILL_INSTRUCTION_LIMITS` | 未检出平台调用；不等于纯函数证明 |
+| [modules/contracts/officialDramaBundle.js](../../modules/contracts/officialDramaBundle.js) | 模块内部辅助 | `OFFICIAL_DRAMA_BUNDLE`, `officialProductionBundle`, `SKILL_INSTRUCTION_LIMITS` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/officialProductionProfiles.d.ts](../../modules/contracts/officialProductionProfiles.d.ts) | 类型或数据定义 | `OfficialProductionProfile`, `OFFICIAL_PRODUCTION_PROFILES`, `productionProfileForSkill`, `productionProfileForBundle` | 无业务运行副作用 |
 | [modules/contracts/officialProductionProfiles.js](../../modules/contracts/officialProductionProfiles.js) | 模块内部辅助 | `OFFICIAL_PRODUCTION_PROFILES`, `productionProfileForSkill`, `productionProfileForBundle` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/pluginValidation.js](../../modules/contracts/pluginValidation.js) | 协议、校验或数据规则 | `GENERATION_KINDS`, `WORKFLOW_EXECUTOR_METHODS`, `WORKFLOW_CLIENT_METHODS`, `validateProviderDescriptor`, `validatePluginManifest` | 未检出平台调用；不等于纯函数证明 |
@@ -139,8 +146,8 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/shared/midjourneyPrompt.js](../../modules/contracts/shared/midjourneyPrompt.js) | 模块内部辅助 | `normalizeMidjourneyPrompt`, `removeMidjourneyPreview` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/shared/modelOverrideKey.d.ts](../../modules/contracts/shared/modelOverrideKey.d.ts) | 类型或数据定义 | `modelOverrideKey`, `isLikelyProviderApiKey` | 无业务运行副作用 |
 | [modules/contracts/shared/modelOverrideKey.js](../../modules/contracts/shared/modelOverrideKey.js) | 模块内部辅助 | `modelOverrideKey`, `isLikelyProviderApiKey` | 未检出平台调用；不等于纯函数证明 |
-| [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `skillCategory`, `AgentSkill` | 无业务运行副作用 |
-| [modules/contracts/skillCatalog.js](../../modules/contracts/skillCatalog.js) | 模块内部辅助 | `SKILL_CATEGORIES`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `skillCategory` | 未检出平台调用；不等于纯函数证明 |
+| [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `NewSkillCanvasRequest`, `AgentSkillSelectionRequest`, `skillCategory`, `AgentSkill` | 无业务运行副作用 |
+| [modules/contracts/skillCatalog.js](../../modules/contracts/skillCatalog.js) | 模块内部辅助 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `skillCategory` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/storageDramaPlan.d.ts](../../modules/contracts/storageDramaPlan.d.ts) | 类型或数据定义 | `StoredDramaAsset`, `StoredDramaSegment`, `StoredDramaPlan`, `DramaPlanValidation` | 无业务运行副作用 |
 | [modules/contracts/storageErrors.d.ts](../../modules/contracts/storageErrors.d.ts) | 类型或数据定义 | `STORAGE_ERRORS`, `StorageErrorCode`, `WorkspaceError`, `PlanError`, `PromptPresetError` | 无业务运行副作用 |
 | [modules/contracts/storageErrors.js](../../modules/contracts/storageErrors.js) | 模块内部辅助 | `STORAGE_ERRORS`, `WorkspaceError`, `PlanError`, `PromptPresetError` | 未检出平台调用；不等于纯函数证明 |

@@ -21,7 +21,7 @@ export async function selectDirectoryWithSystemDialog({
     '$owner.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen',
     '$owner.ShowInTaskbar = $false',
     '$owner.TopMost = $true',
-    "$owner.Text = 'Nako 画布'",
+    "$owner.Text = 'NAKO Agent 纳科画布智能体'",
     '$owner.Width = 1',
     '$owner.Height = 1',
     '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',

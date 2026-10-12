@@ -1,6 +1,6 @@
 {
-  "name": "Nako 画布",
-  "short_name": "Nako",
+  "name": "NAKO Agent 纳科画布智能体",
+  "short_name": "NAKO Agent",
   "start_url": "/",
   "display": "standalone",
   "icons": [{ "src": "/nako-logo.png", "sizes": "254x255", "type": "image/png" }]

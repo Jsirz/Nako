@@ -1,5 +1,5 @@
 export interface OfficialProductionProfile {
-  readonly id: string; readonly slug: string; readonly name: string; readonly version: string;
+  readonly id: string; readonly slug: string; readonly version: string;
   readonly mode: 'script' | 'assets'; readonly webAppId: string;
 }
 export const OFFICIAL_PRODUCTION_PROFILES: readonly OfficialProductionProfile[];

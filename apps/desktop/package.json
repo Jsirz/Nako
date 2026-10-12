@@ -1,6 +1,6 @@
 {
   "name": "@nako/desktop",
-  "productName": "Nako 画布",
+  "productName": "NAKO Agent 纳科画布智能体",
   "version": "1.0.0",
   "private": true,
   "description": "Nako single-window Electron shell (ADR-0035).",

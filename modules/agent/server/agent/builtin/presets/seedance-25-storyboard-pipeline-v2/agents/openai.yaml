@@ -1,4 +1,0 @@
-interface:
-  display_name: "Seedance 2.5 剧本视频流水线（自适应版）"
-  short_description: "自适应切片与严格规格双模式的Seedance 2.5剧本分镜流水线"
-  default_prompt: "使用 $seedance-25-storyboard-pipeline-v2 把剧本转成镜头表和连续片段；默认优先25–30秒、目标8镜，先保全对白与动作，待我确认片段后再生成视频 Prompt。"

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Neoimage Prompt Engine"
-  short_description: "Neo Image/Nano Pro 出图 prompt 引擎"
-  default_prompt: "Use $neoimage-prompt-engine to turn this shot idea into a complete Neo Image 2 prompt."

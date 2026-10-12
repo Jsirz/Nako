@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const expectedVersion = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version;
 const mac = process.platform === 'darwin';
 const executablePath = process.argv[2] || path.join(root, 'release', mac
-  ? `${process.arch === 'arm64' ? 'mac-arm64' : 'mac'}/Nako 画布.app/Contents/MacOS/Nako 画布`
+  ? `${process.arch === 'arm64' ? 'mac-arm64' : 'mac'}/NAKO Agent 纳科画布智能体.app/Contents/MacOS/NAKO Agent 纳科画布智能体`
   : 'win-unpacked/Nako 画布.exe');
 const resources = path.resolve(path.dirname(executablePath), mac ? '../Resources/app' : 'resources/app');
 if (!mac) {
@@ -39,7 +39,7 @@ async function launch() {
   app.context().on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
   assert.equal(await app.evaluate(({ app }) => app.isPackaged), true);
   assert.equal(await app.evaluate(({ app }) => app.getVersion()), expectedVersion);
-  assert.equal(await app.evaluate(({ app }) => app.getName()), 'Nako 画布');
+  assert.equal(await app.evaluate(({ app }) => app.getName()), 'NAKO Agent 纳科画布智能体');
   return canvas();
 }
 async function api(page, url, options) {
@@ -66,8 +66,8 @@ try {
     await page.getByRole('button', { name: '稍后提醒', exact: true }).click();
   }
   assert.equal((await api(page, '/api/config/keys')).status, 200);
-  await page.getByRole('button', { name: '新建项目', exact: true }).click();
-  await page.getByRole('button', { name: 'SKILL 管理', exact: true }).waitFor();
+  await page.locator('.nako-recent-create').click();
+  await page.getByRole('button', { name: '技能管理', exact: true }).waitFor();
   assert.equal((await api(page, '/api/agent-skills')).status, 200);
   const updateState = await page.evaluate(() => window.nakoDesktop.updates.state());
   assert.equal(updateState.version, expectedVersion);

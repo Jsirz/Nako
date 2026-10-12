@@ -136,6 +136,18 @@ it('resolves all four HTTP generation entries before persisting task identity an
   });
   cleanups.push(() => new Promise((resolve) => server.close(resolve)));
   const origin = 'http://127.0.0.1:' + server.address().port;
+  const removed = await fetch(origin + '/api/generation-concurrency?' + new URLSearchParams({
+    modelName: 'GPT-5.6 Luna · Work-Fisher', mode: '',
+  }));
+  expect(removed.status).toBe(400);
+  expect(await removed.json()).toMatchObject({
+    code: 'INVALID_MODEL_CONFIGURATION', error: expect.stringContaining('请重新选择模型'),
+  });
+  const available = await fetch(origin + '/api/generation-concurrency?' + new URLSearchParams({
+    modelName: selections.text.name, mode: '',
+  }));
+  expect(available.status).toBe(200);
+  expect(await available.json()).toMatchObject({ blocked: false, inFlight: 0 });
   for (const kind of kinds) {
     const mode = Object.keys(selections[kind].endpoint)[0];
     const response = await fetch(origin + '/api/generate-' + kind, {

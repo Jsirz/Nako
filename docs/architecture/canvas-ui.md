@@ -17,13 +17,21 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 
 画布文档包含 nodes、groups、连线、viewport、标题、项目 id/revision；持久化由 project 模块承担。节点执行状态与错误提示、结果 URL、参数及端口来自注册表和公共运行协议。编辑交互的悬浮、选择、拖动、菜单、弹窗等状态只属于浏览器视图。
 
+新建画布默认标题由 `canvasEditorHooks.defaultCanvasTitle` 按设备本地日期生成，例如“10月10日”；`useCanvasTitle` 初始化与 `clearCanvas` 重置标题复用该规则。`clearCanvas` 将默认标题传给项目身份重置方法，项目模块首次保存时为同名默认标题追加 `-1`、`-2` 等可用后缀，并同步画布标题。标题可由用户修改，加载已有画布时读取其保存的标题。
+
 持久化节点类型与端口身份不同于数组位置；插件缺席保留缺失节点占位，不悄悄改成其他节点。运行中节点的复制限制、只读画布导航及媒体工具栏沿用当前工作区已有实现，本次不回滚用户修改。
 
 ## 功能结构
 
+`canvasHeader.tsx` 将项目菜单、名称及保存状态呈现在胶囊区域，下方左对齐的独立“退出画布”按钮复用 `leave`：可编辑画布先保存并核对回执，失败时保留当前画布；只读预览直接返回。菜单保留“保存退出”（退出图标）、“保存”、“导入画布 / 导出画布”及项目切换，不再重复提供“退出项目”。独立退出按钮在保存或传输期间禁用，桌面端设为非窗口拖拽区域。
+
 `canvasApplication.tsx` 组织 hooks 与渲染；`useCanvas*` 分担生命周期、保存、项目切换、交互和运行观察；`renderCanvas*` 负责呈现。`ui/nodes` 包含原生及通用节点、参数编辑、授权与节点请求；`ui/dialogs` 包含图片编辑、裁剪、预览、项目菜单等。
 
 项目切换先核对保存回执；异步结果按项目/epoch 防止迟到响应写入。只读模式禁止修改/生成。模型未配置、节点缺失、服务请求失败保留明确空/错误状态。图像编辑、场景、节点和文本控件已按状态、行为、渲染职责拆分；超时及交互错误使用 contracts/canvasErrors，未改变工具授权或运行协议。
+
+首页使用技能经 kernel 事件总线进入 `useCanvasProjectNavigation`，仅在首页接收有效技能 slug，关闭旧 Agent 面板并复用新建画布流程。`useCanvasDocumentEffects` 复用首次保存，在持久化项目 id 就绪后发布技能选择事件；待选技能按导航序号隔离，切换项目后丢弃。保存失败提示手动保存，保存成功后继续选择技能，不重复新建或保存。
+
+新节点只采用有效默认模型，失效默认值显示选择模型的空状态，不自动替换为其他模型。`useGenerationAvailability` 对已删除的明确模型显示后端配置错误并禁用生成、停止轮询；选择其他模型后重新查询，临时网络故障仍每两秒重试。已有节点的明确模型选择不被改写。
 
 <!-- source-inventory:start -->
 ## 文件目录
@@ -63,7 +71,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/canvas/canvasEdgeGeometry.ts](../../modules/canvas-ui/ui/canvas/canvasEdgeGeometry.ts) | 浏览器交互与状态辅助 | `Point`, `Curve`, `edgePath`, `edgePoint`, `edgeLength`, `edgePhase`, `edgeFlowSegments` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/canvasEdges.tsx](../../modules/canvas-ui/ui/canvas/canvasEdges.tsx) | 浏览器交互与状态辅助 | `EdgeNode`, `CanvasEdges` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/canvasEditing.ts](../../modules/canvas-ui/ui/canvas/canvasEditing.ts) | 浏览器交互与状态辅助 | `CanvasPositionedNode`, `MoveCanvasNodesOptions`, `SelectionResizeHandle`, `CanvasNodeFrame`, `ResizeCanvasSelectionOptions`, `CanvasHistory`, `StableCanvasEditingAdapter`, `moveCanvasNodes`, `resizeCanvasSelection`, `getMovableNodeIds`, `createCanvasHistory`, `commitCanvasHistory`, `undoCanvasHistory`, `redoCanvasHistory`, `installStableCanvasEditing` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/canvas/canvasEditorHooks.ts](../../modules/canvas-ui/ui/canvas/canvasEditorHooks.ts) | 浏览器交互与状态辅助 | `useCanvasConnections`, `useCanvasHistory`, `useCanvasTitle`, `useCanvasGroups`, `useCanvasMarquee`, `useCanvasLayout`, `useCanvasDrag`, `useCanvasResize`, `useCanvasEdgePan` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/canvas/canvasEditorHooks.ts](../../modules/canvas-ui/ui/canvas/canvasEditorHooks.ts) | 浏览器交互与状态辅助 | `useCanvasConnections`, `useCanvasHistory`, `defaultCanvasTitle`, `useCanvasTitle`, `useCanvasGroups`, `useCanvasMarquee`, `useCanvasLayout`, `useCanvasDrag`, `useCanvasResize`, `useCanvasEdgePan` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/canvasGroups.ts](../../modules/canvas-ui/ui/canvas/canvasGroups.ts) | 浏览器交互与状态辅助 | `CanvasGroupableNode`, `CanvasGroup`, `CanvasGroupState`, `GroupCanvasNodesOptions`, `StableCanvasGroupsAdapter`, `groupCanvasNodes`, `ungroupCanvasNodes`, `cleanupCanvasGroups`, `renameCanvasGroup`, `getCanvasGroupByNodeId`, `getCanvasGroupById`, `getCommonCanvasGroup`, `installStableCanvasGroups` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/canvasImageClipboard.ts](../../modules/canvas-ui/ui/canvas/canvasImageClipboard.ts) | 浏览器交互与状态辅助 | `ImageClipboardRuntime`, `copyCanvasImageToSystemClipboard` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/canvasLayout.ts](../../modules/canvas-ui/ui/canvas/canvasLayout.ts) | 浏览器交互与状态辅助 | `CanvasLayoutNode`, `CanvasNodeMeasurer`, `StableCanvasLayoutAdapter`, `autoAlignCanvasNodes`, `gridLayoutCanvasNodes`, `installStableCanvasLayout` | 未检出平台调用；不等于纯函数证明 |

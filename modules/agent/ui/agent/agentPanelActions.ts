@@ -1,4 +1,5 @@
 import type * as ReactTypes from 'react';
+import { agentDocumentAccept } from '../../../contracts/shared/agentDocumentFormats.js';
 import { agentMessageWithDocuments } from './agentDocuments';
 import type { AgentPanelState } from './useCanvasAgentPanelState';
 
@@ -37,8 +38,10 @@ export function agentPanelActions(state: AgentPanelState) {
       /* Unrelated browser drags do not contain a canvas reference. */
     }
   };
-  const chooseFile = () => {
-    if (!isLoading) fileRef.current?.click();
+  const chooseFile = (accept = `image/*,video/*,audio/*,.mkv,.flac,${agentDocumentAccept}`) => {
+    if (isLoading || !fileRef.current) return;
+    fileRef.current.accept = accept;
+    fileRef.current.click();
   };
   const onFileChange = (event: ReactTypes.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.currentTarget.files ?? []);
@@ -49,10 +52,18 @@ export function agentPanelActions(state: AgentPanelState) {
     if (
       sending.current ||
       isLoading ||
-      !modelId ||
       (!prompt.trim() && !attachments.documents.length && !references.length)
     )
       return;
+    if (!modelId) {
+      const status = state.availability.emptyLabel();
+      window.alert(status === '连接模型服务'
+        ? '当前没有可用的文本模型，请在设置中连接模型服务后重试。'
+        : status === '正在读取模型…'
+          ? '正在读取可用模型，请稍后重试。'
+          : '读取可用模型失败，请在模型菜单中点击“连接模型服务”重试。');
+      return;
+    }
     sending.current = true;
     const owner = epoch.current;
     try {

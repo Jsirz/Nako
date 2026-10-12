@@ -1,4 +1,7 @@
 import { canvasError } from '../../../contracts/canvasErrors.js';
+import { SKILL_NEW_CANVAS_EVENT } from '../../../contracts/skillCatalog.js';
+import type { NewSkillCanvasRequest } from '../../../contracts/skillCatalog.js';
+import { browserHost } from '../../../kernel/browser';
 import type * as ReactTypes from 'react';
 import type { CanvasGroup } from './canvasGroups';
 import { canvasVisibleScene,createCanvasSceneProjector } from './canvasSceneData';
@@ -50,7 +53,9 @@ export function useCanvasProjectNavigation(context: ReturnType<typeof useCanvasP
     clearCanvas,
     handleClipboardImagePaste,
     openProject,
+    closeChat,
   } = context;
+  const newProjectSkillRef = React.useRef<{ slug: string; navigation: number } | null>(null);
 
   const switchProject = async (id: string) => {
     const loaded = await openProject(id);
@@ -163,6 +168,17 @@ export function useCanvasProjectNavigation(context: ReturnType<typeof useCanvasP
       },
       [clearSelection, handleEdgeClick],
     );
+  React.useEffect(
+    () => browserHost.events.on(SKILL_NEW_CANVAS_EVENT, (value) => {
+      const request = value as NewSkillCanvasRequest;
+      if (view !== 'dashboard' || newProjectSkillRef.current ||
+        typeof request?.slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(request.slug)) return;
+      closeChat();
+      newProject();
+      newProjectSkillRef.current = { slug: request.slug, navigation: navigationRef.current };
+    }),
+    [view, newProject, closeChat],
+  );
   return {
     ...context,
     handleOpenProjectFile,
@@ -173,6 +189,7 @@ export function useCanvasProjectNavigation(context: ReturnType<typeof useCanvasP
     backToProjects,
     switchProject,
     newProject,
+    newProjectSkillRef,
     onDragOver,
     onDrop,
     projectScene,

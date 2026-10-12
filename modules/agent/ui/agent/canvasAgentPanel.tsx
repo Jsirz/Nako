@@ -6,7 +6,7 @@ import type { AgentModel, Icons, Props, Runtime } from './canvasAgentPanelTypes'
 import { useCanvasAgentPanelState } from './useCanvasAgentPanelState';
 import { agentPanelActions } from './agentPanelActions';
 import { agentPanelWidthLimits, clampAgentPanelWidth } from './agentPanelWidth';
-import { renderAgentPanelHistory, renderAgentPanelHeader, renderAgentHarnessControls } from './renderAgentPanelShell';
+import { renderAgentPanelHistory, renderAgentPanelHeader } from './renderAgentPanelShell';
 import { renderAgentPanelConversation } from './renderAgentPanelConversation';
 import { renderAgentPanelComposer } from './renderAgentPanelComposer';
 
@@ -65,14 +65,13 @@ export function CanvasAgentPanel(React: Runtime, props: Props, components: Icons
         <div className="absolute inset-0 bg-cyan-500/10 pointer-events-none z-10 flex items-center justify-center">
           <div className="bg-cyan-500/20 border-2 border-dashed border-cyan-400 rounded-lg px-8 py-6 text-center">
             <ImageIcon className="w-10 h-10 mx-auto mb-2 text-cyan-400" />
-            <p className="text-cyan-300 font-medium">仅支持图片参考</p>
+            <p className="text-cyan-300 font-medium">添加图片、视频或音频参考</p>
           </div>
         </div>
       )}
       {renderAgentPanelHistory(React, state, actions, components)}
       {renderAgentPanelHeader(React, state, actions, components)}
-      {renderAgentHarnessControls(React, state)}
-      {renderAgentPanelConversation(React, state, components)}
+      {renderAgentPanelConversation(React, state, components, actions)}
       {hasMessages && scroll.showLatest && (
         <button
           type="button"

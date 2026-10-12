@@ -1,5 +1,6 @@
-import { SKILL_CATALOG_CHANGED } from '../../../contracts/skillCatalog.js';
-import { browserServices } from '../../../kernel/browser';
+import { SKILL_CATALOG_CHANGED, SKILL_SELECT_EVENT } from '../../../contracts/skillCatalog.js';
+import type { AgentSkillSelectionRequest } from '../../../contracts/skillCatalog.js';
+import { browserHost, browserServices } from '../../../kernel/browser';
 import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
 import {
   createAgentSkillClient,
@@ -11,9 +12,8 @@ import {
   type AgentConversation,
 } from './agentConversation';
 import type { DramaCanvasBridge } from './dramaCanvasBridge';
-import { productionProfileForSkill } from '../../../contracts/officialProductionProfiles.js';
+import { createAgentSkillPicker } from './AgentSkillPicker';
 
-export const DRAMA_SHORTCUT_LABEL = '剧本文戏';
 export const SELECT_AGENT_SKILL_EVENT = 'nako:select-agent-skill';
 const ATTRIBUTE = 'data-nako-agent-skills';
 
@@ -28,7 +28,13 @@ export function installDramaConversationShortcut(
   const local = createSkillShortcutState();
   const actions = createSkillShortcutActions(canvas, conversation, skills, local);
   const mount = createSkillShortcutMount(conversation, local, actions);
-  return bindSkillShortcut(conversation, local, actions, mount);
+  const unbindSelection = browserHost.events.on(SKILL_SELECT_EVENT, (value) => {
+    const request = value as AgentSkillSelectionRequest;
+    if (typeof request?.slug === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(request.slug) &&
+      typeof request.projectId === 'string' && request.projectId === canvas.projectId()) void actions.select(request.slug);
+  });
+  const unbind = bindSkillShortcut(conversation, local, actions, mount);
+  return () => { unbindSelection(); unbind(); };
 }
 
 function createSkillShortcutState() {
@@ -37,6 +43,7 @@ function createSkillShortcutState() {
     catalog: null as AgentSkill[] | null, loading: false, error: '', filter: '', category: '',
     context: '', feedback: '', feedbackTimer: undefined as number | undefined,
     selectionChip: null as HTMLElement | null, refresh: () => {}, collapse: () => {}, syncPlacement: () => {},
+    closeSkillOverlays: () => {}, disposeSkillPicker: () => {},
     catalogRevision: 0, missingSelection: '',
   };
 }
@@ -45,7 +52,7 @@ function createSkillShortcutActions(canvas: DramaCanvasBridge, conversation: Age
   skills: AgentSkillClient, local: SkillShortcutState) {
   const skillName = (slug: string) =>
     local.catalog?.find((skill) => skill.slug === slug)?.name ||
-    productionProfileForSkill(slug)?.name ||
+    (conversation.snapshot().selectedSkill?.slug === slug ? conversation.snapshot().selectedSkill?.name : '') ||
     slug;
   const clearFeedback = () => {
     window.clearTimeout(local.feedbackTimer);
@@ -76,7 +83,7 @@ function createSkillShortcutActions(canvas: DramaCanvasBridge, conversation: Age
       // Opening the native panel binds its conversation in a React effect. Let that
       // binding settle, then wait only for its read-only history restoration.
       if (openingAgent) await new Promise((resolve) => window.setTimeout(resolve, 16));
-      for (let i = 0; i < 30 && conversation.snapshot().restoring; i += 1) {
+      for (let i = 0; i < 250 && (!conversation.snapshot().ready || conversation.snapshot().restoring); i += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 40));
         if (!current()) return;
       }
@@ -84,7 +91,7 @@ function createSkillShortcutActions(canvas: DramaCanvasBridge, conversation: Age
       const selected = await conversation.selectSkill(slug);
       if (!current()) return;
       if (!selected) {
-        local.error = '请等待当前回复或操作完成，再切换 SKILL。';
+        local.error = '请等待当前回复或操作完成，再切换技能。';
         local.refresh();
         return;
       }
@@ -113,7 +120,7 @@ function createSkillShortcutActions(canvas: DramaCanvasBridge, conversation: Age
       document.querySelector<HTMLTextAreaElement>('[data-nako-agent-composer]')?.focus();
     } catch (cause) {
       if (current()) {
-        local.error = cause instanceof Error ? cause.message : '暂时无法切换 SKILL。';
+        local.error = cause instanceof Error ? cause.message : '暂时无法切换技能。';
         local.refresh();
       }
     } finally {
@@ -155,6 +162,7 @@ function createSkillShortcutMount(conversation: AgentConversation, local: SkillS
       local.syncPlacement();
       return;
     }
+    local.disposeSkillPicker();
     const composer = document.querySelector<HTMLTextAreaElement>('[data-nako-agent-composer]');
     const agentPanel = composer?.closest('[data-nako-agent-panel]');
     if (!composer || !agentPanel) return;
@@ -201,10 +209,6 @@ function createSkillShortcutMount(conversation: AgentConversation, local: SkillS
     categories.className = 'nako-agent-skills-categories';
     categories.setAttribute('aria-label', '技能分类');
     categories.addEventListener('change', () => { local.category = categories.value; local.refresh(); });
-    const manage = document.createElement('button');
-    manage.type = 'button'; manage.className = 'nako-agent-skills-retry';
-    manage.textContent = '管理技能';
-    manage.addEventListener('click', () => window.dispatchEvent(new Event('nako:open-skill-community')));
     const toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'nako-agent-skills-toggle';
@@ -214,23 +218,21 @@ function createSkillShortcutMount(conversation: AgentConversation, local: SkillS
     arrow.setAttribute('aria-hidden', 'true');
     arrow.className = 'nako-agent-skills-chevron';
     arrow.textContent = '›';
-    const label = document.createElement('span');
-    label.textContent = '切换技能';
     const hint = document.createElement('span');
     hint.className = 'nako-agent-skills-hint';
     hint.setAttribute('aria-hidden', 'true');
-    toggle.append(label, hint, arrow);
+    toggle.append(hint, arrow);
     const options = document.createElement('div');
     options.id = 'nako-agent-skills-options';
     options.className = 'nako-agent-skills-options';
     options.setAttribute('role', 'region');
-    options.setAttribute('aria-label', '选择SKILL');
+    options.setAttribute('aria-label', '选择技能');
     const optionsInner = document.createElement('div');
     optionsInner.className = 'nako-agent-skills-inner';
     const search = document.createElement('input');
     search.type = 'search';
-    search.placeholder = '搜索SKILL';
-    search.setAttribute('aria-label', '搜索SKILL');
+    search.placeholder = '搜索技能';
+    search.setAttribute('aria-label', '搜索技能');
     const list = document.createElement('div');
     list.className = 'nako-agent-skills-list';
     const note = document.createElement('p');
@@ -243,7 +245,17 @@ function createSkillShortcutMount(conversation: AgentConversation, local: SkillS
     retry.addEventListener('click', () => {
       void readCatalog();
     });
-    optionsInner.append(categories, manage, search, list);
+    const filters = document.createElement('div');
+    filters.className = 'nako-agent-skills-filters';
+    filters.append(categories, search);
+    const more = document.createElement('button');
+    more.type = 'button'; more.className = 'nako-agent-skills-more';
+    more.textContent = '查看更多 →';
+    more.addEventListener('click', () => {
+      local.collapse();
+      window.dispatchEvent(new Event('nako:open-skill-community'));
+    });
+    optionsInner.append(filters, list, more);
     options.append(optionsInner);
     local.root.append(heading, toggle, options, note, retry);
     const skillsSlot =
@@ -267,9 +279,13 @@ function bindSkillShortcutControls(agentPanel: Element, controls: SkillShortcutC
   conversation: AgentConversation, local: SkillShortcutState,
   { select, readCatalog, skillName }: SkillShortcutActions) {
   const { heading, toggle, options, hint, chipLabel, chip, chipIcon, cancel, note, retry, search, categories, list } = controls;
+    const picker = createAgentSkillPicker((slug) => void select(slug), () => local.collapse());
+    local.closeSkillOverlays = picker.close;
+    local.disposeSkillPicker = picker.dispose;
     let listSignature = '';
     local.collapse = () => {
       local.expanded = false;
+      picker.hidePreview();
       local.refresh();
     };
     local.refresh = () => {
@@ -343,6 +359,7 @@ function bindSkillShortcutControls(agentPanel: Element, controls: SkillShortcutC
         document.activeElement instanceof HTMLElement
           ? document.activeElement.dataset.nakoSkill
           : null;
+      picker.hidePreview();
       list.replaceChildren();
       const matching = skillCatalog
         .filter((skill) => !local.category || (skill.category || '其他') === local.category)
@@ -352,37 +369,21 @@ function bindSkillShortcutControls(agentPanel: Element, controls: SkillShortcutC
       if (!local.loading && local.catalog && !matching.length) {
         const empty = document.createElement('p');
         empty.className = 'nako-agent-skills-note';
-        empty.textContent = local.filter ? '没有匹配的 SKILL。' : '此分类暂无技能，可在“管理技能”中添加。';
+        empty.textContent = local.filter ? '没有匹配的技能。' : '此分类暂无技能，可通过“查看更多”导入。';
         list.append(empty);
       }
       for (const skill of matching) {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.className = 'nako-agent-skills-option';
-        option.dataset.nakoSkill = skill.slug;
         const selected =
           !snapshot.restoring &&
           snapshot.selectedSkill?.slug === skill.slug;
-        option.setAttribute('aria-pressed', String(selected));
-        option.disabled = local.selecting || snapshot.busy;
-        const name = document.createElement('strong');
-        name.textContent = skill.name;
-        const description = document.createElement('span');
-        description.className = 'nako-agent-skills-description';
-        description.textContent = skill.description;
-        const content = document.createElement('span');
-        content.className = 'nako-agent-skills-card-content';
-        content.append(name, description);
-        option.append(content);
-        option.addEventListener('click', () => {
-          void select(skill.slug);
-        });
-        list.append(option);
-        if (focusedSlug === skill.slug && !option.disabled) option.focus();
+        const row = picker.createRow(skill, selected, local.selecting || snapshot.busy || snapshot.restoring);
+        list.append(row);
+        if (focusedSlug === skill.slug) row.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
       }
     };
     toggle.addEventListener('click', () => {
       local.expanded = !local.expanded;
+      picker.hidePreview();
       local.refresh();
       if (local.expanded && !local.catalog) void readCatalog();
     });
@@ -428,6 +429,7 @@ function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcut
     const snapshot = conversation.snapshot();
     const next = `${snapshot.projectId || ''}:${snapshot.sessionId || ''}`;
     if (next !== local.context) {
+      local.closeSkillOverlays();
       local.context = next;
       local.expanded = false;
       local.error = '';
@@ -445,11 +447,13 @@ function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcut
     const slug = (event as CustomEvent<{ slug?: unknown }>).detail?.slug;
     if (typeof slug === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) void select(slug);
   };
+  const onOutside = (event: MouseEvent) => {
+    if (local.expanded && event.target instanceof Node && !local.root?.contains(event.target)) local.collapse();
+  };
   const style = document.createElement('style');
   style.textContent = `
     .nako-agent-skills,.nako-agent-skill-context{color:var(--nk-text);font:12px/1.5 Inter,"Microsoft YaHei UI",system-ui,sans-serif}
-    .nako-agent-skills{margin-bottom:8px;min-width:0}
-    .nako-agent-skills-categories{display:flex;gap:6px;margin:0 0 12px}.nako-agent-skills-categories button{border:0;border-radius:8px;padding:7px 12px;background:transparent;color:var(--nk-text-secondary);font:inherit;cursor:pointer}.nako-agent-skills-categories button[aria-selected=true]{background:var(--nk-hover);color:var(--nk-text)}
+    .nako-agent-skills{position:relative;margin-bottom:8px;min-width:0}
     .nako-agent-skills-heading{margin:0 0 12px;font-size:14px;font-weight:700;color:var(--nk-text)}
     .nako-agent-skills [hidden],.nako-agent-skill-context[hidden],.nako-agent-skill-context [hidden]{display:none}
     .nako-agent-skills-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:6px 4px;border:0;background:transparent;color:var(--nk-text);font-size:14px;font-weight:700;cursor:pointer;transition:color 160ms ease}
@@ -457,32 +461,32 @@ function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcut
     .nako-agent-skills-hint{margin-left:auto;color:var(--nk-text-muted);font-size:11px;font-weight:400}
     .nako-agent-skills-chevron{font-size:20px;line-height:16px;width:16px;text-align:center;transform:rotate(90deg);transition:transform 200ms ease}
     .nako-agent-skills[data-expanded=true] .nako-agent-skills-chevron{transform:rotate(-90deg)}
-    .nako-agent-skills-options{display:grid;grid-template-rows:0fr;opacity:0;visibility:hidden;transition:grid-template-rows 220ms cubic-bezier(.2,.7,.2,1),opacity 160ms ease,visibility 220ms;}
-    .nako-agent-skills[data-expanded=true] .nako-agent-skills-options{grid-template-rows:1fr;opacity:1;visibility:visible}
-    .nako-agent-skills-inner{min-height:0;overflow:hidden}
-    .nako-agent-skills input{box-sizing:border-box;width:100%;margin:4px 0 8px;padding:9px 12px;border:1px solid var(--nk-border-control);border-radius:8px;background:var(--nk-surface);color:var(--nk-text);font-size:12px}
-    .nako-agent-skills-list{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;max-height:min(300px,32vh);overflow:auto;overscroll-behavior:contain;padding:2px 2px 6px;scrollbar-width:thin}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-list{max-height:none;overflow:visible}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-options{transition:none}
-    .nako-agent-skills-option{position:relative;isolation:isolate;min-width:0;min-height:110px;width:100%;padding:0;overflow:hidden;border:1px solid var(--nk-border);border-radius:10px;background:var(--nk-surface-raised);color:inherit;text-align:left;cursor:pointer;transition:background 150ms ease,border-color 150ms ease,transform 150ms ease}
-    .nako-agent-skills-option:hover{background:var(--nk-surface-raised);border-color:var(--nk-border-control);transform:translateY(-1px)}
-    .nako-agent-skills-option:active{transform:scale(.99)}
-    .nako-agent-skills-option[aria-pressed=true]{background:var(--nk-surface-raised);border-color:var(--nk-border-control)}
-    .nako-agent-skills-option::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,var(--nk-recommendation-surface) 28%,color-mix(in srgb,var(--nk-recommendation-surface) 100%,transparent) 43%,color-mix(in srgb,var(--nk-recommendation-surface) 96%,transparent) 82%,color-mix(in srgb,var(--nk-recommendation-surface) 6%,transparent) 100%);pointer-events:none}
-    .nako-agent-skills-card-content{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:14px;max-width:100%;min-height:110px;box-sizing:border-box}
-    .nako-agent-skills-option strong{min-width:0;overflow-wrap:anywhere;font-size:14px;font-weight:700;color:var(--nk-text)}
-    .nako-agent-skills-description{color:var(--nk-text-secondary);font-size:12px;line-height:1.6;overflow-wrap:anywhere;text-shadow:none}
-    .nako-agent-skills-option small{margin-top:auto;font-size:10px;color:var(--nk-text);white-space:nowrap}
-    @container(min-width:640px){.nako-agent-skills-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    .nako-agent-skills[data-presentation=welcome]{container:agent-welcome-skills / inline-size;font-size:clamp(14px,2.2cqi,16px)}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-list{grid-template-columns:minmax(0,1fr);gap:clamp(12px,2cqi,18px)}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-heading{font-size:clamp(16px,2.8cqi,20px)}
-    .nako-agent-skills[data-presentation=welcome] input{font-size:inherit;min-height:42px}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-card-content{min-height:clamp(148px,22cqi,180px);padding:clamp(16px,2.5cqi,22px);gap:10px;max-width:100%}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-option strong{font-size:clamp(16px,2.6cqi,18px)}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-description{font-size:clamp(14px,2.2cqi,16px)}
-    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-option small{font-size:12px}
-    .nako-agent-skills-option:disabled{opacity:.5;cursor:wait;transform:none}
+    .nako-agent-skills-options{display:none;position:absolute;bottom:calc(100% + 8px);left:0;right:0;z-index:70;border:1px solid var(--nk-border);border-radius:14px;background:var(--nk-surface-raised);box-shadow:var(--nk-shadow);overflow:hidden}
+    .nako-agent-skills[data-expanded=true] .nako-agent-skills-options{display:block}
+    .nako-agent-skills-inner{display:flex;flex-direction:column;max-height:min(440px,calc(100dvh - 240px));min-height:0}
+    .nako-agent-skills-filters{display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid var(--nk-border);flex-shrink:0}
+    .nako-agent-skills input,.nako-agent-skills select{box-sizing:border-box;min-width:0;max-width:100%;height:32px;margin:0;padding:5px 8px;border:1px solid var(--nk-border-control);border-radius:7px;background:var(--nk-input);color:var(--nk-text-secondary);font:inherit}
+    .nako-agent-skills-categories{flex:0 1 112px}
+    .nako-agent-skills input{flex:1;width:0}
+    .nako-agent-skills-list{display:flex;flex-direction:column;gap:2px;min-height:0;max-height:min(320px,38vh);overflow:auto;overscroll-behavior:contain;padding:6px 8px;scrollbar-width:thin;scrollbar-color:var(--nk-border-control) transparent}
+    .nako-agent-skills-row{display:flex;align-items:center;gap:8px;min-height:68px;flex-shrink:0;padding:0 10px;border-radius:10px;background:transparent;transition:background 150ms ease}
+    .nako-agent-skills-row:is(:hover,:focus-within),.nako-agent-skills-row[data-selected=true]{background:var(--nk-hover)}
+    .nako-agent-skills-option{flex:1;min-width:0;padding:10px 0;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+    .nako-agent-skills-card-content{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .nako-agent-skills-option strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;line-height:22px;font-weight:650;color:var(--nk-text)}
+    .nako-agent-skills-description{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--nk-text-muted);font-size:12px;line-height:20px}
+    .nako-agent-skills-detail{flex-shrink:0;padding:5px 12px;border:0;border-radius:8px;background:var(--nk-surface);color:var(--nk-text);font-size:12px;cursor:pointer;opacity:0;pointer-events:none}
+    .nako-agent-skills-row:is(:hover,:focus-within) .nako-agent-skills-detail{opacity:1;pointer-events:auto}
+    .nako-agent-skills-more{width:100%;min-height:42px;flex-shrink:0;border:0;border-top:1px solid var(--nk-border);background:transparent;color:var(--nk-text-muted);font-size:12px;cursor:pointer}
+    .nako-agent-skills-more:hover{background:var(--nk-hover);color:var(--nk-text)}
+    .nako-agent-skills[data-presentation=welcome] .nako-agent-skills-options{position:static}
+    .nako-agent-skills button:disabled{opacity:.5;cursor:wait}
+    .nako-agent-skill-preview{position:fixed;z-index:90;max-height:calc(100dvh - 24px);overflow:hidden;border:1px solid var(--nk-border);border-radius:16px;background:var(--nk-surface-raised);color:var(--nk-text);box-shadow:var(--nk-shadow);pointer-events:none;font:12px/1.6 Inter,"Microsoft YaHei UI",system-ui,sans-serif}
+    .nako-agent-skill-preview img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--nk-input)}
+    .nako-agent-skill-preview-text{padding:14px 16px}
+    .nako-agent-skill-preview strong{display:block;font-size:15px;line-height:22px;overflow-wrap:anywhere}
+    .nako-agent-skill-preview p{display:-webkit-box;margin:6px 0 0;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--nk-text-muted)}
+    @media(hover:none){.nako-agent-skills-detail{opacity:1;pointer-events:auto}}
     .nako-agent-skills-note{margin:4px 4px 0;color:var(--nk-text-secondary);font-size:11px}
     .nako-agent-skills-note[data-nako-state=success]{color:var(--nk-text)}
     .nako-agent-skills-note[data-nako-state=error]{color:var(--nk-warning)}
@@ -498,7 +502,6 @@ function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcut
     .nako-agent-skill-cancel:disabled{opacity:.45;cursor:wait}
     .nako-agent-skill-context[data-feedback=true] .nako-agent-skill-chip{animation:nako-skill-selected 360ms ease-out}
     @keyframes nako-skill-selected{0%{transform:translateY(3px);background:var(--nk-hover)}100%{transform:translateY(0)}}
-    .nako-agent-skills select{max-width:100%;padding:6px 10px;border:1px solid var(--nk-border-control);border-radius:8px;background:var(--nk-input);color:var(--nk-text)}
     .nako-agent-skills button:focus-visible,.nako-agent-skills input:focus-visible,.nako-agent-skill-cancel:focus-visible{outline:2px solid var(--nk-info);outline-offset:2px}
     @media(prefers-reduced-motion:reduce){.nako-agent-skills *,.nako-agent-skill-context *{transition:none!important;animation:none!important}}
   `;
@@ -506,8 +509,10 @@ function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcut
   const onCatalogChanged = () => { local.catalogRevision++; local.catalog = null; void readCatalog(); };
   window.addEventListener(SKILL_CATALOG_CHANGED, onCatalogChanged);
   window.addEventListener(SELECT_AGENT_SKILL_EVENT, onSelect);
+  document.addEventListener('mousedown', onOutside);
   return () => {
     local.disposed = true;
+    local.disposeSkillPicker();
     clearFeedback();
     unobserve();
     unsubscribe();
@@ -516,6 +521,7 @@ function bindSkillShortcut(conversation: AgentConversation, local: SkillShortcut
     local.selectionChip?.remove();
     window.removeEventListener(SKILL_CATALOG_CHANGED, onCatalogChanged);
     window.removeEventListener(SELECT_AGENT_SKILL_EVENT, onSelect);
+    document.removeEventListener('mousedown', onOutside);
     conversation.dispose();
     if (browserServices.__NAKO_AGENT_CONVERSATION__ === conversation)
       delete browserServices.__NAKO_AGENT_CONVERSATION__;

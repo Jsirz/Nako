@@ -94,7 +94,7 @@ export function renderAgentPanelComposer(
     composerRef, fileRef, chat, thinking,
   } = state;
   const { chooseFile, onFileChange, submit, stop } = actions;
-  const canSend = !isLoading && Boolean(modelId) &&
+  const canSend = !isLoading &&
     Boolean(prompt.trim() || attachments.documents.length || references.length);
   return (
     <div className="nako-agent-compose-area p-3 shrink-0">
@@ -132,7 +132,7 @@ export function renderAgentPanelComposer(
           ref={composerRef}
           value={prompt}
           onChange={(event) => state.setPrompt(event.target.value)}
-          placeholder="描述目标，或输入 / 调用 SKILL"
+          placeholder="描述目标，或输入 / 调用技能"
           className="w-full bg-transparent text-sm outline-none mb-2 resize-none min-h-[48px] max-h-[160px] text-[var(--nk-text)] placeholder:text-[var(--nk-text-muted)]"
           rows={2}
           style={{ scrollbarWidth: 'none' }}
@@ -167,7 +167,8 @@ export function renderAgentPanelComposer(
             <button
               type="button"
               aria-label="上传附件（图片、音视频、Word、文本）"
-              onClick={chooseFile}
+              onClick={() => chooseFile()}
+              disabled={isLoading}
               className="nako-agent-composer-tool border border-[var(--nk-border-control)]"
               title="添加附件"
             >
@@ -191,9 +192,9 @@ export function renderAgentPanelComposer(
               >
                 <span
                   className="truncate"
-                  title={`${activeModel?.label || modelId || '使用默认文本模型'} · ${agentVisionHints[selectedVision]}`}
+                  title={`${activeModel?.label || modelId || 'AUTO'} · ${agentVisionHints[selectedVision]}`}
                 >
-                  {selectedModelId ? activeModel?.label || selectedModelId : '默认模型'}
+                  {selectedModelId ? (activeModel?.label || selectedModelId).split(' · ')[0] : 'AUTO'}
                 </span>
                 <ChevronIcon
                   size={12}
@@ -202,7 +203,7 @@ export function renderAgentPanelComposer(
               </button>
               {showModelMenu && (
                 <AgentModelMenu
-                  models={[{ id: '', label: '使用默认文本模型', advancedParams: [], vision: 'unknown' }, ...availableModels]}
+                  models={[{ id: '', label: 'AUTO', advancedParams: [], vision: 'unknown' }, ...availableModels]}
                   selected={selectedModelId}
                   onSelect={(id) => {
                     state.setModelId(id);

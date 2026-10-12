@@ -1,8 +1,34 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { AgentSkillError } from '../../../modules/contracts/agentSkillError.js';
+import { skillCategory, SKILL_DESCRIPTION_MAX_LENGTH } from '../../../modules/contracts/skillCatalog.js';
+
+export function parseSkillMetadata(text) {
+  let value;
+  try { value = JSON.parse(text); } catch { throw new AgentSkillError('技能 metadata.json 不是有效 JSON'); }
+  if (!value || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 120 ||
+      typeof value.description !== 'string' || value.description.length > SKILL_DESCRIPTION_MAX_LENGTH) {
+    throw new AgentSkillError('技能 metadata.json 的名称或简介无效');
+  }
+  return { name: value.name.trim(), description: value.description.trim(), category: skillCategory(value.category),
+    openness: value.openness === 'closed' ? 'closed' : 'open',
+    fileCount: Number.isSafeInteger(value.fileCount) ? value.fileCount : 0 };
+}
+
+export async function readSkillMetadata(directory) {
+  const filename = path.join(directory, 'metadata.json');
+  const [folder, file] = await Promise.all([fs.lstat(directory), fs.lstat(filename)]);
+  if (!folder.isDirectory() || folder.isSymbolicLink() || !file.isFile() || file.isSymbolicLink()) {
+    throw new AgentSkillError('技能元数据必须位于技能目录内且不能是链接');
+  }
+  return parseSkillMetadata(await fs.readFile(filename, 'utf8'));
+}
+
 // Read the scalar fields used by SKILL metadata, including YAML block scalars.
 export function skillDisplayMetadata(fields) {
   return {
     name: String(fields['display-name'] || fields.name || '未命名技能').trim().slice(0, 120),
-    description: String(fields['display-description'] || fields.description || '').trim().slice(0, 500),
+    description: String(fields['display-description'] || fields.description || '').trim().slice(0, SKILL_DESCRIPTION_MAX_LENGTH),
   };
 }
 

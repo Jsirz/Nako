@@ -37,7 +37,7 @@ export function libTvCliVendor(client: SourceSettingsClient, scope: SettingsScop
   link.href = 'https://liblibai-web-static.liblib.cloud/cli/1.1.3/libtv-cli-skill.zip';
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.textContent = '下载安装包与 Skill';
+  link.textContent = '下载安装包与技能';
   link.className = 'text-sm text-[var(--nk-info)]';
   link.hidden = true;
   const note = textElement(

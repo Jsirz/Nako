@@ -26,7 +26,7 @@ try {
     if (!page) await new Promise(resolve => setTimeout(resolve, 100));
   }
   assert.ok(page, 'Canvas did not load');
-  await page.getByRole('button', { name: '新建项目', exact: true }).click();
+  await page.locator('.nako-recent-create').click();
   await page.getByRole('button', { name: '设置', exact: true }).click();
   const button = page.getByRole('button', { name: `当前版本 ${version}，检查更新` });
   await button.waitFor();

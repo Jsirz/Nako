@@ -1,0 +1,12 @@
+{
+  "instructionReferences": [
+    "references/scorecards.md",
+    "references/screenwriter-engine.md",
+    "references/shanyin-engine.md",
+    "templates/characters.template.md",
+    "templates/diagnosis-report.template.md",
+    "templates/scene-breakdown.template.md",
+    "templates/synopsis.template.md",
+    "templates/worldbuilding.template.md"
+  ]
+}

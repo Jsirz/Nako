@@ -20,6 +20,8 @@ contracts/index.d.ts 的 WorkflowExecutor 提供 canExecute/execute，可选 res
 
 ## 功能结构
 
+`officialWorkflowCatalog.js` 从 contracts 的官方制作目录生成文戏、武戏工作流入口，并提供独立的人物资产入口；高配文戏工作流已随对应官方技能移除。
+
 新执行：格式解析/图投影 -> 参数绑定与预检 -> 固定执行快照/种子 -> 先记暂存账本 -> 上传输入 -> 提交 -> 观察 -> 本地化输出 -> 持久化回执/提交证明 -> 发布。素材归属、大小、请求限制和防重复提交贯穿此链路。
 
 恢复只观察原远端任务，不重新上传或提交。观察暂停保留资源；输入清理需原账本、目录授权和远端停止证明，失败保留 pending/orphaned 等状态并可显式重试。取消经 AbortSignal，不能承诺撤回远端已扣费任务。三个具体 executor 在 plugins/workflows；浏览器管理界面目前位于 local-runtime，归属差异见规范差异。

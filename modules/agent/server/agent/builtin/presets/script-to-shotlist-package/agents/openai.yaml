@@ -1,4 +1,0 @@
-interface:
-  display_name: "剧本转分镜制作包"
-  short_description: "将剧本拆成完整中文分镜制作包与镜头卡"
-  default_prompt: "Use $script-to-shotlist-package to turn this screenplay into a complete Chinese shotlist production package."

@@ -7,7 +7,7 @@ import type { WorkflowState } from './canvasWorkflowState';
 import type { WorkflowView } from './canvasWorkflowView';
 
 export function useWorkflowSave(hooks: ProjectHooks, state: WorkflowState, ui: WorkflowView) {
-  const { epoch, loading, blocked, targetId, base, setId, setRevision, pendingView, queue, dismiss } = state;
+  const { epoch, loading, blocked, targetId, base, setId, setRevision, pendingView, queue, dismiss, defaultTitle } = state;
   const { view, displayedView, apply, showConflict } = ui;
   return hooks.useCallback(
     (coverUrl?: string, folderId?: string | null, options: WorkflowSaveOptions = {}) => {
@@ -36,6 +36,21 @@ export function useWorkflowSave(hooks: ProjectHooks, state: WorkflowState, ui: W
             lastSavedBy: options.savedBy,
             lastSavedAt: options.savedAt,
           });
+          if (!base.current && defaultTitle.current === startView.title) {
+            const projects = await request('/api/workflows');
+            if (owner !== epoch.current) throw stale();
+            if (!Array.isArray(projects))
+              throw new ProjectError(PROJECT_ERRORS.invalidDocument, '项目列表格式无效，无法确定画布名称。', {
+                context: { operation: 'defaultCanvasTitle' },
+              });
+            if (view().title === startView.title) {
+              const titles = new Set(projects.map((project) => project.title));
+              const title = String(startView.title);
+              let suffix = 0;
+              while (titles.has(suffix ? `${title}-${suffix}` : title)) suffix++;
+              draft.title = suffix ? `${title}-${suffix}` : title;
+            }
+          }
           const post = (document: WorkflowRecord) => request('/api/workflows', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

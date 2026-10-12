@@ -223,6 +223,27 @@
 .nako-skill-preview-body {
   padding: 25px;
 }
+.nako-skill-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+.nako-skill-preview-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--nk-text);
+  color: var(--nk-surface);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.nako-skill-preview-actions button:hover {
+  opacity: 0.85;
+}
 .nako-skill-preview-sections {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { ArrowUpRight, Sparkles, X } from 'lucide-react';
 import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js';
-import { SKILL_CATALOG_CHANGED, SKILL_PREVIEW_EVENT } from '../../../contracts/skillCatalog.js';
+import { SKILL_CATALOG_CHANGED, SKILL_PREVIEW_EVENT, SKILL_NEW_CANVAS_EVENT } from '../../../contracts/skillCatalog.js';
 import type { AgentSkill } from '../../../contracts/skillCatalog.js';
+import { browserHost } from '../../../kernel/browser';
 import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
 import { createAgentSkillClient } from './skillClient';
 import './skillShowcase.css';
@@ -10,6 +11,13 @@ import './skillShowcase.css';
 const manage = () => window.dispatchEvent(new Event('nako:open-skill-community'));
 function SkillDetail({ skill, onClose }: { skill: AgentSkill; onClose(): void }) {
   const root = React.useRef<HTMLDivElement>(null);
+  const used = React.useRef(false);
+  const useSkill = () => {
+    if (used.current) return;
+    used.current = true;
+    onClose();
+    browserHost.events.emit(SKILL_NEW_CANVAS_EVENT, { slug: skill.slug });
+  };
   React.useEffect(
     () => (root.current ? activateModal(root.current, onClose) : undefined),
     [onClose],
@@ -48,6 +56,12 @@ function SkillDetail({ skill, onClose }: { skill: AgentSkill; onClose(): void })
               <h3>简介</h3>
               <p>{skill.description || '暂无简介'}</p>
             </section>
+          </div>
+          <div className="nako-skill-preview-actions">
+            <button type="button" onClick={useSkill}>
+              <Sparkles size={16} />
+              使用技能
+            </button>
           </div>
         </div>
       </div>
@@ -110,7 +124,7 @@ export function SkillShowcase() {
         <div>
           <h2 id="nako-skill-showcase-title">
             <Sparkles size={18} />
-            Skill 灵感库
+            技能灵感库
           </h2>
           <p>为你的下一次创作，找到合适的技能。</p>
         </div>
@@ -133,7 +147,7 @@ export function SkillShowcase() {
         </div>
       ) : !visible.length ? (
         <div className="nako-showcase-empty">
-          还没有技能，导入你的第一个 SKILL 开始创作。<button onClick={manage}>导入技能</button>
+          还没有技能，导入你的第一个技能开始创作。<button onClick={manage}>导入技能</button>
         </div>
       ) : (
         <div className="nako-showcase-grid">

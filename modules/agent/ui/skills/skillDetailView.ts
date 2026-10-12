@@ -14,7 +14,7 @@ export function openSkillDetailView(skill: AgentSkill, onClose: () => void, onUs
   cover.onerror = () => { cover.src = CARD_PLACEHOLDER_IMAGE; };
   const close = button('×', onClose); close.className = 'nako-skill-close'; close.setAttribute('aria-label', '关闭技能详情');
   const heading = element('div', 'nako-skill-detail-heading');
-  heading.append(element('h2', '', skill.name), element('span', '', `${skill.category || '其他'} · ${skill.fileCount} 个文件`));
+  heading.append(element('h2', '', skill.name), element('span', '', `${skill.source === 'official' ? '官方预设' : '用户自定义'} · ${skill.category || '其他'} · ${skill.fileCount} 个文件`));
   hero.append(cover, heading, close);
   const body = element('div', 'nako-skill-detail-body');
   const description = element('section', 'nako-skill-detail-section');
@@ -23,7 +23,7 @@ export function openSkillDetailView(skill: AgentSkill, onClose: () => void, onUs
   dialog.append(hero, body);
   if (onUse) {
     const footer = element('footer', 'nako-skill-detail-footer');
-    footer.append(button('取消', onClose), button('添加到对话', onUse));
+    footer.append(button('使用技能', onUse));
     footer.lastElementChild?.classList.add('is-primary');
     dialog.append(footer);
   }

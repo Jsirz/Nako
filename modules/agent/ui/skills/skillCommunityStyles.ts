@@ -26,6 +26,8 @@ export function installSkillStyles() {
     .nako-skill-name{display:-webkit-box;overflow:hidden;-webkit-line-clamp:1;-webkit-box-orient:vertical;font-size:16px;line-height:22px;font-weight:720}
     .nako-skill-description{display:-webkit-box;min-height:60px;margin:8px 0 0;overflow:hidden;-webkit-line-clamp:3;-webkit-box-orient:vertical;color:var(--nk-text-secondary);font-size:13px;line-height:20px}
     .nako-skill-meta{margin-top:auto;color:var(--nk-text-muted);font-size:11px}
+    .nako-skill-tabs{display:flex;gap:8px;padding:16px 26px 0}
+    .nako-skill-tabs button[aria-pressed=true]{background:var(--nk-primary);color:var(--nk-on-primary)}
     .nako-skill-filters{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:16px 26px 0}
     .nako-skill-actions{flex-wrap:wrap;justify-content:flex-end}
     .nako-skill-filters input,.nako-skill-filters select,.nako-skill-card-controls input{min-width:0;max-width:100%;border:1px solid var(--nk-border-control);border-radius:8px;background:var(--nk-input);color:var(--nk-text);padding:8px;font:inherit}

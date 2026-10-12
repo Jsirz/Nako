@@ -10,7 +10,7 @@ export function renderCanvasImportInput(
     ref: projectFileRef,
     type: 'file',
     accept: '.json,.nako,application/json',
-    'aria-label': '导入画布工作流文件',
+    'aria-label': '导入画布文件',
     onChange: async (event: ReactTypes.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       event.target.value = '';
@@ -18,7 +18,7 @@ export function renderCanvasImportInput(
       try {
         await importWorkflow(file);
       } catch (error) {
-        window.alert(error instanceof Error ? error.message : '工作流导入未完成。');
+        window.alert(error instanceof Error ? error.message : '画布导入未完成。');
       }
     },
     className: 'hidden',

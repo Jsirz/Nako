@@ -95,14 +95,14 @@ export function createGenerationRouter({
       const modelName = String(req.query.modelName || '');
       const mode = String(req.query.mode || '');
       if (!modelName) {
-        return res.status(400).json({ error: 'modelName is required' });
+        return res.status(400).json({ code: ERRORS.invalidModel, error: '请先选择模型。' });
       }
 
       const concurrencyCtx = resolveFinalExecutionContext(modelName, mode);
       if (!concurrencyCtx) {
         return res
           .status(400)
-          .json({ error: `Cannot resolve concurrency key for model: ${modelName}` });
+          .json({ code: ERRORS.invalidModel, error: `模型「${modelName}」已不可用，请重新选择模型。` });
       }
 
       const concurrency = generationCoordinator.getConcurrency(

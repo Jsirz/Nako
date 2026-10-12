@@ -103,7 +103,6 @@ function useAgentPanelModels(
     () => defaults?.subscribe(() => setDefaultsVersion((value) => value + 1)),
     [defaults],
   );
-  const modelId = selectedModelId || defaults?.get('text') || '';
   const [modelParams, setModelParams] = React.useState<
     Record<string, string | number | boolean | undefined>
   >({});
@@ -117,6 +116,7 @@ function useAgentPanelModels(
     [],
   );
   const availableModels = availability.filter(models);
+  const modelId = selectedModelId || defaults?.get('text') || availableModels[0]?.id || '';
   const activeModel = availableModels.find((model) => model.id === modelId);
   const thinking = agentThinking(activeModel?.advancedParams || [], workspace.value);
   const effectiveModelParams = { ...modelParams, ...thinking.params };

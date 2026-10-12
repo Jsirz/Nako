@@ -12,7 +12,7 @@ export function createOfficialWorkflowGallery(
   const intro = element('div', 'fow-intro');
   intro.append(
     element('h3', '', '从角色到镜头'),
-    element('p', '', '官方 SKILL 同款工作流。选一个加入画布，连接素材后运行。'),
+    element('p', '', '官方技能同款工作流。选一个加入画布，连接素材后运行。'),
   );
   const note = element(
     'p',

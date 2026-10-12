@@ -224,7 +224,7 @@ function createSkillSelection({ store, skillLibrary }) {
 
   async function findSkill(slug) {
     if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug)) {
-      throw new AgentRequestError('SKILL 标识无效', 400, 'INVALID_AGENT_SKILL');
+      throw new AgentRequestError('技能标识无效', 400, 'INVALID_AGENT_SKILL');
     }
     const skill = (await skillLibrary?.list?.())?.find((item) => item.slug === slug);
     if (
@@ -233,7 +233,7 @@ function createSkillSelection({ store, skillLibrary }) {
       (productionProfileForSkill(slug) && skill.source !== 'official')
     ) {
       throw new AgentRequestError(
-        '所选 SKILL 不存在或已删除，请重新选择技能',
+        '所选技能不存在或已删除，请重新选择技能',
         404,
         'AGENT_SKILL_UNAVAILABLE',
       );
@@ -247,7 +247,7 @@ function createSkillSelection({ store, skillLibrary }) {
       (selection.version && selection.version !== skill.version)
     ) {
       throw new AgentRequestError(
-        '当前对话所选 SKILL 的来源或版本已变化，请重新选择后继续；原任务不会自动重跑',
+        '当前对话所选技能的来源或版本已变化，请重新选择后继续；原任务不会自动重跑',
         409,
         'AGENT_SKILL_VERSION_CHANGED',
       );

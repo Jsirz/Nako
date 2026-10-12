@@ -419,7 +419,7 @@ function createDramaToolRenderer(canvas: DramaCanvasBridge, conversation: AgentC
     local.card.replaceChildren();
     const disabled = local.busy || snapshot.busy;
     const plan = state.plan;
-    if (plan) renderDramaPlan(state, plan, disabled, expanded, rendering);
+    if (plan) renderDramaPlan(state, plan, disabled, expanded, rendering, snapshot.selectedSkill?.name || '');
     const message = local.note || snapshot.error;
     if (message) {
       const output = element('p', message);
@@ -444,7 +444,7 @@ function createDramaToolRenderer(canvas: DramaCanvasBridge, conversation: AgentC
 }
 
 function renderDramaPlan(state: DramaConversationState, plan: DramaPlan, disabled: boolean,
-  expanded: Map<string | undefined, boolean>, rendering: DramaRenderServices) {
+  expanded: Map<string | undefined, boolean>, rendering: DramaRenderServices, skillName: string) {
   const { local, controls: { check } } = rendering;
   const card = local.card!;
   const profile = productionProfileForBundle(plan.bundleId);
@@ -518,7 +518,7 @@ function renderDramaPlan(state: DramaConversationState, plan: DramaPlan, disable
         details.append(
           element(
             'p',
-            `当前组合：${profile.name}。视频应用 ${profile.webAppId}；创建节点不会运行视频。`,
+            `当前组合：${skillName}。视频应用 ${profile.webAppId}；创建节点不会运行视频。`,
           ),
         );
       const questions = [...plan.questions, ...plan.assets.flatMap((asset) => asset.questions)];

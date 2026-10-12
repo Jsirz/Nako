@@ -1,6 +1,7 @@
 import { useCanvasImageUpscale } from '../../../asset-media/api/ui/media/canvasImageUpscale';
 import './canvasWorkspace.css';
 import type { useCanvasAgentControls } from './useCanvasAgentControls';
+import { defaultCanvasTitle } from './canvasEditorHooks';
 
 export function useCanvasSaveAndReferences(context: ReturnType<typeof useCanvasAgentControls>) {
   const {
@@ -128,9 +129,10 @@ export function useCanvasSaveAndReferences(context: ReturnType<typeof useCanvasA
       setNodes([]);
       setGroups([]);
       setSelectedNodeIds([]);
-      setCanvasTitle('Untitled');
-      setEditingTitleValue('Untitled');
-      resetWorkflowId();
+      const title = defaultCanvasTitle();
+      setCanvasTitle(title);
+      setEditingTitleValue(title);
+      resetWorkflowId(title);
       selectedCoverRef.current = null;
       setSavedAt(undefined);
       setSavedRevision(null);

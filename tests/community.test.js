@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFile, mkdtemp, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createOfficialSkillRegistry } from '../modules/agent/api/server/agent/officialSkillRegistry.js';
+import { createOfficialSkillRegistry } from '../plugins/storage/agent-files/officialSkillRegistry.js';
 import { readOfficialDramaInstructions } from '../plugins/storage/agent-files/skillInstructions.js';
 import {
   normalizeApiWorkflow,
@@ -14,16 +14,16 @@ import { createBackendEnvironment } from '../apps/desktop/src/backendEnvironment
 describe('public source boundary', () => {
   it('offers only open skills and reads every one without private templates', async () => {
     const registry = createOfficialSkillRegistry(undefined, readOfficialDramaInstructions);
-    expect(registry.list().map((item) => item.slug)).toEqual([
+    expect((await registry.list()).map((item) => item.slug)).toEqual([
       'minimax-drama-prompt',
-      'minimax-drama-high',
       'minimax-fight-assets',
     ]);
-    for (const skill of registry.list()) {
+    for (const skill of await registry.list()) {
       expect(skill.openness).toBe('open');
       expect((await registry.readInstructions(skill.slug)).length).toBeGreaterThan(100);
     }
     await expect(registry.readInstructions('closed-drama')).rejects.toThrow();
+    await expect(registry.readInstructions('minimax-drama-high')).rejects.toThrow();
   });
   it('loads local platform helpers without identity configuration or update bridge', async () => {
     const install = resolveInstallation({

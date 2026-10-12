@@ -153,7 +153,7 @@ function libraryItemActions(
       <button
         type="button"
         disabled={busy}
-        title={workflow ? '删除本地 SKILL' : '删除资产'}
+        title={workflow ? '删除本地技能' : '删除资产'}
         aria-label={`删除${item.name}`}
         onClick={() => {
           setEditing(null);
@@ -204,7 +204,7 @@ function renderLibraryGrid(
       <div
         className="nako-library-categories"
         role="tablist"
-        aria-label={workflow ? 'SKILL 分类' : '资产分类'}
+        aria-label={workflow ? '技能分类' : '资产分类'}
       >
         {categories.map((category) => (
           <button
@@ -288,7 +288,7 @@ function renderLibraryGrid(
         ) : !filtered.length ? (
           <div className="nako-library-empty">
             {workflow
-              ? '当前分类还没有 SKILL。选中画布节点后，可将组合保存为本地 SKILL。'
+              ? '当前分类还没有技能。选中画布节点后，可将组合保存为本地技能。'
               : '当前分类下没有资产。'}
             {!workflow && <p>选中画布中的图片、视频或音频，点击「保存到资产」。</p>}
             {(query || effectiveOwnership) && (
@@ -346,7 +346,7 @@ function renderLibraryGrid(
                 <button
                   type="button"
                   className="nako-library-insert"
-                  aria-label={`${workflow ? '插入 SKILL' : '插入资产'} ${item.name}`}
+                  aria-label={`${workflow ? '插入技能' : '插入资产'} ${item.name}`}
                   onClick={() => onSelectAsset(item)}
                 >
                   {preview(item)}

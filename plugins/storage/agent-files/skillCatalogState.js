@@ -22,7 +22,7 @@ export function createSkillCatalogState(rootDirectory, list) {
       const value = JSON.parse(await fs.readFile(filename, 'utf8'));
       if (value.version !== 1 || !Array.isArray(value.removed) || value.removed.some(id => typeof id !== 'string')
         || !value.categories || typeof value.categories !== 'object' || Array.isArray(value.categories))
-        throw new AgentSkillError('SKILL 分类目录损坏，请检查本地存储', 500);
+        throw new AgentSkillError('技能分类目录损坏，请检查本地存储', 500);
       return value;
     } catch (error) {
       if (error.code === 'ENOENT') return { version: 1, removed: [], categories: {} };
@@ -39,12 +39,13 @@ export function createSkillCatalogState(rootDirectory, list) {
   }
   const validSlug = slug => {
     if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(slug))
-      throw new AgentSkillError('SKILL 标识无效');
+      throw new AgentSkillError('技能标识无效');
   };
   async function requireSkill(slug) {
     validSlug(slug);
     const skill = (await list()).find(item => item.slug === slug);
-    if (!skill) throw new AgentSkillError('SKILL 不存在或已删除', 404);
+    if (!skill) throw new AgentSkillError('技能不存在或已删除', 404);
+    if (skill.source === 'official') throw new AgentSkillError('官方预设随应用版本更新，不能修改或删除', 403);
     return skill;
   }
   const updateCategory = (slug, category) => serialize(async () => {
@@ -55,13 +56,9 @@ export function createSkillCatalogState(rootDirectory, list) {
   });
   const remove = slug => serialize(async () => {
     const skill = await requireSkill(slug), state = await read();
-    if (skill.source === 'official') {
-      state.removed = [...new Set([...state.removed, slug])];
-    } else {
-      const target = path.resolve(rootDirectory, slug);
-      if (path.dirname(target) !== path.resolve(rootDirectory)) throw new AgentSkillError('SKILL 路径无效');
-      await fs.rm(target, { recursive: true, force: true });
-    }
+    const target = path.resolve(rootDirectory, slug);
+    if (path.dirname(target) !== path.resolve(rootDirectory)) throw new AgentSkillError('技能路径无效');
+    await fs.rm(target, { recursive: true, force: true });
     delete state.categories[slug];
     await write(state);
   });

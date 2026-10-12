@@ -247,7 +247,7 @@ function Library(React: Runtime, props: LibraryProps & { workflow?: boolean }, i
   }, [isOpen, variant]);
   if (!isOpen) return null;
   const { CloseIcon } = icons;
-  const title = workflow ? 'SKILL 社区' : '资产库';
+  const title = workflow ? '技能社区' : '资产库';
   const header = (
     <div
       data-nako-skill-community={workflow ? 'true' : undefined}
@@ -262,14 +262,14 @@ function Library(React: Runtime, props: LibraryProps & { workflow?: boolean }, i
         )}
         {workflow && (
           <p className="text-xs text-[var(--nk-text-muted)] mt-1">
-            本地 SKILL · 把常用画布组合沉淀为可复用能力
+            本地技能 · 把常用画布组合沉淀为可复用能力
           </p>
         )}
       </div>
       <button
         type="button"
         onClick={onClose}
-        aria-label={`关闭${workflow ? ' SKILL 社区' : '资产'}`}
+        aria-label={`关闭${workflow ? '技能社区' : '资产'}`}
         className="p-1.5 rounded-lg text-[var(--nk-text-muted)] hover:text-[var(--nk-text)] hover:bg-[var(--nk-surface-raised)] transition-colors"
       >
         <CloseIcon size={18} />

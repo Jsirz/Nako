@@ -56,7 +56,7 @@ export async function getGenerationConcurrency(
   );
   const result = await responseBody(response);
   if (!response.ok || typeof result.blocked !== 'boolean')
-    throw new PluginError(ERRORS.generationState, typeof result.error === 'string' ? result.error : '并发状态查询失败', {
+    throw new PluginError(result.code === ERRORS.invalidModel ? ERRORS.invalidModel : ERRORS.generationState, typeof result.error === 'string' ? result.error : '并发状态查询失败', {
       status: response.status, context: { moduleId: 'generation-core', operation: 'getConcurrency', modelName, mode },
     });
   return {

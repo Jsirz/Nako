@@ -12,12 +12,12 @@ export function CanvasTransferMenu(props: {
     <button type="button" title="导入 .nako 中的画布、素材和 Agent 聊天记录" className={itemClass} disabled={props.busy} onClick={() => {
       props.close();
       props.onImport();
-    }}><FolderOpen size={14} />导入画布工作流</button>
+    }}><FolderOpen size={14} />导入画布</button>
     <button type="button" title="导出画布、素材和 Agent 已保存的聊天记录" className={itemClass} disabled={props.busy} onClick={() => {
       props.close();
       props.onError('');
-      void props.onExport().catch(error => props.onError(error instanceof Error ? error.message : '工作流导出失败。'));
-    }}><Download size={14} />导出画布工作流</button>
-    {props.busy && <span role="status" className="flex items-center gap-2 px-2.5 py-2 text-xs text-[var(--nk-text-secondary)]"><LoaderCircle size={14} className="animate-spin" />正在传输工作流</span>}
+      void props.onExport().catch(error => props.onError(error instanceof Error ? error.message : '画布导出失败。'));
+    }}><Download size={14} />导出画布</button>
+    {props.busy && <span role="status" className="flex items-center gap-2 px-2.5 py-2 text-xs text-[var(--nk-text-secondary)]"><LoaderCircle size={14} className="animate-spin" />正在传输画布</span>}
   </>;
 }

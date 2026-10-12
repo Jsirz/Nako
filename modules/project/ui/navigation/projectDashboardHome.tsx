@@ -57,7 +57,7 @@ export function ProjectDashboardHome({
           <div className="nako-home-section-head">
             <h2>
               <Sparkles size={17} />
-              Skill 灵感库
+              技能灵感库
             </h2>
           </div>
           <p className="nako-home-empty">启用 Agent 插件后，可在这里浏览和使用技能。</p>

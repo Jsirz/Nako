@@ -92,6 +92,25 @@ it('fills missing request models for each media type but preserves explicit choi
   }
 });
 
+it('keeps a removed or unconfigured default out of fresh nodes without replacing saved or explicit choices', async () => {
+  const runtime = { ...models, createId: () => crypto.randomUUID(), templates: [] };
+  for (const unavailable of ['GPT-5.6 Luna · Work-Fisher', 'text B']) {
+    snapshot.defaults.text = unavailable;
+    snapshot.candidates.text[1].configured = false;
+    await client.read();
+    expect(client.get('text')).toBe('');
+    expect(createCanvasNode(runtime, 'Text', { x: 0, y: 0 }, 'project-1').textModel).toBe('');
+    expect(() => client.resolve('text')).toThrow('未配置或已停用');
+    expect((await client.read()).defaults.text).toBe(unavailable);
+    expect(client.get('text', unavailable)).toBe(unavailable);
+    expect(createNodeFramework().createFresh({
+      id: 'explicit', type: 'Text', textModel: unavailable,
+    }).textModel).toBe(unavailable);
+  }
+  await client.update({ text: 'text A' });
+  expect(createCanvasNode(runtime, 'Text', { x: 0, y: 0 }, 'project-1').textModel).toBe('text A');
+});
+
 it('runs an approved missing-model node with the confirmed model even after defaults change, and rejects changed prompts', async () => {
   let nodes = [{ id: 'text-node', type: 'Text', x: 0, y: 0, prompt: 'test' }];
   const prepared = await prepareCanvasGenerationRequest(nodes, nodes[0], 'project-1', models);

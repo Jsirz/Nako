@@ -1,8 +1,5 @@
 import { ERRORS, PluginError } from './errors.js';
-import {
-  OFFICIAL_PRODUCTION_PROFILES,
-  productionProfileForBundle,
-} from './officialProductionProfiles.js';
+import { productionProfileForBundle } from './officialProductionProfiles.js';
 
 function deepFreeze(value) {
   Object.values(value).forEach((child) => {
@@ -50,39 +47,7 @@ export const OFFICIAL_DRAMA_BUNDLE = deepFreeze({
   },
 });
 
-export const OFFICIAL_DRAMA_SKILL_METADATA = Object.freeze({
-  slug: OFFICIAL_DRAMA_BUNDLE.skillSlug,
-  name: '剧本文戏',
-  description:
-    '整理剧本资产、角色参考与 MiniMax H3 文戏分镜；场景可在画布选择已配置的模型生成。',
-  source: 'official',
-  category: '视频制作',
-  version: OFFICIAL_DRAMA_BUNDLE.version,
-  bundleId: OFFICIAL_DRAMA_BUNDLE.id,
-  fileCount: 9,
-  updatedAt: '',
-});
-
-// Verified against RH's public inputNodes: high edition has different node IDs.
 // The fight app labels 529/value as steps, so never treat it as duration.
-const HIGH_VIDEO_ROUTE = deepFreeze({
-  provider: 'runninghub-cn',
-  webAppId: '2094860545999593474',
-  fields: {
-    prompt: field('167', 'prompt'),
-    duration: field('163', 'value'),
-    ratio: field('164', 'aspect_ratio'),
-    megapixels: field('164', 'megapixels'),
-  },
-  images: ['238', '237', '230', '218', '227', '217'].map((nodeId, index) => ({
-    name: `image${index + 1}`,
-    ...field(nodeId, 'image'),
-  })),
-  audio: ['225', '223', '222'].map((nodeId, index) => ({
-    name: `audio${index + 1}`,
-    ...field(nodeId, 'audio'),
-  })),
-});
 const FIGHT_VIDEO_ROUTE = deepFreeze({
   ...OFFICIAL_DRAMA_BUNDLE.drama,
   webAppId: '2094873524119883778',
@@ -102,28 +67,9 @@ export function officialProductionBundle(bundleId = OFFICIAL_DRAMA_BUNDLE.id) {
     id: profile.id,
     version: profile.version,
     skillSlug: profile.slug,
-    drama: profile.mode === 'assets' ? FIGHT_VIDEO_ROUTE : HIGH_VIDEO_ROUTE,
+    drama: FIGHT_VIDEO_ROUTE,
   };
 }
-export const OFFICIAL_PRODUCTION_SKILLS = Object.freeze(
-  OFFICIAL_PRODUCTION_PROFILES.map((profile) =>
-    Object.freeze({
-      ...OFFICIAL_DRAMA_SKILL_METADATA,
-      slug: profile.slug,
-      name: profile.name,
-      bundleId: profile.id,
-      version: profile.version,
-      fileCount: profile.mode === 'assets' ? 1 : 9,
-      description:
-        profile.id === 'minimax-drama'
-          ? OFFICIAL_DRAMA_SKILL_METADATA.description
-          : profile.mode === 'assets'
-            ? '无需剧本：描述人物与场景，确认生成资产后连接 RH 武戏节点。视频单独运行。'
-            : '与剧本文戏相同的制作流程，使用 RH 高配文戏应用。资产与视频逐阶段确认。',
-    }),
-  ),
-);
-
 export const SKILL_INSTRUCTION_LIMITS = Object.freeze({
   rootBytes: Infinity,
   referenceBytes: Infinity,
