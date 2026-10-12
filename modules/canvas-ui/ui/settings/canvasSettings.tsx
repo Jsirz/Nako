@@ -1,6 +1,7 @@
 /** @jsxRuntime classic */
 /** @jsx React.createElement */
-import { accountUi, generationUi, localRuntimeUi, mediaSettings } from '../../../kernel/browser';
+import { accountUi, browserHost, generationUi, localRuntimeUi, mediaSettings } from '../../../kernel/browser';
+import type { ProjectCacheSettingsService } from '../../../contracts/browserCapabilities';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
 import { activateModal } from '../design/modalFocus';
@@ -80,9 +81,11 @@ function useCanvasSettingsState(
     if (host) {
       if (section === 'models')
         pageDisposeRef.current = generationUi().mountSettings(host);
-      else if (section === 'storage')
-        pageDisposeRef.current = mediaSettings().mountSettings(host);
-      else if (section === 'appearance')
+      else if (section === 'storage') {
+        const downloads = mediaSettings().mountSettings(host);
+        const cache = browserHost.services.optional<ProjectCacheSettingsService>('ui.project.cacheSettings')?.mountSettings(host);
+        pageDisposeRef.current = () => { cache?.(); downloads(); };
+      } else if (section === 'appearance')
         pageDisposeRef.current = accountUi().mountAppearance(host);
       else if (section === 'local-service')
         pageDisposeRef.current = localRuntimeUi().mountSettings(host);

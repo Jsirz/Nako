@@ -8,7 +8,8 @@ const failure = (code, message, status) => new ProjectError(code, message, { sta
   context: { operation: 'cacheShowcaseVideo' } });
 
 /** The injected ProjectFileStore owns all downloads and filesystem operations. */
-export function createShowcaseVideoCache({ files, shareDirectory, cacheDirectory, maxVideoBytes = 2 * 1024 ** 3 }) {
+export function createShowcaseVideoCache({ files, shareDirectory, cacheDirectory, maxVideoBytes = 2 * 1024 ** 3,
+  acquire = () => () => {} }) {
   const pending = new Map();
   async function catalogSources() {
     let catalog;
@@ -62,17 +63,24 @@ export function createShowcaseVideoCache({ files, shareDirectory, cacheDirectory
     return pending.get(key);
   }
   return {
+    acquire,
     async get(value) {
-      const source = showcaseVideoSource(value);
-      if (!source) throw failure(PROJECT_ERRORS.videoInvalid, '视频地址无效。', 400);
-      if (!(await catalogSources()).includes(source)) throw failure(PROJECT_ERRORS.videoMissing, '视频不在作品展示列表中。', 404);
-      return cached(source);
+      const release = acquire();
+      try {
+        const source = showcaseVideoSource(value);
+        if (!source) throw failure(PROJECT_ERRORS.videoInvalid, '视频地址无效。', 400);
+        if (!(await catalogSources()).includes(source)) throw failure(PROJECT_ERRORS.videoMissing, '视频不在作品展示列表中。', 404);
+        return await cached(source);
+      } finally { release(); }
     },
     async resolve(key) {
-      if (typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key)) throw failure(PROJECT_ERRORS.videoMissing, '视频缓存不存在。', 404);
-      const source = (await catalogSources()).find(value => keyFor(value) === key);
-      if (!source) throw failure(PROJECT_ERRORS.videoMissing, '视频不在作品展示列表中。', 404);
-      return cached(source);
+      const release = acquire();
+      try {
+        if (typeof key !== 'string' || !/^[a-f0-9]{64}$/.test(key)) throw failure(PROJECT_ERRORS.videoMissing, '视频缓存不存在。', 404);
+        const source = (await catalogSources()).find(value => keyFor(value) === key);
+        if (!source) throw failure(PROJECT_ERRORS.videoMissing, '视频不在作品展示列表中。', 404);
+        return await cached(source);
+      } finally { release(); }
     },
   };
 }

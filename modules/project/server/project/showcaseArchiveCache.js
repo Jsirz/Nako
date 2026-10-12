@@ -5,7 +5,8 @@ import { PROJECT_TRANSFER_ERRORS, ProjectTransferError } from '../../../contract
 import { readProjectArchive, readProjectArchiveDocument } from './projectArchive.js';
 
 /** Only catalog-listed sources may populate this user's archive cache. */
-export function createShowcaseArchiveCache({ files, shareDirectory, cacheDirectory, maxArchiveBytes, maxArchiveEntries }) {
+export function createShowcaseArchiveCache({ files, shareDirectory, cacheDirectory, maxArchiveBytes, maxArchiveEntries,
+  acquire = () => () => {} }) {
   const pending = new Map();
   async function prepare(source, directory) {
     const archivePath = path.join(directory, 'project.nako');
@@ -37,21 +38,25 @@ export function createShowcaseArchiveCache({ files, shareDirectory, cacheDirecto
     }
   }
   return {
+    acquire,
     async get(value) {
-      const source = showcaseArchiveSource(value);
-      if (!source) throw new ProjectTransferError('案例归档地址无效。');
-      let catalog;
-      try { catalog = JSON.parse(await files.readText(path.join(shareDirectory, 'index.json'))); }
-      catch { throw new ProjectTransferError('案例列表读取失败。', 500, PROJECT_TRANSFER_ERRORS.showcaseMissing); }
-      if (!Array.isArray(catalog) || !catalog.some(item => item?.archive === source))
-        throw new ProjectTransferError('案例不在作品展示列表中。', 404, PROJECT_TRANSFER_ERRORS.showcaseMissing);
-      const key = crypto.createHash('sha256').update(source).digest('hex');
-      if (!pending.has(key)) {
-        const download = prepare(source, path.join(cacheDirectory, key));
-        pending.set(key, download);
-        void download.finally(() => pending.delete(key)).catch(() => {});
-      }
-      return pending.get(key);
+      const release = acquire();
+      try {
+        const source = showcaseArchiveSource(value);
+        if (!source) throw new ProjectTransferError('案例归档地址无效。');
+        let catalog;
+        try { catalog = JSON.parse(await files.readText(path.join(shareDirectory, 'index.json'))); }
+        catch { throw new ProjectTransferError('案例列表读取失败。', 500, PROJECT_TRANSFER_ERRORS.showcaseMissing); }
+        if (!Array.isArray(catalog) || !catalog.some(item => item?.archive === source))
+          throw new ProjectTransferError('案例不在作品展示列表中。', 404, PROJECT_TRANSFER_ERRORS.showcaseMissing);
+        const key = crypto.createHash('sha256').update(source).digest('hex');
+        if (!pending.has(key)) {
+          const download = prepare(source, path.join(cacheDirectory, key));
+          pending.set(key, download);
+          void download.finally(() => pending.delete(key)).catch(() => {});
+        }
+        return await pending.get(key);
+      } finally { release(); }
     },
   };
 }

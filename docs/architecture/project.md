@@ -41,7 +41,9 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 
 下载和文件读写均通过 [ProjectFileStore](../../modules/contracts/projectFiles.d.ts)，平台适配器 [showcaseVideoDownload.js](../../plugins/storage/sqlite/showcaseVideoDownload.js) 由 `projectFileStore.js` 装配，流式写入并核对 MIME、实际字节数和声明大小；最大 2 GiB、超时 10 分钟，不跟随重定向。源须能被后端直接 GET，无需前端跨域读取。[showcaseVideoRouter.js](../../modules/project/server/project/showcaseVideoRouter.js) 只调用注入缓存服务；`GET/HEAD /api/showcase/videos/:key` 重新核对目录，再以相对文件名和缓存根目录发送完成文件，提供正确视频 MIME、Range/206、缓存重验证和当前用户隔离，不将本地磁盘路径返回前端。无效来源返回 400/INVALID_SHOWCASE_VIDEO，未列出的来源或标识返回 404/SHOWCASE_VIDEO_NOT_LISTED，大小超限返回 413/SHOWCASE_VIDEO_TOO_LARGE，远端下载错误返回 502/SHOWCASE_VIDEO_DOWNLOAD_FAILED，其它缓存错误返回 500。
 
-当前“首尔来了个顺德大小姐”的 `video` 临时使用 MDN 的公开 CC0 花朵示例视频，仅用于测试播放器；可在 `public/share/index.json` 将该字段替换为作品成片地址。
+当前“首尔来了个顺德大小姐”的 `video` 使用 `public/share/index.json` 中配置的正式 TOS 视频地址。
+
+设置的“存储”页通过 `ui.project.cacheSettings` 挂载 [showcaseCacheSettings.ts](../../modules/project/ui/settings/showcaseCacheSettings.ts)。点击“清除缓存”并确认后发送 `POST /api/showcase/cache/clear`；成功返回 contracts/showcaseCache 的 `{success: true}`，页面显示结果，关闭页面中止前端等待。清理接口不接受路径参数。[showcaseCacheMaintenance.js](../../modules/project/server/project/showcaseCacheMaintenance.js) 仅通过 ProjectFileStore 删除当前用户 `cache/showcase` 与 `cache/showcase-videos`，不影响画布、素材库、技能、其它缓存和下载文件，下次打开案例重新下载。缓存下载、视频/预览素材传输及归档导入持有同一使用锁；清理与使用互斥，忙碌返回 409/SHOWCASE_CACHE_BUSY，文件删除失败返回 500/SHOWCASE_CACHE_CLEAR_FAILED，并释放锁供重试。清理不主动重新下载，已打开的案例应关闭后重新打开。
 
 `serverPlugin.js` 将缓存配置为当前用户根目录的 `cache/showcase/`；`showcaseArchiveCache.js` 只接受应用目录中 index.json 已列出的归档地址。以完整源地址的 SHA-256 区分缓存，同源并发请求共享任务。下载和文件 I/O 通过 ProjectFileStore，由存储适配器执行；下载超时为 10 分钟，最大 2 GiB，不跟随重定向。先下载至 `.download-*` 临时目录，解压并验证包后原子改名为 `<hash>/project.nako` 与 `extracted/`；失败删除本次临时目录，后续可重试，未完成的下载不会命中缓存。
 
@@ -61,7 +63,7 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | 源码 | 职责 | 主要导出 | 副作用 |
 | --- | --- | --- | --- |
 | [modules/project/browser.manifest.json](../../modules/project/browser.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
-| [modules/project/browser.ts](../../modules/project/browser.ts) | 模块入口或装配 | `default` | 未检出平台调用；不等于纯函数证明 |
+| [modules/project/browser.ts](../../modules/project/browser.ts) | 模块入口或装配 | `default` | 含 服务注册/生命周期 调用；时机见实现 |
 | [modules/project/exports.json](../../modules/project/exports.json) | 公开 API 清单 | 声明式配置 | 无业务运行副作用 |
 | [modules/project/index.js](../../modules/project/index.js) | 模块入口或装配 | `createProjectRepository` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server.manifest.json](../../modules/project/server.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
@@ -73,6 +75,8 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/server/project/projectTransferRouter.js](../../modules/project/server/project/projectTransferRouter.js) | HTTP 转换与校验 | `createProjectTransferRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/project/server/project/sharedProject.js](../../modules/project/server/project/sharedProject.js) | 服务端领域实现 | `validateSharedProject`, `resetSharedProject` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/project/showcaseArchiveCache.js](../../modules/project/server/project/showcaseArchiveCache.js) | 服务端领域实现 | `createShowcaseArchiveCache` | 未检出平台调用；不等于纯函数证明 |
+| [modules/project/server/project/showcaseCacheMaintenance.js](../../modules/project/server/project/showcaseCacheMaintenance.js) | 服务端领域实现 | `createShowcaseCacheMaintenance` | 未检出平台调用；不等于纯函数证明 |
+| [modules/project/server/project/showcaseCacheRouter.js](../../modules/project/server/project/showcaseCacheRouter.js) | HTTP 转换与校验 | `createShowcaseCacheRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/project/server/project/showcaseVideoCache.js](../../modules/project/server/project/showcaseVideoCache.js) | 服务端领域实现 | `createShowcaseVideoCache` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/project/showcaseVideoRouter.js](../../modules/project/server/project/showcaseVideoRouter.js) | HTTP 转换与校验 | `createShowcaseVideoRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/project/server/workflow/workflowRouter.js](../../modules/project/server/workflow/workflowRouter.js) | HTTP 转换与校验 | `normalizeWorkflowCoverUrl`, `createWorkflowRouter` | 含 HTTP/网络 调用；时机见实现 |
@@ -124,5 +128,6 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/ui/persistence/projectMediaImport.ts](../../modules/project/ui/persistence/projectMediaImport.ts) | 浏览器交互与状态辅助 | `prepareProjectMedia` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/project/ui/persistence/workflowMerge.ts](../../modules/project/ui/persistence/workflowMerge.ts) | 浏览器交互与状态辅助 | `WorkflowRecord`, `WorkflowConflictError`, `sameWorkflowValue`, `mergeWorkflow` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/projectUiServices.ts](../../modules/project/ui/projectUiServices.ts) | 运行、调度或服务 | `canvasProjectUi`, `projectMediaRecovery` | 未检出平台调用；不等于纯函数证明 |
+| [modules/project/ui/settings/showcaseCacheSettings.ts](../../modules/project/ui/settings/showcaseCacheSettings.ts) | 浏览器交互与状态辅助 | `mountShowcaseCacheSettings` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 
 <!-- source-inventory:end -->

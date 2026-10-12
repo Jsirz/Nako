@@ -15,6 +15,8 @@ export function createShowcaseVideoRouter({ cache }) {
   });
   router.get('/showcase/videos/:key', async (req, res) => {
     try {
+      const release = cache.acquire?.();
+      if (release) { res.once('finish', release); res.once('close', release); }
       const cached = await cache.resolve(req.params.key);
       // Relative name avoids treating host folders such as .desktop-dev as dotfiles.
       res.type(cached.contentType).set('X-Content-Type-Options', 'nosniff').set('Cache-Control', 'private, no-cache');

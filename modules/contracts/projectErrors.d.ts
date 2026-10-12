@@ -6,6 +6,7 @@ export const PROJECT_ERRORS: Readonly<{
   configuration: 'PROJECT_CONFIGURATION_INVALID';
   videoInvalid: 'INVALID_SHOWCASE_VIDEO'; videoMissing: 'SHOWCASE_VIDEO_NOT_LISTED';
   videoDownload: 'SHOWCASE_VIDEO_DOWNLOAD_FAILED'; videoTooLarge: 'SHOWCASE_VIDEO_TOO_LARGE';
+  cacheBusy: 'SHOWCASE_CACHE_BUSY'; cacheClear: 'SHOWCASE_CACHE_CLEAR_FAILED';
 }>;
 export const PROJECT_TRANSFER_ERRORS: Readonly<{
   invalid: 'INVALID_PROJECT_ARCHIVE'; tooLarge: 'ARCHIVE_TOO_LARGE'; invalidPath: 'ARCHIVE_PATH_INVALID';

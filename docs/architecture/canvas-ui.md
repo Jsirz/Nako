@@ -23,6 +23,8 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 
 ## 功能结构
 
+设置“存储”页保留 `ui.media.settings` 下载设置，并通过 kernel ServiceRegistry 的 `ui.project.cacheSettings` 挂载作品缓存清理卡片；契约为 contracts/browserCapabilities 的 `ProjectCacheSettingsService`，实现及 HTTP 请求归 project 模块所有。切换分类或关闭设置时释放两个页面挂载，不由 canvas-ui 操作文件系统。
+
 `CanvasEmptyState.tsx` 的空画布提示展示标题、操作说明和文本/图像/视频/音频/更多入口，标题上方不显示加号装饰图标及外框；节点创建仍调用原画布操作处理器。
 
 `canvasHeader.tsx` 将项目菜单、名称及保存状态呈现在胶囊区域，下方左对齐的独立“退出画布”按钮复用 `leave`：可编辑画布先保存并核对回执，失败时保留当前画布；只读预览直接返回。菜单保留“保存退出”（退出图标）、“保存”、“导入画布 / 导出画布”及项目切换，不再重复提供“退出项目”。独立退出按钮在保存或传输期间禁用，桌面端设为非窗口拖拽区域。

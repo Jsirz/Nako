@@ -6,6 +6,8 @@
 
 ## 接口契约
 
+`showcaseCache.ts` 定义作品缓存清理响应 `ShowcaseCacheClearResult`；`browserCapabilities.ts` 的 `ProjectCacheSettingsService` 定义设置挂载与释放函数，由 ui.project 注册、canvas-ui 通过 kernel 服务消费。`projectErrors` 的 SHOWCASE_CACHE_BUSY 和 SHOWCASE_CACHE_CLEAR_FAILED 分别表示缓存正在使用/清理与文件删除失败。
+
 | 定义 | 参数、返回与实现 |
 | --- | --- |
 | `PluginManifest`、`PluginDefinition`、`NakoPlugin`、`PluginContext` | `index.d.ts`；声明由 kernel/definePlugin 装配为具有 id/version/type/activate/deactivate 的完整插件，manifest 保留权限和依赖；context 服务及凭据受授权限制 |
@@ -76,7 +78,7 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/agentSkillError.js](../../modules/contracts/agentSkillError.js) | 模块内部辅助 | `AgentSkillError` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/agentTextGeneration.d.ts](../../modules/contracts/agentTextGeneration.d.ts) | 类型或数据定义 | `AGENT_TEXT_GENERATION_SERVICE`, `AgentTextGenerationError`, `AgentTextModelReference`, `AgentTextModel`, `AgentTextContent`, `AgentTextMessage`, `AgentTextParameters`, `AgentTextGenerationRequest`, `AgentTextGenerationResult`, `AgentTextGenerationService` | 无业务运行副作用 |
 | [modules/contracts/agentTextGeneration.js](../../modules/contracts/agentTextGeneration.js) | 模块内部辅助 | `AGENT_TEXT_GENERATION_SERVICE`, `AgentTextGenerationError` | 未检出平台调用；不等于纯函数证明 |
-| [modules/contracts/browserCapabilities.ts](../../modules/contracts/browserCapabilities.ts) | 模块内部辅助 | `GenerationAvailability`, `GenerationUiService`, `ProjectPreferencesService`, `AccountUiService`, `MediaSettingsService`, `PromptCompositionService`, `ImageAngle` | 未检出平台调用；不等于纯函数证明 |
+| [modules/contracts/browserCapabilities.ts](../../modules/contracts/browserCapabilities.ts) | 模块内部辅助 | `GenerationAvailability`, `GenerationUiService`, `ProjectPreferencesService`, `AccountUiService`, `MediaSettingsService`, `ProjectCacheSettingsService`, `PromptCompositionService`, `ImageAngle` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/canvasBudgetProtocol.js](../../modules/contracts/canvasBudgetProtocol.js) | 协议、校验或数据规则 | `validBudgetControl`, `projectBudgetResult`, `budgetControlSchema` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/canvasControlProtocol.d.ts](../../modules/contracts/canvasControlProtocol.d.ts) | 类型或数据定义 | `CanvasActionLog`, `CanvasEdit`, `ProjectCommand`, `CanvasControl`, `CanvasResult`, `CanvasActionRequest`, `CanvasActionHandler`, `validCanvasControl`, `projectCanvasResult`, `canvasControlTool` | 无业务运行副作用 |
 | [modules/contracts/canvasControlProtocol.js](../../modules/contracts/canvasControlProtocol.js) | 协议、校验或数据规则 | `validCanvasControl`, `projectCanvasResult`, `canvasControlTool` | 未检出平台调用；不等于纯函数证明 |
@@ -154,6 +156,7 @@ AGENTS.md 的接口示意与当前 manifest、descriptor/handler、AbortSignal �
 | [modules/contracts/shared/modelOverrideKey.js](../../modules/contracts/shared/modelOverrideKey.js) | 模块内部辅助 | `modelOverrideKey`, `isLikelyProviderApiKey` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/showcaseArchive.d.ts](../../modules/contracts/showcaseArchive.d.ts) | 类型或数据定义 | `ShowcaseArchiveRequest`, `showcaseArchiveSource` | 无业务运行副作用 |
 | [modules/contracts/showcaseArchive.js](../../modules/contracts/showcaseArchive.js) | 模块内部辅助 | `showcaseArchiveSource` | 未检出平台调用；不等于纯函数证明 |
+| [modules/contracts/showcaseCache.ts](../../modules/contracts/showcaseCache.ts) | 模块内部辅助 | `ShowcaseCacheClearResult` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/showcaseVideo.d.ts](../../modules/contracts/showcaseVideo.d.ts) | 类型或数据定义 | `ShowcaseVideoContentType`, `ShowcaseVideoCacheRequest`, `ShowcaseVideoCacheResult`, `showcaseVideoSource` | 无业务运行副作用 |
 | [modules/contracts/showcaseVideo.js](../../modules/contracts/showcaseVideo.js) | 模块内部辅助 | `showcaseVideoSource` | 未检出平台调用；不等于纯函数证明 |
 | [modules/contracts/skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts) | 类型或数据定义 | `SKILL_CATEGORIES`, `SKILL_DESCRIPTION_MAX_LENGTH`, `SKILL_CATALOG_CHANGED`, `SKILL_PREVIEW_EVENT`, `SKILL_NEW_CANVAS_EVENT`, `SKILL_SELECT_EVENT`, `NewSkillCanvasRequest`, `AgentSkillSelectionRequest`, `AgentSelectedSkill`, `skillCategory`, `AgentSkill`, `AgentSkillFile`, `AgentSkillEditableFile`, `AgentSkillDocument`, `AgentSkillEditRequest` | 无业务运行副作用 |

@@ -24,6 +24,9 @@ export interface AccountUiService {
 export interface MediaSettingsService {
   mountSettings(host: HTMLElement): () => void;
 }
+export interface ProjectCacheSettingsService {
+  mountSettings(host: HTMLElement): () => void;
+}
 export interface PromptCompositionService {
   compose(prompt: string, presets: unknown, type: string): string;
   imageAngle(value: unknown): string;

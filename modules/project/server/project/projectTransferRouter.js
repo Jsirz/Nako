@@ -12,6 +12,7 @@ import {
 } from './archiveCommon.js';
 import { createProjectArchive, readProjectArchive, restoreProjectArchive } from './projectArchive.js';
 import { createLibraryArchive, restoreLibraryArchive } from './libraryArchive.js';
+import { PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 
 export function createProjectTransferRouter({
   store,
@@ -89,10 +90,13 @@ function attachPreviewRoutes(
     const root = path.resolve(preview.mediaDirectory) + path.sep;
     if (!file.startsWith(root)) return res.sendStatus(404);
     try {
+      const release = showcaseArchives?.acquire?.();
+      if (release) { res.once('finish', release); res.once('close', release); }
       await files.readable(file);
       // Check dotfiles only inside the preview root, not in host directories such as .desktop-dev.
       return res.sendFile(path.join(...parts), { root: preview.mediaDirectory });
-    } catch {
+    } catch (error) {
+      if (error?.code === PROJECT_ERRORS.cacheBusy) return res.status(409).json({ error: error.message, code: error.code });
       return res.sendStatus(404);
     }
   });
@@ -101,9 +105,11 @@ function attachPreviewRoutes(
     else next();
   }, async (req, res) => {
     let temporaryDirectory;
+    let releaseCache;
     try {
       if (req.is('application/json')) {
         if (!showcaseArchives) throw new ProjectTransferError('案例缓存服务不可用。', 503);
+        releaseCache = showcaseArchives.acquire?.();
         const cached = await showcaseArchives.get(req.body?.archive);
         const previewId = crypto.createHash('sha256').update(cached.archivePath).digest('hex');
         archivePreviews.set(previewId, { mediaDirectory: path.join(cached.extractionDirectory, 'media') });
@@ -135,7 +141,7 @@ function attachPreviewRoutes(
       return;
     } catch (error) {
       const status =
-        error instanceof ProjectTransferError || error?.code === 'INVALID_PROJECT_ARCHIVE'
+        error instanceof ProjectTransferError || error?.code === 'INVALID_PROJECT_ARCHIVE' || error?.code === PROJECT_ERRORS.cacheBusy
           ? error.status
           : 500;
       if (status >= 500) logger.error('Preview project archive error:', { error, operation: 'previewArchive' });
@@ -144,6 +150,7 @@ function attachPreviewRoutes(
         code: error?.code || 'PROJECT_PREVIEW_FAILED',
       });
     } finally {
+      releaseCache?.();
       if (temporaryDirectory && ![...archivePreviews.values()].some((entry) => entry.temporaryDirectory === temporaryDirectory))
         await files.remove(temporaryDirectory, { recursive: true, force: true });
     }
@@ -325,12 +332,14 @@ function attachRestoreRoutes(
     async (req, res) => {
       const temporaryDirectory = await files.createTemporaryDirectory('nako-project-restore-');
       const extractionDirectory = path.join(temporaryDirectory, 'extracted');
+      let releaseCache;
 
       try {
         let archivePath;
         if (req.is('application/json')) {
           if (req.body?.archive !== undefined) {
             if (!showcaseArchives) throw new ProjectTransferError('案例缓存服务不可用。', 503);
+            releaseCache = showcaseArchives.acquire?.();
             archivePath = (await showcaseArchives.get(req.body.archive)).archivePath;
           } else {
             archivePath = await statLocalArchive(files, req.body?.path, maxArchiveBytes);
@@ -356,7 +365,7 @@ function attachRestoreRoutes(
         res.status(201).json({ success: true, ...result });
       } catch (error) {
         const status =
-          error instanceof ProjectTransferError || error?.code === 'INVALID_PROJECT_ARCHIVE'
+          error instanceof ProjectTransferError || error?.code === 'INVALID_PROJECT_ARCHIVE' || error?.code === PROJECT_ERRORS.cacheBusy
             ? error.status
             : 500;
         if (status >= 500) logger.error('Restore project archive error:', { error, operation: 'restoreArchive' });
@@ -365,6 +374,7 @@ function attachRestoreRoutes(
           code: error?.code || 'PROJECT_RESTORE_FAILED',
         });
       } finally {
+        releaseCache?.();
         await files.remove(temporaryDirectory, { recursive: true, force: true });
       }
     },

@@ -8,6 +8,8 @@ import { createProjectTransferRouter } from './server/project/projectTransferRou
 import { createShowcaseArchiveCache } from './server/project/showcaseArchiveCache.js';
 import { createShowcaseVideoCache } from './server/project/showcaseVideoCache.js';
 import { createShowcaseVideoRouter } from './server/project/showcaseVideoRouter.js';
+import { createShowcaseCacheMaintenance } from './server/project/showcaseCacheMaintenance.js';
+import { createShowcaseCacheRouter } from './server/project/showcaseCacheRouter.js';
 import { DEFAULT_MAX_ARCHIVE_BYTES, DEFAULT_MAX_ARCHIVE_ENTRIES } from './server/project/archiveCommon.js';
 import { getWorkspacePaths } from './server/workspace/workspacePaths.js';
 
@@ -38,17 +40,23 @@ export default defineApplicationPlugin({
     const recovery = context.services.get('project.recovery');
     const transactions = context.services.get('project.transactions');
     const files = context.services.get('project.files');
+    const cacheRoot = path.join(path.dirname(RUNTIME_PATHS.PRIVATE_DIR), 'cache');
+    const maintenance = createShowcaseCacheMaintenance({ files,
+      directories: [path.join(cacheRoot, 'showcase'), path.join(cacheRoot, 'showcase-videos')] });
+    app.use('/api', createShowcaseCacheRouter({ maintenance, logger: context.logger }));
     const showcaseArchives = createShowcaseArchiveCache({
       files,
+      acquire: maintenance.acquire,
       shareDirectory: path.join(RUNTIME_PATHS.PUBLIC_DIR, 'share'),
-      cacheDirectory: path.join(path.dirname(RUNTIME_PATHS.PRIVATE_DIR), 'cache', 'showcase'),
+      cacheDirectory: path.join(cacheRoot, 'showcase'),
       maxArchiveBytes: DEFAULT_MAX_ARCHIVE_BYTES,
       maxArchiveEntries: DEFAULT_MAX_ARCHIVE_ENTRIES,
     });
     app.use('/api', createShowcaseVideoRouter({ cache: createShowcaseVideoCache({
       files,
+      acquire: maintenance.acquire,
       shareDirectory: path.join(RUNTIME_PATHS.PUBLIC_DIR, 'share'),
-      cacheDirectory: path.join(path.dirname(RUNTIME_PATHS.PRIVATE_DIR), 'cache', 'showcase-videos'),
+      cacheDirectory: path.join(cacheRoot, 'showcase-videos'),
     }) }));
     const { sanitizeWorkflowNodes } = context.services.get('media.projectFiles');
     const writeProjectJsonSnapshot = createWorkflowSnapshotWriter({
