@@ -1,4 +1,4 @@
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 import { badge, disclosureButton, vendorLink } from './sourceSettingsDom';
 
 const DREAMINA_CLI_INSTALL_COMMAND = 'curl -fsSL https://jimeng.jianying.com/cli | bash';

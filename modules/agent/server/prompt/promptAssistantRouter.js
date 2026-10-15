@@ -2,7 +2,7 @@ import { createModuleLogger } from '../../../kernel/logger.js';
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 const logger = createModuleLogger('module.prompt');
 import express from 'express';
-import { classifyGenerationError } from '../../../generation-core/api/server/generation/generationErrors.js';
+import { classifyGenerationError } from '../../../contracts/generationFailure.js';
 
 const DESCRIBE_IMAGE_INSTRUCTION = [
   '你是专业的视觉描述与生成提示词助手。',

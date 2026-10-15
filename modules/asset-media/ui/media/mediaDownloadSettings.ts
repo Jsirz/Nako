@@ -1,7 +1,7 @@
 import type { MediaDownloadFileNameAdapter, MediaDownloadSettings } from './mediaDownloadFileName';
-import { createStableTextElement as element } from '../../../canvas-ui/api/ui/design/dom';
-import { createSettingsScope } from '../../../generation-core/api/ui/generation/sourceSettingsScope';
-import { settingsOperation } from '../../../canvas-ui/api/ui/settings/settingsOperation';
+import { createStableTextElement as element } from '../../../kernel/ui/dom';
+import { createSettingsScope } from '../../../kernel/ui/settingsScope';
+import { settingsOperation } from '../../../kernel/ui/settingsOperation';
 
 const SETTINGS_ATTRIBUTE = 'data-nako-download-settings';
 

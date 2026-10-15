@@ -1,6 +1,8 @@
+import { workflowSupport } from '../../../modules/kernel/server.js';
 import { RunningHubWorkflowClientError, normalizeRunningHubBaseUrl, assertRunningHubRemoteId, normalizeRunningHubInstanceType } from '../../../modules/contracts/workflowProtocols.js';
+import { ERRORS, PluginError } from '../../../modules/contracts/errors.js';
 export { RunningHubWorkflowClientError, normalizeRunningHubBaseUrl, assertRunningHubRemoteId, normalizeRunningHubInstanceType } from '../../../modules/contracts/workflowProtocols.js';
-import { readRunningHubPageCover } from '../../../modules/workflow-runtime/api/server/workflowRuntime/runningHubCover.js';
+const readRunningHubPageCover = (...args) => workflowSupport().readPageCover(...args);
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -401,7 +403,9 @@ export class RunningHubWorkflowClient {
     const controller = new AbortController();
     const onAbort = () => controller.abort(signal?.reason);
     signal?.addEventListener('abort', onAbort, { once: true });
-    const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs);
+    const timer = setTimeout(() => controller.abort(new PluginError(ERRORS.providerRequest, 'RunningHub 请求超时', {
+      status: 504, context: { moduleId: 'workflow.runninghub', operation: 'request.timeout', timeoutMs },
+    })), timeoutMs);
     timer.unref?.();
     const cleanup = () => {
       clearTimeout(timer);

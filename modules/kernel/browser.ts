@@ -3,6 +3,17 @@ import type { PluginContext } from '../contracts/index.js';
 import type { LocalRuntimeUiService } from '../contracts/localRuntimeUi';
 import type { AccountUiService, GenerationUiService, MediaSettingsService, ProjectPreferencesService, PromptCompositionService } from '../contracts/browserCapabilities';
 import type { ProjectMediaRecoveryService } from '../contracts/projectWorkflow';
+import type { ModelCatalogService, GenerationPreparationService } from '../contracts/generationCapabilities';
+import type { NodeRunUiService } from '../contracts/nodeRunUi';
+import type { AgentCanvasService } from '../contracts/agentCanvasWorkspace';
+import type { CanvasEditingService } from '../contracts/canvasEditing';
+import type { ProjectCatalogService } from '../contracts/projectCatalog';
+import type { MediaCanvasService } from '../contracts/mediaCanvas';
+import type { AccountPreferencesService } from '../contracts/browserCapabilities';
+import type { DesktopBrowserService } from '../contracts/desktopBrowser';
+import type { GenerationInteractionService } from '../contracts/generationCapabilities';
+import type { CanvasPresentationService } from '../contracts/canvasPresentation';
+import type { AgentDocumentService } from '../contracts/agentDocuments';
 
 export const browserHost = new PluginHost();
 export function localRuntimeUi(): LocalRuntimeUiService {
@@ -14,6 +25,18 @@ export const accountUi = () => browserHost.services.get<AccountUiService>('ui.ac
 export const mediaSettings = () => browserHost.services.get<MediaSettingsService>('ui.media.settings');
 export const promptComposition = () => browserHost.services.get<PromptCompositionService>('ui.prompt.composition');
 export const mediaRecovery = () => browserHost.services.get<ProjectMediaRecoveryService>('ui.media.recovery');
+export const modelCatalog = () => browserHost.services.get<ModelCatalogService>('ui.generation.catalog');
+export const generationPreparation = () => browserHost.services.get<GenerationPreparationService>('ui.generation.preparation');
+export const nodeRuns = () => browserHost.services.get<NodeRunUiService>('ui.nodes.runs');
+export const agentCanvas = () => browserHost.services.optional<AgentCanvasService>('ui.agent.canvas');
+export const canvasEditing = () => browserHost.services.get<CanvasEditingService>('ui.canvas.editing');
+export const projectCatalog = () => browserHost.services.get<ProjectCatalogService>('ui.project.catalog');
+export const mediaCanvas = () => browserHost.services.get<MediaCanvasService>('ui.media.canvas');
+export const accountPreferences = () => browserHost.services.get<AccountPreferencesService>('ui.account.preferences');
+export const desktopBrowser = () => browserHost.services.get<DesktopBrowserService>('ui.desktop.capabilities');
+export const generationInteraction = () => browserHost.services.get<GenerationInteractionService>('ui.generation.interaction');
+export const canvasPresentation = () => browserHost.services.get<CanvasPresentationService>('ui.canvas.presentation');
+export const agentDocuments = () => browserHost.services.get<AgentDocumentService>('ui.agent.documents');
 /** Existing adapter declarations remain type-only until each UI surface gets its own API file. */
 type AdapterKeys = Extract<keyof Window, `__NAKO_${string}`>;
 type BrowserServices = Pick<Window, AdapterKeys>;

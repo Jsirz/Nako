@@ -3,7 +3,8 @@
  * 封装 OpenAI GPT 系列模型的图像生成逻辑
  */
 import FormData from 'form-data';
-import { getModelDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
+import { mediaRuntime } from '../../../modules/kernel/server.js';
+const getModelDimensions = (...args) => mediaRuntime().dimensions(...args);
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
 import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';

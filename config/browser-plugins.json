@@ -1,5 +1,10 @@
 [
   {
+    "id": "ui.desktop-platform",
+    "entry": "../../modules/desktop-shell-observability/browserCapabilitiesPlugin.ts",
+    "manifest": "../../modules/desktop-shell-observability/browser.capabilities.manifest.json"
+  },
+  {
     "id": "ui.identity-account",
     "entry": "../../modules/identity-account/browser.ts",
     "manifest": "../../modules/identity-account/browser.manifest.json"
@@ -51,7 +56,7 @@
   },
   {
     "id": "ui.canvas-shell",
-    "entry": "../../modules/canvas-ui/rootPlugin.tsx",
-    "manifest": "../../modules/canvas-ui/browser.root.manifest.json"
+    "entry": "./rootPlugin.tsx",
+    "manifest": "./browser.root.manifest.json"
   }
 ]

@@ -1,4 +1,6 @@
 import { it, expect, vi } from 'vitest';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
+useServerCapabilities();
 import { createEcloudHandlers } from '../plugins/providers/ecloud/implementation.js';
 import { seedanceRequest } from '../plugins/providers/ecloud/seedance.js';
 import {

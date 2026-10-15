@@ -1,4 +1,4 @@
-import { desktopBridge } from '../../../desktop-shell-observability/api/ui/desktop/desktopBridge';
+import { desktopBrowser } from '../../../kernel/browser';
 
 /** Paired semantic colors. Media pixels and media chrome are deliberately theme-independent. */
 export const CANVAS_THEMES = {
@@ -92,7 +92,7 @@ export function applyCanvasTheme(
   target.dataset.nkTheme = theme;
   target.style.colorScheme = theme;
   if (target === document.documentElement)
-    void desktopBridge()
+    void desktopBrowser().bridge()
       ?.setTheme?.(theme)
       .catch(() => {});
 }

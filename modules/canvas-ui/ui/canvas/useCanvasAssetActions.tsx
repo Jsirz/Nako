@@ -190,7 +190,7 @@ function useCanvasAssetMenus(
         throw canvasError('该节点没有可复制的图片。', 'asset.copy-image');
       await copyCanvasImageToSystemClipboard(resultUrl);
     }, [contextMenu.sourceNodeId, nodes]),
-    createCollage = media.useCanvasCollage(React, {
+    createCollage = media.useCanvasCollage({
       nodes,
       getNodes,
       enabled: view === 'canvas' && !readOnly,

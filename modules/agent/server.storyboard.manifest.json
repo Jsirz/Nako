@@ -16,7 +16,8 @@
       "media.agent",
       "generation.runtime",
       "generation.defaults",
-      "generation.textTransport"
+      "generation.textTransport",
+      "generation.catalog"
     ],
     "provides": []
   },

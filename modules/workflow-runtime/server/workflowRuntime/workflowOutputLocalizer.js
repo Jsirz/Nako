@@ -1,3 +1,5 @@
+import { MediaArtifactError, MediaProbeError } from '../../../contracts/mediaDelivery.js';
+import { mediaRuntime } from '../../../kernel/server.js';
 import { createModuleLogger } from '../../../kernel/logger.js';
 import { publishWorkflowOutputs, workflowPublicationResult } from './workflowOutputPublication.js';
 import crypto from 'node:crypto';
@@ -7,14 +9,11 @@ import { mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promise
 import path from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import {
-  MediaArtifactError,
-  resolveMediaArtifact,
-} from '../../../asset-media/api/server/media/mediaArtifact.js';
-import { createMediaMetadataProbe, MediaProbeError } from '../../../asset-media/api/server/media/mediaMetadataProbe.js';
+const resolveMediaArtifact = (options) => mediaRuntime().resolveArtifact(options);
+const createMediaMetadataProbe = (options) => mediaRuntime().createMetadataProbe(options);
 import { WorkflowOutputError } from './workflowOutputs.js';
 import { isComfyPreviewNode, isSavedComfyFile } from './comfySavedOutputs.js';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+import { platformPaths } from '../../../kernel/server.js';
 import { inspectWorkflowMedia, prepareWorkflowCompatibility, convertedIntegrity } from './workflowMediaCompatibility.js';
 import {
   preparePrivateRecoveryRoot,
@@ -22,8 +21,8 @@ import {
   removeQuarantinedFlatDirectory,
 } from './privateRecoveryDirectory.js';
 
-const BUNDLED_FFMPEG_PATH = path.join(RUNTIME_PATHS.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
-const MAXIMUM_MEDIA_BYTES = resolveMediaArtifact({ declaredType: 'video' }).maximumBytes;
+const bundledFfmpegPath = () => path.join(platformPaths().runtime.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+const maximumMediaBytes = () => resolveMediaArtifact({ declaredType: 'video' }).maximumBytes;
 
 function safeSegment(value, label) {
   const normalized = String(value || '');
@@ -175,7 +174,7 @@ export async function optimizeMp4ForStreaming({
 }) {
   if (signal?.aborted) throw new WorkflowOutputError('视频优化已取消', 'OUTPUT_LOCALIZE_FAILED');
   await new Promise((resolve, reject) => {
-    const child = spawnProcess(BUNDLED_FFMPEG_PATH, [
+    const child = spawnProcess(bundledFfmpegPath(), [
       '-hide_banner',
       '-loglevel', 'error',
       '-nostdin',
@@ -339,7 +338,7 @@ export async function localizeWorkflowOutputs({
         client,
         candidate,
         temporaryPath: downloadPath,
-        maximumBytes: MAXIMUM_MEDIA_BYTES,
+        maximumBytes: maximumMediaBytes(),
         signal,
         wait,
       });

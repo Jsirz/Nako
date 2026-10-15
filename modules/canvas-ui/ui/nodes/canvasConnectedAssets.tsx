@@ -1,4 +1,4 @@
-import { promptAssetIndex, promptAssetLabel } from '../../../agent/api/ui/prompt/promptDocument';
+import { promptAssetIndex, promptAssetLabel } from '../../../contracts/promptAssets';
 import type * as ReactTypes from 'react';
 import { createPortal } from 'react-dom';
 import { disconnectCanvasNodes, type CanvasConnectionNode } from '../canvas/canvasConnections';

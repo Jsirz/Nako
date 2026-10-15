@@ -1,9 +1,9 @@
-import { openSettings } from '../../../project/api/ui/navigation/openSettings';
-import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
-import type { SourceSettingsClient } from '../../../generation-core/api/ui/generation/sourceSettingsClient';
+import { openSettings } from '../../../kernel/ui/settingsNavigation';
+import { observeStableEnhancement } from '../../../kernel/ui/enhancementLifecycle';
+import type { ModelAvailabilitySource as SourceSettingsClient } from '../../../contracts/generationCapabilities';
 import type { LocalRuntimeClient, LocalRuntimeStatus } from './localRuntimeClient';
 import { createComfyDirectoryGuide } from './comfyDirectoryGuide';
-import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { accountPreferences as preferenceStorage } from '../../../kernel/browser';
 
 const PANEL_ATTRIBUTE = 'data-nako-first-run-check';
 const DISMISS_KEY = 'nako.firstRunCheck.dismissed';
@@ -254,4 +254,4 @@ export function installFirstRunCheck(
     window.removeEventListener('nako:model-sources-changed', invalidate);
   };
 }
-import { createStableTextElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as element } from '../../../kernel/ui/dom';

@@ -5,7 +5,8 @@ it.each(['CREDENTIAL_FORMAT_INVALID','CREDENTIAL_DECRYPT_FAILED'])('preserves sa
   const fork=vi.fn();
   const supervisor=createBackendSupervisor({fork,entry:'unused',cwd:process.cwd(),logsDirectory:'unused',
     createEnvironment:async()=>{throw Object.assign(new Error('sensitive payload must stay private'),{code});}});
-  await expect(supervisor.start('fixture')).rejects.toMatchObject({code,message:code});
+  await expect(supervisor.start('fixture')).rejects.toMatchObject({code,message:code,status:503,
+    context:{moduleId:'desktop-shell-observability',operation:'runtime.start'}});
   expect(fork).not.toHaveBeenCalled();
   expect(startupFailureMessage({code})).toMatch(/API Key/);
   expect(startupFailureMessage({code})).not.toMatch(/sensitive payload/);

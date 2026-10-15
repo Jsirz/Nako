@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import './helpers/modelCatalog.js';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
+useServerCapabilities({ media: true });
 import { createWorkFisherHandlers } from '../plugins/providers/work-fisher/implementation.js';
 import { MODEL_DEFINITIONS } from '../plugins/providers/work-fisher/protocol.js';
 import { connection } from '../plugins/providers/work-fisher/connection.js';

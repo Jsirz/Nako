@@ -31,10 +31,8 @@ function subscribeBackendState(listener) {
 contextBridge.exposeInMainWorld('nakoDesktop', {
   version: ipcRenderer.sendSync('desktop:version'),
   integratedTitleBar: process.platform !== 'darwin',
-  setTheme: (theme) => {
-    if (theme !== 'dark' && theme !== 'light') return Promise.reject(new Error('INVALID_THEME'));
-    return invoke('desktop:set-theme', theme);
-  },
+  // The main process validates both sender and theme; sandboxed preload cannot import contracts.
+  setTheme: (theme) => invoke('desktop:set-theme', theme),
   showItemInFolder: (target) => invoke('desktop:show-item-in-folder', String(target)),
   pathForFile: (file) => {
     try {

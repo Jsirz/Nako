@@ -4,6 +4,7 @@ import { browserHost } from '../../../kernel/browser';
 import type { DashboardProject } from './projectDashboardData';
 import { DashboardCover } from './dashboardCover';
 import { ShareShowcase } from './shareShowcase';
+import { HomeBannerCarousel } from './homeBannerCarousel';
 import './projectDashboardHome.css';
 
 interface Props {
@@ -42,7 +43,7 @@ export function ProjectDashboardHome({
   );
   return (
     <div className="nako-home">
-      <HomeHero />
+      <HomeBannerCarousel fallback={<HomeHero />} />
       <RecentProjects
         recent={recent}
         loading={loading}

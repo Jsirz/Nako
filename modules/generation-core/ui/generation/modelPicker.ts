@@ -2,7 +2,7 @@ import { getBrowserServices } from '../../../kernel/browser';
 /** Compact model catalog, source selection and parameter-aware pricing. */
 
 import { filterCanvasModelGroups, type ModelGroupFilter } from './canvasModelCatalogPolicy';
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 import type {
   ModelGroup,
   ModelPricingContext,

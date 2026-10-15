@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { bindingSource } from './workflowManagerBindings';
 import type { BindingSet } from './workflowManagerClient';
 import { assetControlPresentation, field } from './workflowManagerControls';

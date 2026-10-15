@@ -1,8 +1,8 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { RUNTIME_PATHS } from '../../../../project/api/server/workspace/runtimePaths.js';
+import { fileURLToPath } from 'node:url';
 
-const directory = path.join(RUNTIME_PATHS.MODULES_DIR, 'local-runtime', 'server', 'comfyui', 'workflows');
+const directory = fileURLToPath(new URL('./', import.meta.url));
 
 const ASPECT_RATIOS = Object.freeze({
   '1:1': '1:1 (Square)',

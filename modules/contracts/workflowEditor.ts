@@ -10,6 +10,7 @@ export type OfficialWorkflow = {
   configured: boolean;
   definitionId?: string;
   sourceUrl?: string;
+  coverUrl?: string;
 };
 
 export interface WorkflowDefinition {

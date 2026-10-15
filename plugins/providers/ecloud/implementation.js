@@ -1,7 +1,9 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { submitOpenAiChatWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
-import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
 import { PROVIDER_ERRORS, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
 import { ECLOUD_SEEDANCE, isEcloudMiniMaxModel, IMAGE_SIZES, VIDEO_RATIOS } from './protocol.js';
 import { ecloudInputError as invalid, inputAssets, inlineMedia, publicMediaUrl } from './media.js';

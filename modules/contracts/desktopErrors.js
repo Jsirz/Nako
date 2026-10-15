@@ -5,6 +5,8 @@ export const DESKTOP_ERRORS = Object.freeze({
   update: ERRORS.desktopUpdate, unavailable: 'DESKTOP_SHELL_UNAVAILABLE',
   canvasOpen: 'DESKTOP_CANVAS_OPEN_FAILED', canvasLeave: 'DESKTOP_CANVAS_LEAVE_FAILED',
   configuration: ERRORS.invalidConfiguration, runtimeStart: 'BACKEND_START_FAILED', runtimeStop: 'BACKEND_STOP_FAILED',
+  untrustedSender: 'UNTRUSTED_SENDER', invalidTheme: 'INVALID_THEME',
+  runtimeFailed: 'BACKEND_FAILED', runtimeStopped: 'BACKEND_STOPPED',
 });
 
 export function desktopError(code, message, operation, status = 500, cause) {

@@ -1,4 +1,4 @@
-import type { NodeRegistry } from '../../../kernel/nodeRegistry';
+import type { NodeRegistry } from '../../../kernel/nodeRegistry.js';
 import type { NodePackage } from '../../../contracts/nodeSdk.js';
 export type NodeMediaType = 'text' | 'image' | 'video' | 'audio' | 'json' | 'any';
 export type NodeCategory = 'generation' | 'asset' | 'tool' | 'workflow' | 'utility';

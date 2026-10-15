@@ -1,7 +1,6 @@
 import { AgentOperationError, AGENT_ERROR_CODES } from '../contracts/agentErrors.js';
 import express from 'express';
 import { defineApplicationPlugin } from '../kernel/application.js';
-import { loadModelCatalog } from '../generation-core/api/server/config/modelCatalog.js';
 import { createDramaModelGenerator } from './server/agent/drama/dramaModelGenerator.js';
 import { createStoryboardRouter } from './server/storyboard/storyboardRouter.js';
 export default defineApplicationPlugin({
@@ -12,6 +11,7 @@ export default defineApplicationPlugin({
     'generation.runtime',
     'generation.defaults',
     'generation.textTransport',
+    'generation.catalog',
   ],
   activate(context) {
     const app = express.Router();
@@ -41,12 +41,7 @@ export default defineApplicationPlugin({
           const requested = await context.services
             .get('generation.defaults')
             .resolve('image', process.env.STORYBOARD_IMAGE_MODEL);
-          const model = Object.values(loadModelCatalog()).find(
-            (m) =>
-              m.imageModes?.length &&
-              (m.name === requested ||
-                Object.values(m.endpoint || {}).some((e) => e.model === requested)),
-          );
+          const model = context.services.get('generation.catalog').resolveImage(requested);
           if (!model) throw new AgentOperationError('分镜图像模型不可用', { operation: 'storyboard-generate-image', projectId }, AGENT_ERROR_CODES.unavailable);
           if (!/^[\w-]{1,128}$/.test(operationId))
             throw new AgentOperationError('分镜操作标识无效', { operation: 'storyboard-generate-image', projectId }, AGENT_ERROR_CODES.invalidRequest);
@@ -54,7 +49,7 @@ export default defineApplicationPlugin({
             throw new AgentOperationError('分镜操作已登记，请查询原任务；不会重复生成',
               { operation: 'storyboard-generate-image', projectId, operationId }, 'AGENT_OPERATION_EXISTS', 409);
           return generationRuntime.generateImage({
-            imageModel: model.name,
+            imageModel: model,
             nodeId: 'storyboard-' + operationId,
             generationAttemptId: operationId,
             projectId,

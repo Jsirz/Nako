@@ -6,7 +6,7 @@ import { setTimeout, clearTimeout } from 'node:timers';
 import {
   classifyGenerationError,
   getUpstreamStatus,
-} from '../../../../generation-core/api/server/generation/generationErrors.js';
+} from '../../../../contracts/generationFailure.js';
 import {
   assertDramaObject,
   DramaPlanError,

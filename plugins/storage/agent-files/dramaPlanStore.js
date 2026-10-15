@@ -1,16 +1,13 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { mkdir, readFile, readdir, rename, rm, writeFile, lstat, realpath } from 'node:fs/promises';
-import {
-  assertDramaObject, assertDramaPlanReviewable, DramaPlanError, requireDramaPlanId,
-  requireDramaProjectId, requireDramaRevision, validateDramaPlan,
-} from '../../../modules/agent/api/server/agent/drama/dramaPlan.js';
+import { DramaPlanError } from '../../../modules/contracts/dramaPlanError.js';
 
 const sharedQueues = new Map();
 const activePlanningRequests = new Map();
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
-function requestIdentity(projectId, requestId) {
+function requestIdentity(projectId, requestId, requireDramaProjectId) {
   requireDramaProjectId(projectId);
   if (typeof requestId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{7,127}$/.test(requestId)) {
     throw new DramaPlanError('请求标识无效', 'INVALID_DRAMA_REQUEST_ID');
@@ -34,8 +31,12 @@ function queued(key, operation) {
   return running.finally(() => { if (sharedQueues.get(key) === running) sharedQueues.delete(key); });
 }
 
-export function createDramaPlanStore({ libraryDirectory } = {}) {
+/** @param {import('../../../modules/contracts/agentDrama').DramaPlanStoreOptions} options */
+export function createDramaPlanStore({ libraryDirectory, validation } = {}) {
   if (typeof libraryDirectory !== 'string' || !libraryDirectory) throw new DramaPlanError('制作计划存储未配置', 'DRAMA_STORAGE_UNAVAILABLE', 503);
+  if (!validation) throw new DramaPlanError('制作计划校验能力未配置', 'DRAMA_STORAGE_UNAVAILABLE', 503);
+  const { assertDramaObject, assertDramaPlanReviewable, requireDramaPlanId,
+    requireDramaProjectId, requireDramaRevision, validateDramaPlan } = validation;
   const userDirectory = path.dirname(path.resolve(libraryDirectory));
   const rootDirectory = path.join(userDirectory, 'private', 'agent-drama');
 
@@ -99,13 +100,13 @@ export function createDramaPlanStore({ libraryDirectory } = {}) {
   }
 
   async function findRequest(projectId, requestId) {
-    const { id } = requestIdentity(projectId, requestId);
+    const { id } = requestIdentity(projectId, requestId, requireDramaProjectId);
     const record = await readRecord(id, projectId);
     return record ? { state: record.state, fingerprint: record.fingerprint, plan: record.plan ?? null } : null;
   }
 
   async function withPlanningRequest({ projectId, requestId, fingerprint }, operation) {
-    const { id, requestHash } = requestIdentity(projectId, requestId);
+    const { id, requestHash } = requestIdentity(projectId, requestId, requireDramaProjectId);
     if (typeof fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(fingerprint)) throw new DramaPlanError('请求指纹无效');
     const key = `${rootDirectory}\0${id}`;
     const active = activePlanningRequests.get(key);

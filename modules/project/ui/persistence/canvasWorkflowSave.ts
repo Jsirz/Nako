@@ -105,11 +105,11 @@ export function useWorkflowSave(hooks: ProjectHooks, state: WorkflowState, ui: W
             } catch {
               blocked.current = true;
               showConflict();
-              return { id: result.id, revision: result.revision, unchanged: false };
+              return { id: String(result.id), revision: Number(result.revision), unchanged: false };
             }
           }
           dismiss();
-          return { id: result.id, revision: result.revision, unchanged };
+          return { id: String(result.id), revision: Number(result.revision), unchanged };
         } catch (error) {
           if (owner === epoch.current && (error as { code?: string }).code === 'REVISION_CONFLICT') {
             blocked.current = true;

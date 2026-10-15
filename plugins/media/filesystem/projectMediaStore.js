@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
-import { resolveMediaArtifact } from '../../../modules/asset-media/api/server/media/mediaArtifact.js';
+import { mediaFiles } from '../../../modules/kernel/server.js';
+const resolveMediaArtifact = (...args) => mediaFiles().resolveArtifact(...args);
 
 /** Synchronous project snapshots retain their existing repository save contract. */
 export function createProjectMediaStore({ libraryDirectory, logger }) {

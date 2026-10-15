@@ -7,10 +7,7 @@ import type {
 
 import type { WorkflowCanvasMediaKind } from './workflowManagerClient';
 
-import {
-  fileUploadBody,
-  localFilePath,
-} from '../../../desktop-shell-observability/api/ui/desktop/localFileUpload';
+import { desktopBrowser } from '../../../kernel/browser';
 
 import type { WorkflowCanvasOperationContext } from './workflowNodeContext';
 import { expandWorkflowStorageSlots } from './workflowNodeSlots';
@@ -110,7 +107,7 @@ export function createWorkflowNodeUpload(
       }
 
       const sourceNodeId = crypto.randomUUID();
-      const path = localFilePath(file);
+      const path = desktopBrowser().localFilePath(file);
       const response = await fetch(
         path ? `/api/assets/import/${rule.directory}` : `/api/assets/upload/${rule.directory}`,
         path
@@ -127,7 +124,7 @@ export function createWorkflowNodeUpload(
                 'x-project-id': projectId,
                 'x-node-id': sourceNodeId,
               },
-              ...fileUploadBody(file),
+              ...desktopBrowser().fileUploadBody(file),
             },
       );
       const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;

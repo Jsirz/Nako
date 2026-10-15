@@ -7,7 +7,9 @@ import { providerError, wrapProviderError } from '../../../modules/contracts/pro
 import { LOCAL_RUNTIME_ERRORS } from '../../../modules/contracts/localRuntimeErrors.js';
 const libTvError = (message, code = LOCAL_RUNTIME_ERRORS.libTvCli, status = 502) =>
   providerError(message, { providerId: 'libtv', operation: status === 400 ? 'validate-input' : 'execute-cli', code, status, retryable: false, expose: true });
-import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
 
 const endpoint = 'https://www.liblib.tv/';
 const values = value => (Array.isArray(value) ? value : value ? [value] : []).filter(value => typeof value === 'string' && value);

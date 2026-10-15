@@ -14,7 +14,7 @@ import {
   RUNNINGHUB_PAID_CONFIRMATION_KEY,
   isConfirmationSuppressed,
   resetConfirmationPreference,
-} from '../../../canvas-ui/api/ui/design/designSystem';
+} from '../../../kernel/ui/designSystem';
 
 export const RUNNINGHUB_WEBAPP_TEST_EVENT = 'nako:test-runninghub-webapp';
 const STYLE_ID = 'nako-runninghub-webapp-manager-styles';
@@ -502,4 +502,4 @@ export function createRunningHubWebAppManager(client: RunningHubWebAppClient) {
   void load().catch((error) => setNotice(message(error), 'error'));
   return root;
 }
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';

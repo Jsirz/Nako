@@ -1,7 +1,6 @@
-import {
-  matchesRemoteTask,
-  remoteTaskReference,
-} from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
 import { ECLOUD_MINIMAX as protocol, isEcloudMiniMaxModel } from './protocol.js';
 import { ecloudInputError as invalid, inputAssets, inlineMedia } from './media.js';
 import { PROVIDER_ERRORS, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';

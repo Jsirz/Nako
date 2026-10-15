@@ -1,4 +1,6 @@
 import { expect, it, vi } from 'vitest';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
+useServerCapabilities({ media: true });
 import { createWorkFisherHandlers } from '../plugins/providers/work-fisher/implementation.js';
 import { connection } from '../plugins/providers/work-fisher/connection.js';
 import { videoBody } from '../plugins/providers/work-fisher/requests.js';

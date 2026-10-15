@@ -1,6 +1,5 @@
 import { defineApplicationPlugin } from '../kernel/application.js';
 import { createLibTvCliRuntime, createLibTvCliRouter } from './server/local/libTvCliRuntime.js';
-import { RUNTIME_PATHS } from '../project/api/server/workspace/runtimePaths.js';
 import express from 'express';
 import path from 'path';
 import { comfyClient } from './server/comfyui/comfyClient.js';
@@ -16,17 +15,14 @@ import {
 import { createComfyProcessController } from './server/local/comfyProcess.js';
 import { createComfyExtensionInstaller } from './server/local/comfyExtensionInstaller.js';
 import { createDreaminaCliInstaller } from './server/local/dreaminaCliInstaller.js';
-import {
-  BASE_LIBRARY_DIR,
-  getWorkspacePaths,
-  getUrlPrefix,
-} from '../project/api/server/workspace/workspacePaths.js';
+
+import { selectDirectoryWithSystemDialog } from './server/platform/directoryPicker.js';
 
 export default defineApplicationPlugin({
   ...{
     id: 'module.local-runtime',
     dependencies: ['module.asset-media'],
-    requires: ['media.projectFiles'],
+    requires: ['media.projectFiles', 'media.runtime', 'platform.paths'],
     provides: ['local.runtime'],
   },
   async activate(context) {
@@ -88,7 +84,7 @@ export default defineApplicationPlugin({
     app.use(
       '/api',
       createComfyWorkflowRouter({
-        libraryDirectory: getWorkspacePaths().LIBRARY_DIR,
+        libraryDirectory: RUNTIME_PATHS.LIBRARY_DIR,
         workflowRegistry: WORKFLOW_REGISTRY,
         comfyClient,
       }),
@@ -105,6 +101,7 @@ export default defineApplicationPlugin({
     );
     /** @type {import('../contracts/localRuntimeService').LocalRuntimeService} */
     const localRuntime = Object.freeze({
+      selectDirectory: selectDirectoryWithSystemDialog,
       async providerConfiguration({ waitForFresh = true } = {}) {
         if (waitForFresh)
           await Promise.all([dreaminaCliInstaller.isAuthenticated(), libTvCli.isAuthenticated()]);

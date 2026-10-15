@@ -1,20 +1,19 @@
 import * as Icons from 'lucide-react';
-import { bind } from '../../../canvas-ui/api/ui/app/presentation';
-import { CanvasTooltip } from '../../../canvas-ui/api/ui/dialogs/canvasTooltip';
-import { TEXT_MODELS } from '../../../generation-core/api/models/catalog';
+import * as React from 'react';
+import { canvasPresentation, modelCatalog } from '../../../kernel/browser';
 import { CanvasAgentLauncher, CanvasAgentMessage } from './canvasAgentChrome';
 import { CanvasAgentPanel } from './canvasAgentPanel';
 import { canvasAgentModels } from './canvasAgentModels';
 import type { CatalogParameter } from '../../../contracts/modelCatalog';
 import { SkillShowcase } from '../skills/skillShowcase';
 
-const Tooltip = bind(CanvasTooltip)(() => []);
-const Message = bind(CanvasAgentMessage)(() => []);
-const modelChoices = canvasAgentModels<CatalogParameter>(TEXT_MODELS);
+const Tooltip = (props: Parameters<ReturnType<typeof canvasPresentation>['tooltip']>[0]) =>
+  canvasPresentation().tooltip(props) as React.ReactNode;
+const Message = (props: Parameters<typeof CanvasAgentMessage>[1]) => CanvasAgentMessage(React, props);
 export const agentSurfaces = {
   Home: SkillShowcase,
-  Launcher: bind(CanvasAgentLauncher)(() => [{ Tooltip }]),
-  Panel: bind(CanvasAgentPanel)(() => [
+  Launcher: (props: Parameters<typeof CanvasAgentLauncher>[1]) => CanvasAgentLauncher(React, props, { Tooltip }),
+  Panel: (props: Parameters<typeof CanvasAgentPanel>[1]) => CanvasAgentPanel(React, props,
     {
       Tooltip,
       Message,
@@ -31,6 +30,6 @@ export const agentSurfaces = {
       ChevronIcon: Icons.ChevronDown,
       SendIcon: Icons.ArrowUp,
     },
-    modelChoices,
-  ]),
+    canvasAgentModels<CatalogParameter>(modelCatalog().list('text')),
+  ),
 };

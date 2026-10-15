@@ -72,7 +72,16 @@ export interface AgentSessionSnapshot {
     tools?: AgentActivity[];
   }>;
   knownCards?: AgentCardReference[];
-  run: { id: string; status: AgentRunStatus; kind?: 'compaction' } | null;
+  run: {
+    id: string;
+    status: AgentRunStatus;
+    kind?: 'compaction';
+    /** Safe terminal diagnostics; no provider bodies or credentials. */
+    code?: string;
+    error?: string;
+    httpStatus?: number;
+    reason?: string;
+  } | null;
   receipts: Array<{
     id: string;
     runId: string;

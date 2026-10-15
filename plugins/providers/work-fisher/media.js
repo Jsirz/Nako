@@ -2,8 +2,9 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { boundedBytes, boundedSignal, failure } from './client.js';
 import { ROOT } from './protocol.js';
-import { createMediaMetadataProbe } from '../../../modules/asset-media/api/server/media/mediaMetadataProbe.js';
-const probeMedia = createMediaMetadataProbe();
+import { mediaRuntime } from '../../../modules/kernel/server.js';
+const createMediaMetadataProbe = (...args) => mediaRuntime().createMetadataProbe(...args);
+const probeMedia = (...args) => createMediaMetadataProbe()(...args);
 const MIME = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',

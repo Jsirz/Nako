@@ -2,7 +2,7 @@ import { createModuleLogger } from '../../../kernel/logger.js';
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 const logger = createModuleLogger('module.agent');
 import express from 'express';
-import { classifyGenerationError } from '../../../generation-core/api/server/generation/generationErrors.js';
+import { classifyGenerationError } from '../../../contracts/generationFailure.js';
 import { searchCanvasNodes } from './tools/canvasTools.js';
 import { DEFAULT_OFFICIAL_SKILL_SLUG } from './officialSkillRegistry.js';
 import { productionProfileForSkill } from '../../../contracts/officialProductionProfiles.js';

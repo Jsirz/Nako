@@ -2,7 +2,7 @@ import type { CanvasComponent } from '../app/canvasComponentType';
 import type { AlignmentGuide } from './canvasAlignment';
 import type * as ReactTypes from 'react';
 import type { EdgeNode } from './canvasEdges';
-import { CanvasWallpaper } from '../../../identity-account/api/ui/appearance/CanvasWallpaper';
+
 type Runtime = Pick<
   typeof ReactTypes,
   | 'createElement'
@@ -50,6 +50,7 @@ interface Props extends Record<string, unknown> {
   onNodeMouseLeave(): void;
 }
 interface Components {
+  Wallpaper: ReactTypes.ComponentType;
   Edges: CanvasComponent;
   Selection: CanvasComponent;
   Node: CanvasComponent;
@@ -266,7 +267,7 @@ function renderCanvasSceneSurface(
     selected, selectedNodes, visible, viewportSize } = state;
   const selectionProps = canvasSelectionProps(props);
   const callbacks = Object.fromEntries(forwardedCallbacks.map((name) => [name, actions[name]]));
-  const { Edges, Selection } = components;
+  const { Edges, Selection, Wallpaper } = components;
   return (
     <div
       key={documentEpoch}
@@ -291,7 +292,7 @@ function renderCanvasSceneSurface(
         backgroundPosition: `${viewport.x}px ${viewport.y}px`,
       }}
     >
-      <CanvasWallpaper />
+      <Wallpaper />
       <div
         id="canvas-viewport-content"
         style={{

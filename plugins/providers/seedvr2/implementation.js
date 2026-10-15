@@ -2,13 +2,17 @@ import { open, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import sharp from 'sharp';
-import { getWorkspacePaths } from '../../../modules/project/api/server/workspace/workspacePaths.js';
-import { RunningHubWorkflowClient } from '../../workflows/shared/runninghubClient.js';
-import { createRunningHubWebAppProjection, RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID } from '../../../modules/workflow-runtime/api/server/workflowRuntime/runningHubWebApp.js';
-import { normalizeRunningHubOutputs } from '../../workflows/shared/runninghubExecutor.js';
-import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { platformPaths } from '../../../modules/kernel/server.js';
+const getWorkspacePaths = () => platformPaths().workspace();
+import { workflowExecutors, workflowSupport } from '../../../modules/kernel/server.js';
+import { RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID } from '../../../modules/contracts/workflowSupport.js';
+const createRunningHubWebAppProjection = (...args) => workflowSupport().webAppProjection(...args);
+const normalizeRunningHubOutputs = (...args) => workflowSupport().runningHubOutputs(...args);
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
 import { ProviderError, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
-import { GenerationTaskError } from '../../../modules/generation-core/api/server/generation/generationExecution.js';
+import { GenerationTaskError } from '../../../modules/contracts/generationTaskError.js';
 const { taskError, wrapError } = providerErrorsFor('seedvr2');
 
 const MAX_BYTES = 30 * 1024 * 1024;
@@ -113,9 +117,9 @@ async function downloadResults(client, outputs, signal) {
   return results;
 }
 
-export function createSeedVr2Provider({ clientFactory = (options) => new RunningHubWorkflowClient(options),
+export function createSeedVr2Provider({ clientFactory = (options) => workflowExecutors().createClient('runninghub-webapp', options),
   readInput = readSeedVr2Input, wait = (signal) => delay(5000, undefined, { signal }), now = Date.now } = {}) {
-  const clientFor = (ctx) => clientFactory({ baseUrl: 'https://www.runninghub.cn', apiKey: ctx.apiKey });
+  const clientFor = () => clientFactory({ baseUrl: 'https://www.runninghub.cn', credentialRef: 'runninghub-cn' });
   return {
     canRecoverImage(reference, params, config) {
       try { return matchesRemoteTask(reference, context(params, config)); } catch { return false; }

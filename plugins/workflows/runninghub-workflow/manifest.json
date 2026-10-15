@@ -11,7 +11,8 @@
   ],
   "services": {
     "requires": [
-      "workflow.executors"
+      "workflow.executors",
+      "workflow.support"
     ],
     "provides": [
       "workflow.factory.runninghub-workflow"

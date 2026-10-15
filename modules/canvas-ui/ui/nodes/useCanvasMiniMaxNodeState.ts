@@ -1,11 +1,6 @@
 import type * as ReactTypes from 'react';
-import {
-  MINIMAX_H3_MODE_OPTIONS,
-  getMiniMaxH3ModeLabel,
-  getMiniMaxH3VisualPorts,
-  remapMiniMaxH3ParentIds,
-  type MiniMaxH3Mode,
-} from '../../../asset-media/api/ui/media/minimaxH3';
+import { MINIMAX_H3_MODE_OPTIONS, type MiniMaxH3Mode } from '../../../contracts/minimaxCanvas';
+import { mediaCanvas } from '../../../kernel/browser';
 import type { Menu, NodeData, Props, Runtime } from './canvasMiniMaxNodeTypes';
 
 const ratios: Record<string, [number, number]> = {
@@ -62,7 +57,7 @@ export function useCanvasMiniMaxNodeState(React: Runtime, props: Props) {
     onConnectorDown(event, node.id, 'right', 0);
   };
   const mode = node.minimaxH3Mode || 't2va';
-  const modeLabel = getMiniMaxH3ModeLabel(mode), ports = getMiniMaxH3VisualPorts(node);
+  const modeLabel = mediaCanvas().miniMax().getModeLabel(mode), ports = mediaCanvas().miniMax().getVisualPorts(node);
   const dimensions = (value: number) => miniMaxDimensions(node.aspectRatio, value);
   const [menu, setMenu] = React.useState<Menu>(null);
   const menuRoot = React.useRef<HTMLDivElement>(null);
@@ -90,7 +85,7 @@ export function useCanvasMiniMaxNodeState(React: Runtime, props: Props) {
       const next = value as MiniMaxH3Mode;
       update({
         minimaxH3Mode: next,
-        parentIds: remapMiniMaxH3ParentIds(current.parentIds || [], mode, next),
+        parentIds: mediaCanvas().miniMax().remapParentIds(current.parentIds || [], mode, next),
       });
     } else if (menu === 'ratio') update({ aspectRatio: String(value) });
     else if (menu === 'resolution') update({ megapixels: Number(value) });

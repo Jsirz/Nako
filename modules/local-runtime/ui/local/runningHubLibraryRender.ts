@@ -1,5 +1,5 @@
-import { requestAnchoredConfirmation } from '../../../canvas-ui/api/ui/design/designSystem';
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { requestAnchoredConfirmation } from '../../../kernel/ui/designSystem';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import type { RunningHubWebAppCard } from './workflowManagerClient';
 import { control } from './runningHubControls';
 

@@ -1,4 +1,5 @@
 import { APP_HOST, APP_ORIGIN, APP_SCHEME } from './appProtocol.mjs';
+import { DESKTOP_ERRORS, desktopError } from '../../../modules/contracts/desktopErrors.js';
 
 export const CANVAS_URL = `${APP_ORIGIN}/`;
 export const LAUNCHER_URL = `${APP_ORIGIN}/launcher/`;
@@ -159,9 +160,10 @@ export function createMainWindow({
         !isCanvasUrl(event.senderFrame?.url) ||
         !isCanvasUrl(view.webContents.getURL())
       ) {
-        throw new Error('UNTRUSTED_SENDER');
+        throw desktopError(DESKTOP_ERRORS.untrustedSender, 'UNTRUSTED_SENDER', 'ipc.setTheme', 403);
       }
-      if (theme !== 'dark' && theme !== 'light') throw new Error('INVALID_THEME');
+      if (theme !== 'dark' && theme !== 'light')
+        throw desktopError(DESKTOP_ERRORS.invalidTheme, 'INVALID_THEME', 'ipc.setTheme', 400);
       paint(surfaceColorFor(CANVAS_URL, theme), theme);
     });
     window.once('closed', () => ipcMain.removeHandler('desktop:set-theme'));

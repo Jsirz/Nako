@@ -45,7 +45,7 @@ export class ProjectTransferError extends PluginError {
 
 export class UserScopeError extends PluginError {
   constructor(message, code = 'USER_SCOPE_INVALID', status = 403) {
-    super(code, message, { status, context: { moduleId: 'project', operation: 'resolveUserScope' } });
+    super(code, message, { status, context: { moduleId: 'identity-account', operation: 'resolveUserScope' } });
     this.name = 'UserScopeError';
   }
 }

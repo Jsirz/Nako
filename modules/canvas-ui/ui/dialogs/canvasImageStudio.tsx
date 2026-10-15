@@ -3,12 +3,12 @@ import { PanoramaGenerate } from './panoramaGenerate';
 import { createPortal } from 'react-dom';
 import * as React from 'react';
 import { Crop, Paintbrush, Layers, Scan, Undo2, Redo2, X } from 'lucide-react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type { CropOutput } from './imageCropGeometry';
 import './imageStudio.css';
 import { CanvasImageAngle } from './canvasImageAngle';
-import type { ImageAngle } from '../../../agent/api/ui/prompt/imageAngle';
+import type { ImageAngle } from '../../../contracts/imageAngle';
 
 interface Source {
   id: string;

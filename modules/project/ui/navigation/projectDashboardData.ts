@@ -1,27 +1,6 @@
 import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
-export interface DashboardProject {
-  id: string;
-  title: string;
-  folderId?: string | null;
-  coverUrl?: string;
-  nodeCount?: number;
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: unknown;
-}
-export interface DashboardFolder {
-  id: string;
-  name: string;
-  projectCount?: number;
-  parentId?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: unknown;
-}
-export interface DashboardData {
-  projects: DashboardProject[];
-  folders: DashboardFolder[];
-}
+import type { DashboardProject, DashboardFolder, DashboardData } from '../../../contracts/projectCatalog';
+export type { DashboardProject, DashboardFolder, DashboardData } from '../../../contracts/projectCatalog';
 export type DashboardFilter = 'all' | 'folders' | 'projects';
 export type DashboardSort = 'recent' | 'created' | 'name';
 export type DashboardOrder = 'newest' | 'oldest';

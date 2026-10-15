@@ -1,11 +1,13 @@
+import { mediaRuntime } from '../../../kernel/server.js';
 import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import sharp from 'sharp';
-import { inspectMediaArtifact, resolveMediaArtifact } from '../../../asset-media/api/server/media/mediaArtifact.js';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+const resolveMediaArtifact = (options) => mediaRuntime().resolveArtifact(options);
+const inspectMediaArtifact = (options) => mediaRuntime().inspectArtifact(options);
+import { platformPaths } from '../../../kernel/server.js';
 import { WorkflowOutputError } from './workflowOutputs.js';
 
 function artifact(kind, extension, mimeType, metadata) {
@@ -57,7 +59,7 @@ export async function convertedIntegrity(filePath, maximumBytes, contentType) {
 export async function runWorkflowConversion(args, { signal, spawnProcess = spawn } = {}) {
   signal?.throwIfAborted();
   await new Promise((resolve, reject) => {
-    const child = spawnProcess(path.join(RUNTIME_PATHS.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'),
+    const child = spawnProcess(path.join(platformPaths().runtime.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'),
       ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', ...args], { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
     let settled = false, stopped = false;
     const finish = error => {

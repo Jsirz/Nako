@@ -4,6 +4,7 @@ import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promis
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { releasePaths } from './installation.mjs';
+import { UserScopeError, USER_SCOPE_ERRORS } from '../../../modules/contracts/projectErrors.js';
 import * as credentials from '../../../modules/identity-account/api/server/credentials/providerCredentialStore.mjs';
 
 const OPAQUE_USER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -92,7 +93,7 @@ export async function createBackendEnvironment({
   baseEnvironment = process.env,
 }) {
   if (!OPAQUE_USER_ID.test(String(userId)) || userId === '00000000-0000-0000-0000-000000000000') {
-    throw new Error('INVALID_USER_SCOPE');
+    throw new UserScopeError('INVALID_USER_SCOPE', USER_SCOPE_ERRORS.invalid);
   }
   await mkdir(installation.logs, { recursive: true });
   await mkdir(installation.config, { recursive: true });

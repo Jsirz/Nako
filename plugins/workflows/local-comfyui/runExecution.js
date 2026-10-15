@@ -1,6 +1,7 @@
+import { workflowSupport } from '../../../modules/kernel/server.js';
 import { LocalComfyExecutorError } from '../../../modules/contracts/workflowProtocols.js';
 
-import { createComfyOutputPlan } from '../../../modules/workflow-runtime/api/server/workflowRuntime/comfySavedOutputs.js';
+const createComfyOutputPlan = (...args) => workflowSupport().comfyOutputPlan(...args);
 
 import { safeFailure } from './executorSafety.js';
 

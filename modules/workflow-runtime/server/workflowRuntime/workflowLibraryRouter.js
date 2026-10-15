@@ -1,6 +1,7 @@
 import { workflowRuntimeError } from '../../../contracts/localRuntimeErrors.js';
 import { createModuleLogger } from '../../../kernel/logger.js';
-import { selectDirectoryWithSystemDialog } from '../../../local-runtime/api/server/platform/directoryPicker.js';
+import { localPlatform } from '../../../kernel/server.js';
+const selectDirectoryWithSystemDialog = (...args) => localPlatform().selectDirectory(...args);
 import express from 'express';
 import { normalizeLocalComfyServer } from '../../../contracts/comfyServerAddress.js';
 import {

@@ -10,7 +10,7 @@ export function defineExecutorPlugin({ id, load, loadClient, exportName, credent
       type: 'workflow',
       dependencies: { 'workflow-runtime': '^1.0.0' },
       capabilities: [`workflow.${id}`],
-      services: { requires: ['workflow.executors'], provides: [`workflow.factory.${id}`] },
+      services: { requires: ['workflow.executors', 'workflow.support'], provides: [`workflow.factory.${id}`] },
       credentials: credentialId ? [credentialId] : [],
       // Runtime recovery services retain executor instances until backend shutdown.
       reloadRequired: true,

@@ -1,9 +1,9 @@
 import express from 'express';
-import { getAuthenticatedRequest } from '../identity-account/api/server/security/localAuthentication.js';
+import { httpSecurity } from '../kernel/server.js';
 
 export function createNodeRunRouter({ runs, packages }) {
   const router = express.Router();
-  const scope = request => getAuthenticatedRequest(request).identity.opaqueUserId;
+  const scope = request => httpSecurity().getAuthenticatedScope(request).opaqueUserId;
   const route = handler => async (request, response) => {
     try { response.json(await handler(request)); }
     catch (error) { response.status(error.code === 'NODE_CAPABILITY_DENIED' ? 403 : error.code === 'NODE_RUN_NOT_FOUND' ? 404 : 400).json({ error: error.message, code: error.code || 'NODE_INVALID' }); }

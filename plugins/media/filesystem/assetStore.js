@@ -1,7 +1,10 @@
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 import { createModuleLogger } from '../../../modules/kernel/logger.js';
 import { readRemoteMediaBody } from './remoteMediaBody.js';
-import { buildAssetUrl, normalizeAsset, listMediaAssets } from '../../../modules/asset-media/api/server/media/mediaAssetListing.js';
+import { mediaFiles } from '../../../modules/kernel/server.js';
+const buildAssetUrl = (...args) => mediaFiles().assetUrl(...args);
+const normalizeAsset = (...args) => mediaFiles().normalizeAsset(...args);
+const listMediaAssets = (...args) => mediaFiles().listAssets(...args);
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { copyFile, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -9,11 +12,13 @@ import path from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import sharp from 'sharp';
-import { MediaArtifactError, resolveMediaArtifact } from '../../../modules/asset-media/api/server/media/mediaArtifact.js';
-import { createMediaMetadataProbe, MediaProbeError } from '../../../modules/asset-media/api/server/media/mediaMetadataProbe.js';
+import { MediaArtifactError } from '../../../modules/contracts/mediaDelivery.js';
+const resolveMediaArtifact = (...args) => mediaFiles().resolveArtifact(...args);
+import { MediaProbeError } from '../../../modules/contracts/mediaDelivery.js';
+const createMediaMetadataProbe = (...args) => mediaFiles().createMetadataProbe(...args);
 
 const MEDIA_TYPES = new Set(['images', 'videos', 'audios']);
-const DEFAULT_UPLOAD_MAX_BYTES = Object.freeze(Object.fromEntries(
+const defaultUploadMaxBytes = () => Object.freeze(Object.fromEntries(
   [...MEDIA_TYPES].map((type) => [
     type,
     resolveMediaArtifact({ declaredType: type }).maximumBytes,
@@ -304,7 +309,7 @@ async function readCleanupManifest(trashDirectory, projectId, batchId) {
 
 class FilesystemMediaStore {
   constructor({ libraryDirectory, workflowStore, metadataProbe, externalUrlFetch,
-    maxExternalBytes = 100 * 1024 * 1024, maxUploadBytes = DEFAULT_UPLOAD_MAX_BYTES,
+    maxExternalBytes = 100 * 1024 * 1024, maxUploadBytes = defaultUploadMaxBytes(),
     logger = createModuleLogger('media.filesystem') }) {
     Object.assign(this, { libraryDirectory, workflowStore, externalUrlFetch, maxExternalBytes, maxUploadBytes, logger });
     this.mediaDirectory = path.join(libraryDirectory, 'media');

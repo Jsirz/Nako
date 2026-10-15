@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 export function button(label: string, variant: 'primary' | 'quiet' | 'ghost' = 'quiet') {
   const control = element('button', `fwm-button is-${variant}`, label);
   control.type = 'button';

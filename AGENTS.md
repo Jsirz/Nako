@@ -142,8 +142,9 @@ interface WorkflowExecutor {
 *   **重构建议**：如果发现现有代码有耦合（如 `mediaAssetRouter` 直接操作 fs），请主动提出使用适配器模式重构，并输出使用 `MediaStore` 接口的代码。
 *   **跨模块通信**：如果需要跨模块调用，优先使用 `kernel` 提供的 `EventBus` 或 `ServiceRegistry`，而不是直接 `import`。
 *   **类型定义**：所有公共类型必须在 `contracts` 中定义，不得在业务模块中私自定义跨模块的接口。
-*   **错误处理**:必须使用 contracts 中定义的错误码（ErrorCode）。禁止随意 throw new Error('something wrong')，必须抛出带有明确上下文的结构化错误。
-*   **日志规范**:禁止随意使用 console.log。日志必须通过 kernel 提供的 Logger 服务输出，并附带模块ID和上下文信息。
+*   **错误处理**:必须使用 contracts 中定义的错误码（ErrorCode）和 PluginError 或领域错误构造器；上下文必须包含 moduleId、operation，并按需附请求、项目、节点或插件标识。禁止直接构造 Error、TypeError 等内建裸错误，包括 throw、Promise.reject、Object.assign 和 AbortSignal 原因中的错误。已有结构化错误保留 code/status/context；包装底层错误时按需保留 cause，HTTP/IPC 边界提供明确 status。不得将密钥、请求正文或原始响应放入错误上下文或客户端提示。
+*   **日志规范**:业务和应用入口必须使用 PluginContext.logger、注入的 Logger 或 kernel 的 createModuleLogger；console 只作为 Logger/安全输出适配器的底层输出端。日志使用固定事件描述及 operation 上下文，按需附请求/项目/节点/运行标识；info 表示普通诊断、warn 表示可恢复异常、error 表示操作失败。不拼接底层 error.message，不输出原始请求/响应、密钥、stack 或 cause；错误对象通过 Logger 提取脱敏后的 code/status/context，并遵循 Logger 的长度及字段数量限制。
+*   **规范审计**:修改错误或日志后使用只读的 check:conventions 门禁核对 apps、modules、plugins；脚本和测试与生产源码分开。扫描通过不能替代领域错误上下文、错误码来源、敏感数据和运行语义的人工核对，也不代表历史差异已全部修复。
 *   **单一职责**：一个文件不应超过 1000 行，一个函数不应超过 200 行。逻辑复杂时必须抽离成 Helper 或 Service。
 
 

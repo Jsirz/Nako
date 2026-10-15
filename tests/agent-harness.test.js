@@ -532,6 +532,50 @@ it('round-trips the new client protocol and tool receipts through HTTP', async (
     await http.close();
   }
 });
+it.each([
+  [400, 'AGENT_CANVAS_INVALID_INPUT', '模型服务不接受本次参数或附件，请检查所选模型支持的输入。'],
+  [401, 'PROVIDER_AUTH_FAILED', '模型服务未接受当前密钥或调用权限，请检查设置。'],
+  [429, 'PROVIDER_RATE_LIMIT', '模型请求过于频繁或并发已满，请稍后再试。本次不会自动重试。'],
+  [503, 'PROVIDER_UNAVAILABLE', '模型服务暂时不可用，请稍后再试。本次不会自动重试。'],
+])('preserves safe upstream failure diagnostics across SSE and session reload for HTTP %i', async (status, reason, message) => {
+  const f = fixture([Response.json({ error: { message: 'private-upstream-body sk-fixture-secret' } }, { status })]);
+  const http = await httpFixture(f);
+  const events = [], onCanvasAction = vi.fn();
+  try {
+    await expect(http.client.streamMessage({
+      sessionId: 'session-1', projectId: 'project-1', message: '修改图片', model: model.name, canvasControl: true,
+    }, () => {}, { onEvent: (event) => events.push(event), onCanvasAction })).rejects.toMatchObject({
+      message, code: 'PROVIDER_REQUEST_FAILED', status, retryable: false,
+      context: { moduleId: 'module.agent', operation: 'agent-client-request', reason, sessionId: 'session-1' },
+    });
+    const diagnostic = { status: 'failed', code: 'PROVIDER_REQUEST_FAILED', error: message, httpStatus: status, reason };
+    expect(events.at(-1).payload).toMatchObject(diagnostic);
+    const saved = await http.client.getSession('session-1');
+    expect(saved.run).toMatchObject(diagnostic);
+    expect(saved.receipts).toEqual([]);
+    expect(JSON.stringify(saved)).not.toContain('private-upstream-body');
+    expect(JSON.stringify(events)).not.toContain('sk-fixture-secret');
+    expect(onCanvasAction).not.toHaveBeenCalled();
+    expect(f.fetcher).toHaveBeenCalledOnce();
+  } finally {
+    await http.close();
+  }
+});
+
+it('keeps unknown internal exceptions out of terminal events and persisted run diagnostics', async () => {
+  const f = fixture([]);
+  const harness = createPiAgentHarness({
+    sessions, mediaService: { imageContent: async () => [] },
+    textTransport: { generate: vi.fn(async () => { throw new Error('private-internal-payload'); }) },
+  });
+  await expect(harness.run(f.input, { emit: f.emit })).rejects.toThrow('private-internal-payload');
+  const saved = await repository.get('session-1');
+  expect(saved.runs['run-1']).toMatchObject({ status: 'failed', code: 'AGENT_OPERATION_FAILED', httpStatus: 500 });
+  expect(f.events.at(-1).payload.error).toBe('本轮运行未完成，已确认的操作和回执已保留。');
+  expect(JSON.stringify(f.events)).not.toContain('private-internal-payload');
+  expect(JSON.stringify(saved)).not.toContain('private-internal-payload');
+});
+
 it('busy HTTP requests do not unlock another request or invoke a second model', async () => {
   let start, release;
   const started = new Promise((r) => {

@@ -1,4 +1,16 @@
 /** Service boundary for module.agent.drama; no pi implementation types cross it. */
+export interface DramaPlanValidation {
+  assertDramaObject<T extends Record<string, unknown>>(value: T, keys: string[], label?: string): T;
+  assertDramaPlanReviewable(plan: Record<string, unknown>): void;
+  requireDramaPlanId(value: unknown): string;
+  requireDramaProjectId(value: unknown): string;
+  requireDramaRevision(value: unknown): number;
+  validateDramaPlan(value: unknown): Record<string, unknown>;
+}
+export interface DramaPlanStoreOptions {
+  libraryDirectory: string;
+  validation: DramaPlanValidation;
+}
 export interface DramaSession {
   id: string;
   workflow?: Record<string, unknown>;

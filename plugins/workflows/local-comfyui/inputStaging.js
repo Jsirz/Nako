@@ -2,7 +2,7 @@ import { LocalComfyExecutorError } from '../../../modules/contracts/workflowProt
 
 import crypto from 'node:crypto';
 
-import { workflowAssetKey } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowAssetIdentity.js';
+import { workflowAssetKey } from '../../../modules/contracts/workflowSupport.js';
 import { extensionFor, stagedHandleValue } from './executorSafety.js';
 import { MAX_STAGE_ASSETS, MAX_STAGE_BYTES } from './inputSnapshot.js';
 

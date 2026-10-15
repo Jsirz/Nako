@@ -63,12 +63,7 @@ const RESOURCE_OWNERSHIP = Object.freeze([
 
 // Cross-user resources are addressable only through these logical identifiers.
 // A filesystem path supplied by a client is never a shared-resource capability.
-export const DEFAULT_SHARED_RESOURCE_ALLOWLIST = Object.freeze({
-  'public-shell': 'public-shell',
-  'model-files': 'models',
-  'integration-adapters': 'integrations',
-  'device-runtime-config': 'device',
-});
+export { DEFAULT_SHARED_RESOURCE_ALLOWLIST } from '../../../contracts/userIdentity.js';
 
 export function listResourceOwnership() {
   return RESOURCE_OWNERSHIP.map((resource) => ({ ...resource }));

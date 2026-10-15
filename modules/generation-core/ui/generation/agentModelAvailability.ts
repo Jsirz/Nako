@@ -1,6 +1,6 @@
 import { getBrowserServices } from '../../../kernel/browser';
 import type { SourceSettingsClient } from './sourceSettingsClient';
-import { openSettings } from '../../../project/api/ui/navigation/openSettings';
+import { openSettings } from '../../../kernel/ui/settingsNavigation';
 
 type AgentModelCandidate = { id: string };
 

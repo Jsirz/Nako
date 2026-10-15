@@ -1,7 +1,7 @@
 import { canvasError } from '../../../contracts/canvasErrors.js';
 import { flushSync } from 'react-dom';
-import type { ImageAngle } from '../../../agent/api/ui/prompt/imageAngle';
-import { createImageAngleDraft } from '../../../asset-media/api/ui/media/imageAngleDraft';
+import type { ImageAngle } from '../../../contracts/imageAngle';
+import { mediaCanvas } from '../../../kernel/browser';
 import './canvasWorkspace.css';
 import type { useCanvasDocumentEffects } from './useCanvasDocumentEffects';
 export function renderCanvasImageEditor(
@@ -33,7 +33,7 @@ export function renderCanvasImageEditor(
       mode: imageEditorMode,
       onPanorama: (id: string) => {
         if (!workflowId || view !== 'canvas') throw canvasError('请先打开项目。', 'image-editor.panorama');
-        const result = createImageAngleDraft(getNodes(), id, null, workflowId, {
+        const result = mediaCanvas().imageAngleDraft(getNodes(), id, null, workflowId, {
           create: createAgentNode,
           configure: configureAgentNode,
           connect: connectAgentNodes,
@@ -47,7 +47,7 @@ export function renderCanvasImageEditor(
       },
       onAngle: (id: string, angle: ImageAngle) => {
         if (!workflowId || view !== 'canvas') throw canvasError('请先打开项目。', 'image-editor.angle');
-        const result = createImageAngleDraft(getNodes(), id, angle, workflowId, {
+        const result = mediaCanvas().imageAngleDraft(getNodes(), id, angle, workflowId, {
           create: createAgentNode,
           configure: configureAgentNode,
           connect: connectAgentNodes,

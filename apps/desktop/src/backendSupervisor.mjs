@@ -3,6 +3,7 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { DESKTOP_ERRORS, desktopError } from '../../../modules/contracts/desktopErrors.js';
 
 const READY_TIMEOUT_MS = 60_000;
 const STOP_TIMEOUT_MS = 10_000;
@@ -32,7 +33,7 @@ export function createBackendSupervisor({
   let restartTimer = null;
   let crashes = [];
   let launchGeneration = 0;
-  let failureCode = 'BACKEND_FAILED';
+  let failureCode = DESKTOP_ERRORS.runtimeFailed;
   const listeners = new Set();
 
   function publish(next) {
@@ -43,7 +44,7 @@ export function createBackendSupervisor({
 
   function waitForReady() {
     if (state === 'ready') return Promise.resolve();
-    if (state === 'failed') return Promise.reject(Object.assign(new Error(failureCode), { code: failureCode }));
+    if (state === 'failed') return Promise.reject(desktopError(failureCode, failureCode, 'runtime.start', 503));
     return new Promise((resolve, reject) => {
       const unsubscribe = onState((next) => {
         if (next === 'ready') {
@@ -51,8 +52,8 @@ export function createBackendSupervisor({
           resolve();
         } else if (next === 'failed' || next === 'stopped') {
           unsubscribe();
-          const code = next === 'failed' ? failureCode : 'BACKEND_STOPPED';
-          reject(Object.assign(new Error(code), { code }));
+          const code = next === 'failed' ? failureCode : DESKTOP_ERRORS.runtimeStopped;
+          reject(desktopError(code, code, 'runtime.start', 503));
         }
       });
     });
@@ -102,7 +103,7 @@ export function createBackendSupervisor({
   }
 
   async function launch() {
-    failureCode = 'BACKEND_FAILED';
+    failureCode = DESKTOP_ERRORS.runtimeFailed;
     const expectedGeneration = launchGeneration;
     // macOS UNIX sockets have a short path limit. A private temp directory also
     // prevents other local users from accessing the backend.
@@ -122,7 +123,7 @@ export function createBackendSupervisor({
       await cleanupSocket();
       if (expectedGeneration === launchGeneration) {
         failureCode = ['CREDENTIAL_FORMAT_INVALID', 'CREDENTIAL_DECRYPT_FAILED'].includes(error?.code)
-          ? error.code : 'BACKEND_FAILED';
+          ? error.code : DESKTOP_ERRORS.runtimeFailed;
         publish('failed');
       }
       return;

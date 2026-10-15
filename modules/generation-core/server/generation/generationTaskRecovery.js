@@ -1,7 +1,7 @@
 import { PluginError } from '../../../contracts/errors.js';
 import { GENERATION_ERROR_CODES } from '../../../contracts/generationErrors.js';
 import crypto from 'node:crypto';
-import { confirmedGenerationFailure } from './generationErrors.js';
+import { confirmedGenerationFailure } from '../../../contracts/generationFailure.js';
 
 const fingerprint = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
 const SAFE_ID = /^[A-Za-z0-9._:-]{1,200}$/u;

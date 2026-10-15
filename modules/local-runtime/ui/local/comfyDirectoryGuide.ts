@@ -1,4 +1,4 @@
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 
 /** 与 detectComfyInstallation 支持的目录结构保持一致。 */
 export function createComfyDirectoryGuide() {

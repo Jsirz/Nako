@@ -1,4 +1,4 @@
-import type { ProjectDocument, WorkflowRecord } from '../../../contracts/projectWorkflow';
+import type { ProjectDocument } from '../../../contracts/projectWorkflow';
 import type { ProjectHooks } from './canvasWorkflowHooks';
 import { createModuleLogger } from '../../../kernel/logger.js';
 import { projectMediaRecovery } from '../projectUiServices';
@@ -33,7 +33,7 @@ export function useWorkflowLoad(hooks: ProjectHooks, state: WorkflowState, ui: W
         delete document.updatedAt;
       }
       base.current = copy(document);
-      document.nodes = (document.nodes as WorkflowRecord[]).map(node => projectMediaRecovery().interruptedMediaNode(node));
+      document.nodes = document.nodes.map(node => projectMediaRecovery().interruptedMediaNode(node));
       targetId.current = isPublic ? null : rawId;
       pendingView.current = {
         before: copy(displayedView()), displayed: copy(displayedView()),

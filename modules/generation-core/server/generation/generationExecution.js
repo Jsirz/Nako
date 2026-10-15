@@ -1,11 +1,11 @@
 import { PluginError } from '../../../contracts/errors.js';
 import { GENERATION_ERROR_CODES } from '../../../contracts/generationErrors.js';
-import { annotateProviderError } from '../../../desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
+import { annotateProviderError } from '../../../contracts/providerDiagnostics.js';
 import {
   classifyGenerationError,
   confirmedGenerationFailure,
   getUpstreamStatus,
-} from './generationErrors.js';
+} from '../../../contracts/generationFailure.js';
 import { isRecoverableProvider, sanitizeRemoteTaskReference } from './generationTaskRecovery.js';
 
 const PROVIDER_METHODS = Object.freeze({
@@ -15,16 +15,8 @@ const PROVIDER_METHODS = Object.freeze({
   text: 'generateText',
 });
 
-export class GenerationTaskError extends PluginError {
-  constructor(details) {
-    super(details.code || GENERATION_ERROR_CODES.failed, details.message, {
-      status: details.status, context: { moduleId: 'generation-core', operation: 'executeGenerationTask', ...details.context },
-    });
-    this.name = 'GenerationTaskError';
-    const { context: _context, ...fields } = details;
-    Object.assign(this, fields);
-  }
-}
+import { GenerationTaskError } from '../../../contracts/generationTaskError.js';
+export { GenerationTaskError } from '../../../contracts/generationTaskError.js';
 
 function createCancelledError() {
   return Object.assign(new PluginError(GENERATION_ERROR_CODES.cancelled, 'Generation cancelled', {

@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { UI_FEATURES } from '../../../contracts/uiFeatures';
 import type { WorkflowManagerClient } from './workflowManagerClient';
 import { button, field } from './workflowManagerControls';

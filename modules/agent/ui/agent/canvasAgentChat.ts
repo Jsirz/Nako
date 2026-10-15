@@ -120,7 +120,8 @@ export function createCanvasAgentChat(
     apply: session => {
       if (!active || !conversationEnabled || state.sessionId !== session.id) return;
       applySnapshot(session);
-      update({ isLoading: session.run?.status === 'running', isStreaming: session.run?.status === 'running', error: null });
+      update({ isLoading: session.run?.status === 'running', isStreaming: session.run?.status === 'running',
+        error: session.run?.status === 'failed' ? session.run.error || state.error : null });
     },
     failed: error => update({ error: messageError(error), ...(error instanceof AgentClientError && error.status === 404 ? { isLoading: false, isStreaming: false } : {}) }),
     settled: id => { void conversation?.onTurnSettled(id, canvas?.projectId).catch(() => {}); },
@@ -236,6 +237,7 @@ function createChatHistory(scope: ChatScope) {
       branch: session.activeBranch,
       branches: session.branches,
       runStatus: session.run?.status,
+      ...(session.run?.status === 'failed' && session.run.error ? { error: session.run.error } : {}),
       knownCards: session.knownCards || [],
       tools: session.receipts?.map((receipt) => ({
         id: receipt.id,

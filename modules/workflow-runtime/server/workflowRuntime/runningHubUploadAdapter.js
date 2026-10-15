@@ -1,17 +1,19 @@
+import { MediaArtifactError } from '../../../contracts/mediaDelivery.js';
+import { mediaRuntime } from '../../../kernel/server.js';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { clearTimeout, setTimeout } from 'node:timers';
 import sharp from 'sharp';
-import { MediaArtifactError, resolveMediaArtifact } from '../../../asset-media/api/server/media/mediaArtifact.js';
-import { createMediaMetadataProbe } from '../../../asset-media/api/server/media/mediaMetadataProbe.js';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+const resolveMediaArtifact = (options) => mediaRuntime().resolveArtifact(options);
+const createMediaMetadataProbe = (options) => mediaRuntime().createMetadataProbe(options);
+import { platformPaths } from '../../../kernel/server.js';
 
 export const RUNNINGHUB_UPLOAD_MAX_BYTES = 30 * 1024 * 1024;
 export const RUNNINGHUB_UPLOAD_TARGET_BYTES = 29 * 1024 * 1024;
 
-const BUNDLED_FFMPEG_PATH = path.join(RUNTIME_PATHS.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+const bundledFfmpegPath = () => path.join(platformPaths().runtime.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 
 export class RunningHubUploadAdapterError extends Error {
   constructor(message, code = 'RUNNINGHUB_UPLOAD_ADAPT_FAILED', status = 422) {
@@ -60,7 +62,7 @@ function runFfmpeg(args, { signal, spawnProcess = spawn, timeoutMs = 30 * 60_000
     }
     let child;
     try {
-      child = spawnProcess(BUNDLED_FFMPEG_PATH, args, {
+      child = spawnProcess(bundledFfmpegPath(), args, {
         windowsHide: true,
         stdio: ['ignore', 'ignore', 'pipe'],
       });

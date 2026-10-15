@@ -14,9 +14,23 @@ import {
   normalizeRunningHubInstanceType,
 } from '../modules/contracts/workflowProtocols.js';
 
+function registerWorkflowServices(host) {
+  for (const [id, services] of [
+    ['module.media-capabilities', { 'media.runtime': {}, 'platform.paths': {} }],
+    ['module.identity-account', { 'identity.externalUrlFetch': {} }],
+  ]) host.register({
+    manifest: { id, version: '1.0.0', apiVersion: '^1.0.0', type: 'module',
+      services: { provides: Object.keys(services) } },
+    activate(context) {
+      for (const [name, service] of Object.entries(services)) context.services.register(name, service);
+    },
+  });
+  return host.register(registryPlugin);
+}
+
 it('uses the activated workflow client factory and revokes retained clients on shutdown', async () => {
   const host = new PluginHost();
-  host.register(registryPlugin);
+  registerWorkflowServices(host);
   host.register(comfyPlugin);
   await host.start();
   const registry = host.services.get('workflow.executors');
@@ -50,7 +64,7 @@ it.each([
   const get = vi.fn(() => ({ RUNNINGHUB_API_KEY: cnKey, RUNNINGHUB_GLOBAL_API_KEY: globalKey }));
   const host = new PluginHost({ credentialStore: { get },
     credentialGrants: { [`workflow.${id}`]: ['provider.runninghub'] } });
-  host.register(registryPlugin).register(plugin);
+  registerWorkflowServices(host).register(plugin);
   await host.start();
   const registry = host.services.get('workflow.executors');
   const fetcher = vi.fn(async () => Response.json({ code: 0, data: { currency: 'CNY' } }));
@@ -84,7 +98,7 @@ it.each([
 it('does not create a cloud client when the workflow plugin lacks a credential grant', async () => {
   const get = vi.fn(() => ({ RUNNINGHUB_API_KEY: 'must-not-be-read' }));
   const host = new PluginHost({ credentialStore: { get } });
-  host.register(registryPlugin).register(runningHubWorkflowPlugin);
+  registerWorkflowServices(host).register(runningHubWorkflowPlugin);
   await host.start();
   try {
     expect(() => host.services.get('workflow.executors').createClient('runninghub-workflow', {

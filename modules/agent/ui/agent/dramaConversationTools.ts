@@ -1,6 +1,6 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
-import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
+import { observeStableEnhancement } from '../../../kernel/ui/enhancementLifecycle';
 import type { AgentConversation, ConversationTools } from './agentConversation';
 import type { DramaConversationState } from './agentClient';
 import { productionProfileForSkill, productionProfileForBundle } from '../../../contracts/officialProductionProfiles.js';

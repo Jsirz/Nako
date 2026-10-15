@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import sharp from 'sharp';
-import { RUNTIME_PATHS } from '../../../modules/project/api/server/workspace/runtimePaths.js';
+import { platformPaths } from '../../../modules/kernel/server.js';
 
 class MediaEditingError extends PluginError {
   constructor(message, status = 400, operationCode = 'INVALID_MEDIA_EDIT') {
@@ -17,7 +17,7 @@ class MediaEditingError extends PluginError {
   }
 }
 
-const bundledFfmpegPath = path.join(RUNTIME_PATHS.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+const bundledFfmpegPath = () => path.join(platformPaths().runtime.BIN_DIR, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 
 function assertSafeSegment(value, label) {
   if (
@@ -187,7 +187,7 @@ async function defaultFfmpegRunner(job) {
           '-c:a', 'aac', '-movflags', '+faststart', job.outputPath,
         ];
   await new Promise((resolve, reject) => {
-    const child = spawn(bundledFfmpegPath, args, {
+    const child = spawn(bundledFfmpegPath(), args, {
       windowsHide: true,
       stdio: ['ignore', 'ignore', 'pipe'],
     });

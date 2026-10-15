@@ -3,7 +3,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
-import { fetchExternalUrl } from '../../../identity-account/api/server/security/externalUrlPolicy.js';
+import { externalMediaFetch } from '../../../kernel/server.js';
+const fetchExternalUrl = (...args) => externalMediaFetch().fetch(...args);
 
 export function coverUrlFromInfo(info) {
   for (const value of [info?.coverUrl, info?.cover, info?.coverImage, info?.thumbnailUrl, info?.thumbnail, info?.webappCover, info?.imageUrl]) {

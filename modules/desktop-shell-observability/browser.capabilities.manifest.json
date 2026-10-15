@@ -1,0 +1,4 @@
+{
+  "id": "ui.desktop-platform", "version": "1.0.0", "apiVersion": "^1.0.0", "type": "platform",
+  "reloadRequired": true, "services": { "provides": ["ui.desktop.capabilities"] }
+}

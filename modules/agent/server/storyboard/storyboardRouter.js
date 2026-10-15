@@ -3,7 +3,7 @@ import { AgentOperationError } from '../../../contracts/agentErrors.js';
 const logger = createModuleLogger('module.agent.storyboard');
 import crypto from 'node:crypto';
 import express from 'express';
-import { classifyGenerationError } from '../../../generation-core/api/server/generation/generationErrors.js';
+import { classifyGenerationError } from '../../../contracts/generationFailure.js';
 
 const REFERENCE_CATEGORIES = new Set(['Character', 'Scene', 'Item', 'Style', 'Other']);
 

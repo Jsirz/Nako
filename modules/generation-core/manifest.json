@@ -5,7 +5,9 @@
   "type": "module",
   "services": {
     "provides": [
-      "generation.providers"
+      "generation.providers",
+      "generation.receipts",
+      "generation.modelCatalog"
     ]
   }
 }

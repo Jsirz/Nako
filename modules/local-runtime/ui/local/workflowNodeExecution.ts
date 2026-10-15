@@ -13,12 +13,13 @@ import {
   type WorkflowRunScope,
 } from './workflowRunObserver';
 
-import { registerWorkflowRecoveryOwner } from '../../../generation-core/api/ui/generation/workflowRecoveryBoundary';
+import { generationInteraction } from '../../../kernel/browser';
+const registerWorkflowRecoveryOwner = (nodeId: unknown) => generationInteraction().registerWorkflowRecoveryOwner(nodeId);
 
 import {
   requestAnchoredConfirmation,
   RUNNINGHUB_PAID_CONFIRMATION_KEY,
-} from '../../../canvas-ui/api/ui/design/designSystem';
+} from '../../../kernel/ui/designSystem';
 
 import type { WorkflowCanvasOperationContext } from './workflowNodeContext';
 import { applyWorkflowSeedAdvancements } from './workflowNodeParameters';

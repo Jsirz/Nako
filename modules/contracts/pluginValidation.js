@@ -5,14 +5,15 @@ const record = value => value !== null && typeof value === 'object' && !Array.is
 const identifier = value => typeof value === 'string' && /^[a-z][a-z0-9.-]+$/.test(value);
 const version = value => typeof value === 'string' && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value);
 const range = value => typeof value === 'string' && version(value.replace(/^(\^|>=)/, ''));
-const invalid = field => { throw new PluginError(ERRORS.invalidManifest, `Invalid plugin contract: ${field}`); };
+const invalid = field => { throw new PluginError(ERRORS.invalidManifest, `Invalid plugin contract: ${field}`,
+  { status: 400, context: { moduleId: 'contracts', protocol: 'pluginManifest', operation: 'validate', field } }); };
 function strings(value, field, test = item => typeof item === 'string' && item.trim() === item && item.length > 0) {
   if (!Array.isArray(value) || value.some(item => !test(item)) || new Set(value).size !== value.length) invalid(field);
 }
 
 export const GENERATION_KINDS = Object.freeze(['image', 'video', 'audio', 'text']);
 export const WORKFLOW_EXECUTOR_METHODS = Object.freeze(['execute', 'resume', 'retryInputCleanup', 'markRecoveryInputsOrphaned', 'markInputsOrphaned', 'cleanupInputs']);
-export const WORKFLOW_CLIENT_METHODS = Object.freeze(['getSystemStats', 'getObjectInfo', 'supportsAtomicJobCancel', 'uploadInput', 'getWebAppInfoForProtocol', 'getWebAppInfo', 'getWorkflowApiFormat', 'getGlobalAiAppPageInfo', 'getWebAppCover', 'openOutput', 'validateCredential', 'resolveWebAppInfo']);
+export const WORKFLOW_CLIENT_METHODS = Object.freeze(['getSystemStats', 'getObjectInfo', 'supportsAtomicJobCancel', 'uploadInput', 'getWebAppInfoForProtocol', 'getWebAppInfo', 'getWorkflowApiFormat', 'getGlobalAiAppPageInfo', 'getWebAppCover', 'openOutput', 'validateCredential', 'resolveWebAppInfo', 'uploadBuffer', 'createWebAppTask', 'getWebAppTaskOutputs']);
 
 export function validateProviderDescriptor(value) {
   if (!record(value) || typeof value.name !== 'string' || !/^[A-Za-z][A-Za-z0-9]+$/.test(value.name)) invalid('provider.name');

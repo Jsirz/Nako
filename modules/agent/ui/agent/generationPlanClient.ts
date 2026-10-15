@@ -1,5 +1,5 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
-import type { GenerationBatch } from './canvasCreationControl';
+import type { GenerationBatch } from '../../../contracts/agentCanvasWorkspace';
 export interface GenerationPlanRecord extends GenerationBatch { revision: number }
 export function createGenerationPlanClient(fetcher: typeof fetch = globalThis.fetch) {
   const base = '/api/agent/plans';

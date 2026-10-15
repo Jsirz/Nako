@@ -1,4 +1,4 @@
-import { createStableElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement } from '../../../kernel/ui/dom';
 import { desktopBridge, type NakoDesktopBridge } from './desktopBridge';
 
 const NOTICE_ATTRIBUTE = 'data-nako-backend-reconnecting';

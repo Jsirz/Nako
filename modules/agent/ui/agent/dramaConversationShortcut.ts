@@ -1,7 +1,7 @@
 import { SKILL_CATALOG_CHANGED, SKILL_SELECT_EVENT } from '../../../contracts/skillCatalog.js';
 import type { AgentSkillSelectionRequest } from '../../../contracts/skillCatalog.js';
 import { browserHost, browserServices } from '../../../kernel/browser';
-import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
+import { observeStableEnhancement } from '../../../kernel/ui/enhancementLifecycle';
 import {
   createAgentSkillClient,
   type AgentSkill,

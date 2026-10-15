@@ -1,6 +1,6 @@
 import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { createStableElement as element } from '../../../kernel/ui/dom';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import type { WorkflowDefinition,WorkflowManagerClient } from './workflowManagerClient';
 import { button,field,messageFor } from './workflowManagerControls';
 import { DeployedWorkflowRecord,ManagerState } from './workflowManagerTypes';

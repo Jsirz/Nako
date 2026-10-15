@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 
 export const RUNNINGHUB_CN_KEY_URL = 'https://www.runninghub.cn/call-api/bill-task?tab=keys&type=consumer';
 export const RUNNINGHUB_GLOBAL_KEY_URL = 'https://www.runninghub.ai/zh-cn/call-api/bill-task?tab=keys&type=consumer';

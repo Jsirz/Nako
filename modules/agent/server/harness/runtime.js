@@ -6,9 +6,27 @@ import {
   serializeConversation,
 } from '@earendil-works/pi-agent-core';
 import { agentEvent } from '../../../contracts/agentProtocol.js';
+import { AGENT_ERROR_CODES } from '../../../contracts/agentErrors.js';
+import { AgentTextGenerationError } from '../../../contracts/agentTextGeneration.js';
+import { createModuleLogger } from '../../../kernel/logger.js';
 import { createModelAdapter, textContent } from './modelAdapter.js';
 import { contextMessages, sessionView, harnessError } from './session.js';
 import { controlledTools, journalBusinessTool } from './tools.js';
+
+const logger = createModuleLogger('module.agent');
+function runFailure(error) {
+  if (!error) return {};
+  const safe = error instanceof AgentTextGenerationError || [
+    'AgentCanvasError', 'DramaPlanError', 'AgentRequestError', 'AgentSessionStoreError',
+  ].includes(error.name);
+  return {
+    code: error.code || AGENT_ERROR_CODES.operation,
+    error: safe ? error.message : '本轮运行未完成，已确认的操作和回执已保留。',
+    httpStatus: error.status || 500,
+    ...(error instanceof AgentTextGenerationError && typeof error.context?.reason === 'string'
+      ? { reason: error.context.reason } : {}),
+  };
+}
 
 /** pi runtime, types and transcript conversion stay inside the agent module. */
 export function createPiAgentHarness({
@@ -266,27 +284,20 @@ function createTurnRunner({ sessions, textTransport, mediaService, libraryDirect
         } finally {
           signal?.removeEventListener('abort', abort);
           try {
+            const diagnostic = runFailure(failure);
+            if (status === 'failed') logger.error('Agent run failed', {
+              operation: 'agent.run', sessionId, projectId, runId, modelName: modelConfig.name, error: failure,
+            });
             const saved = await sessions.change(sessionId, (r) => {
               Object.assign(r.runs[runId], {
                 status,
                 endedAt: Date.now(),
-                ...(failure ? { code: failure.code || 'AGENT_RUN_FAILED' } : {}),
+                ...diagnostic,
               });
             });
-            const safeError =
-              failure &&
-              ([
-                'AgentCanvasError',
-                'DramaPlanError',
-                'AgentRequestError',
-                'AgentSessionStoreError',
-              ].includes(failure.name)
-                ? failure.message
-                : '本轮运行未完成，已确认的操作和回执已保留。');
             await emit('run_end', {
               status,
-              code: failure?.code,
-              error: safeError,
+              ...diagnostic,
               response: textContent(
                 agent.state.messages.filter((m) => m.role === 'assistant').at(-1)?.content,
               ),

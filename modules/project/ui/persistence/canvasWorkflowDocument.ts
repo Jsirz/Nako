@@ -1,5 +1,6 @@
 import { ProjectError, PROJECT_ERRORS } from '../../../contracts/projectErrors.js';
 import type { CanvasWorkflowProps, WorkflowRecord } from '../../../contracts/projectWorkflow';
+import type { LoadedCanvasProject } from '../../../contracts/canvasServiceBindings';
 
 export const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 export function content(document: WorkflowRecord) {
@@ -16,13 +17,13 @@ export function stale(): ProjectError {
     context: { operation: 'workflowEpoch' },
   });
 }
-export function validateDocument(value: unknown, id?: string): WorkflowRecord {
+export function validateDocument(value: unknown, id?: string): LoadedCanvasProject {
   const invalid = (message: string, field: string) => new ProjectError(PROJECT_ERRORS.invalidDocument, message, {
     context: { operation: 'validateWorkflow', projectId: id, field },
   });
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw invalid('项目数据格式无效。', 'document');
-  const doc = value as WorkflowRecord;
+  const doc = value as LoadedCanvasProject;
   const revision = Number(doc.revision ?? 0);
   if (!Number.isSafeInteger(revision) || revision < 0) throw invalid('项目版本号无效。', 'revision');
   doc.revision = revision;

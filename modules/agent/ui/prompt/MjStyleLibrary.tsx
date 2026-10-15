@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { activateSidePanel, useNodeSidePanel } from './nodeSidePanel';
 import { ArrowLeft, ChevronDown, Search, X } from 'lucide-react';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import type { CreativePreset } from './creativePresets';
 import {
   filterMjStyles,

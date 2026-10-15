@@ -1,6 +1,7 @@
+import { workflowSupport } from '../../../modules/kernel/server.js';
 import { LocalComfyExecutorError } from '../../../modules/contracts/workflowProtocols.js';
 
-import { classifyHistoryState } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowOutputs.js';
+const classifyHistoryState = (...args) => workflowSupport().classifyHistory(...args);
 
 import { SAFE_PROMPT_ID } from './executorSafety.js';
 

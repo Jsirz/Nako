@@ -1,7 +1,9 @@
 import { browserServices } from '../../../kernel/browser';
 import { canConnectPackage, packageDefinition, packagePortY } from './nodeConnectionPorts';
 import type { CanvasNode } from './canvasNodeOperations';
-import { adaptiveMediaNodeSize, videoDisplayAspectRatio } from '../../../asset-media/api/ui/media/mediaNodeSizing';
+import { mediaCanvas } from '../../../kernel/browser';
+const adaptiveMediaNodeSize = (node: Parameters<ReturnType<typeof mediaCanvas>['nodeSize']>[0]) => mediaCanvas().nodeSize(node);
+const videoDisplayAspectRatio = (node: Parameters<ReturnType<typeof mediaCanvas>['videoAspectRatio']>[0]) => mediaCanvas().videoAspectRatio(node);
 
 export const nodeTypes = {
   TEXT: 'Text',

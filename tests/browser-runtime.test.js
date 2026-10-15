@@ -48,7 +48,7 @@ it('starts the real browser module sequence with working adapters and no window 
   const { browserHost, browserServices } = await import('../modules/kernel/browser.ts');
   try {
     await import('../apps/canvas/bootstrap.ts');
-    expect(browserHost.list()).toHaveLength(11);
+    expect(browserHost.list()).toHaveLength(12);
     expect(browserHost.list().every((p) => p.state === 'active')).toBe(true);
     expect(browserServices.__NAKO_CANVAS_SELECTION__.clearSelection()).toEqual([]);
     expect(browserServices.__NAKO_VIDEO_PLAYBACK__).toBeDefined();

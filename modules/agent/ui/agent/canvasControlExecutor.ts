@@ -1,36 +1,16 @@
 import { validCanvasControl, projectCanvasResult, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
-import {
-  deleteCanvasNodes,
-  cloneCanvasNodes,
-  hasGeneratingCanvasNodes,
-  insertClonedCanvasNodes,
-} from '../../../canvas-ui/api/ui/canvas/canvasClipboard';
-import { disconnectCanvasNodes } from '../../../canvas-ui/api/ui/canvas/canvasConnections';
-import { cleanupCanvasGroups, groupCanvasNodes, ungroupCanvasNodes, renameCanvasGroup, type CanvasGroup } from '../../../canvas-ui/api/ui/canvas/canvasGroups';
-import { gridLayoutCanvasNodes } from '../../../canvas-ui/api/ui/canvas/canvasLayout';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
+import type { CanvasControlRuntime as Runtime, CanvasSnapshot as Snapshot } from '../../../contracts/agentCanvasWorkspace';
+import { canvasEditing } from '../../../kernel/browser';
 
 import { configureCanvasModel, modelKey, modeKey, modelParameters } from './canvasModelControl';
 import { browserHost } from '../../../kernel/browser';
-import type { NodeRegistry } from '../../../kernel/nodeRegistry';
+import type { NodeRegistry } from '../../../kernel/nodeRegistry.js';
 import { validateNodeValue } from '../../../contracts/nodeExecution.js';
-import { connectCanvasNodes } from '../../../canvas-ui/api/ui/canvas/canvasConnections';
-
-type Snapshot = { nodes: CanvasNode[]; groups: CanvasGroup[] };
-interface Runtime {
-  projectId: string;
-  snapshot(): Snapshot;
-  create(type: string, point: { x: number; y: number }, projectId: string): CanvasNode;
-  commit(before: Snapshot, after: Snapshot): void;
-  configure?(nodes: CanvasNode[], id: string, patch: Partial<CanvasNode>): CanvasNode[];
-  connect?(nodes: CanvasNode[], sourceId: string, targetId: string, sourcePort?: number): CanvasNode[];
-  measure?(node: CanvasNode): { width: number; height: number };
-  selection?(): string[];
-  focus?(nodeIds: string[]): void;
-}
 
 /** One instance per open document. Plans on copies; a failed batch never partially applies. */
 export function createCanvasControlExecutor(getRuntime: () => Runtime | null) {
+  const editing = canvasEditing();
   let fingerprint = '', revision = crypto.randomUUID();
   const receipts = new Map<string, { command: string; result: CanvasResult }>();
   const undo = new Map<string, { before: Snapshot; after: string }>();
@@ -115,7 +95,7 @@ export function createCanvasControlExecutor(getRuntime: () => Runtime | null) {
               pending.push(...(next.nodes.find(node => node.id === id)?.parentIds || []).filter(Boolean));
             }
             const connected = operation.targetPort !== undefined
-              ? connectCanvasNodes(next.nodes, { parentId: sourceId, childId: targetId, portIndex: operation.targetPort, sourcePortIndex: operation.sourcePort })
+              ? editing.connect(next.nodes, { parentId: sourceId, childId: targetId, portIndex: operation.targetPort, sourcePortIndex: operation.sourcePort })
               : runtime.connect(next.nodes, sourceId, targetId, operation.sourcePort);
             if (connected === next.nodes) return { ok: false, code: 'INVALID' };
             next.nodes = connected;
@@ -123,7 +103,7 @@ export function createCanvasControlExecutor(getRuntime: () => Runtime | null) {
             const target = next.nodes.find(node => node.id === targetId)!;
             if (operation.targetPort !== undefined && target.parentIds?.[operation.targetPort] !== sourceId) return { ok: false, code: 'NOT_FOUND' };
             if (!target.parentIds?.includes(sourceId)) return { ok: false, code: 'NOT_FOUND' };
-            next.nodes = disconnectCanvasNodes(next.nodes, { parentId: sourceId, childId: targetId, portIndex: operation.targetPort });
+            next.nodes = editing.disconnect(next.nodes, { parentId: sourceId, childId: targetId, portIndex: operation.targetPort });
           }
         } else if (operation.kind === 'group' || operation.kind === 'arrange') {
           const nodeIds = operation.nodeIds.map(resolve);
@@ -131,26 +111,26 @@ export function createCanvasControlExecutor(getRuntime: () => Runtime | null) {
           if (operation.kind === 'group') {
             if (!availableRef(operation.ref)) return { ok: false, code: 'INVALID' };
             const groupId = crypto.randomUUID();
-            next = groupCanvasNodes(next, nodeIds, { groupId, label: operation.label });
+            next = editing.group(next, nodeIds, { groupId, label: operation.label });
             ids.set(operation.ref, groupId);
             created.push({ ref: operation.ref, id: groupId });
           } else {
             if (!runtime.measure) return { ok: false, code: 'UNAVAILABLE' };
             const measure = runtime.measure;
-            next.nodes = gridLayoutCanvasNodes(next.nodes, nodeIds, operation.columns, { getWidth: node => measure(node).width, getHeight: node => measure(node).height });
+            next.nodes = editing.grid(next.nodes, nodeIds, operation.columns, { getWidth: node => measure(node).width, getHeight: node => measure(node).height });
           }
         } else if (operation.kind === 'ungroup' || operation.kind === 'renameGroup') {
           const id = resolve(operation.groupId);
           if (!next.groups.some(group => group.id === id)) return { ok: false, code: 'NOT_FOUND' };
-          if (operation.kind === 'ungroup') next = ungroupCanvasNodes(next, id);
-          else next.groups = renameCanvasGroup(next.groups, id, operation.label);
+          if (operation.kind === 'ungroup') next = editing.ungroup(next, id);
+          else next.groups = editing.renameGroup(next.groups, id, operation.label);
         } else if (operation.kind === 'duplicate') {
           const originals = operation.nodes.map(item => next.nodes.find(node => node.id === resolve(item.nodeId)));
           if (originals.some(node => !node)) return { ok: false, code: 'NOT_FOUND' };
           if (new Set(originals.map(node => node!.id)).size !== originals.length) return { ok: false, code: 'INVALID' };
-          if (hasGeneratingCanvasNodes(originals as CanvasNode[]) || operation.nodes.some(item => !availableRef(item.ref))) return { ok: false, code: 'INVALID' };
-          const copied = cloneCanvasNodes(originals as CanvasNode[], { offset: 0, createId: () => crypto.randomUUID(), targetPoint: { x: operation.x, y: operation.y }, preserveParentConnections: true });
-          next.nodes = insertClonedCanvasNodes(next.nodes, copied.newNodes, copied.idMap, {
+          if (editing.hasGeneratingNodes(originals as CanvasNode[]) || operation.nodes.some(item => !availableRef(item.ref))) return { ok: false, code: 'INVALID' };
+          const copied = editing.cloneNodes(originals as CanvasNode[], { offset: 0, createId: () => crypto.randomUUID(), targetPoint: { x: operation.x, y: operation.y }, preserveParentConnections: true });
+          next.nodes = editing.insertClones(next.nodes, copied.newNodes, copied.idMap, {
             preserveChildConnections: true,
           });
           operation.nodes.forEach((item, index) => {
@@ -173,9 +153,9 @@ export function createCanvasControlExecutor(getRuntime: () => Runtime | null) {
             next.nodes = runtime.configure(next.nodes, id, patch);
           } else if (operation.kind === 'update') next.nodes[index] = { ...next.nodes[index], ...operation.patch };
           else {
-            next.nodes = deleteCanvasNodes(next.nodes, [id]);
+            next.nodes = editing.deleteNodes(next.nodes, [id]);
             next.groups = next.groups.map(group => ({ ...group, nodeIds: group.nodeIds.filter(nodeId => nodeId !== id) }));
-            next = cleanupCanvasGroups(next);
+            next = editing.cleanupGroups(next);
           }
         }
       }

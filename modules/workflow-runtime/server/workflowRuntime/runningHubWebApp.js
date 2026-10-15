@@ -1,7 +1,8 @@
 import { normalizeApiWorkflow, sha256Json } from './workflowFormat.js';
 import { decodeFieldData, fieldDataSettings, uploadMediaKind, mediaEmptyContract } from './cloudMediaInputs.js';
 
-export const RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID = 'nako_webapp_output';
+import { RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID } from '../../../contracts/workflowSupport.js';
+export { RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID } from '../../../contracts/workflowSupport.js';
 
 const SAFE_REMOTE_ID = /^[A-Za-z0-9._-]{1,200}$/;
 const SAFE_FIELD = /^[A-Za-z0-9._-]{1,160}$/;

@@ -20,7 +20,8 @@ export function lazyPlugin(manifest, load) {
       if (
         JSON.stringify(canonical(implementation?.manifest)) !== JSON.stringify(canonical(manifest))
       ) {
-        throw new PluginError(ERRORS.invalidManifest, `Plugin entry does not match its manifest: ${manifest.id}`);
+        throw new PluginError(ERRORS.invalidManifest, `Plugin entry does not match its manifest: ${manifest.id}`,
+          { context: { moduleId: 'kernel', operation: 'plugin.load', pluginId: manifest.id } });
       }
       await implementation.activate(context);
     },

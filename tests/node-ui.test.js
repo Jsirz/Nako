@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import './helpers/modelCatalog.js';
+import './helpers/mediaCanvas.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { render, fireEvent, cleanup, waitFor } from '@testing-library/react';

@@ -11,6 +11,12 @@
     "ui.generation-core"
   ],
   "services": {
-    "provides": ["generation.defaults", "ui.generation"]
+    "provides": [
+      "generation.defaults",
+      "ui.generation",
+      "ui.generation.catalog",
+      "ui.generation.preparation",
+      "ui.generation.interaction"
+    ]
   }
 }

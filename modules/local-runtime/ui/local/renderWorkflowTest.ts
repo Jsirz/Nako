@@ -3,8 +3,8 @@ import { appendWorkflowVerificationRecord } from './appendWorkflowVerificationRe
 import {
   requestAnchoredConfirmation,
   RUNNINGHUB_PAID_CONFIRMATION_KEY,
-} from '../../../canvas-ui/api/ui/design/designSystem';
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+} from '../../../kernel/ui/designSystem';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { appendWorkflowBindingSection } from './appendWorkflowBindingSection';
 import { appendWorkflowRunProgress } from './appendWorkflowRunProgress';
 import { createWorkflowBindingNameEditor } from './createWorkflowBindingNameEditor';

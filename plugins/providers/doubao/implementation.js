@@ -3,8 +3,9 @@ import { doubaoThinkingParameters } from '../../../modules/contracts/thinkingPar
  * doubaoProvider.js
  * 封装火山引擎 Ark 平台 (豆包) 的生成逻辑
  */
-import { resolveImageToBase64 } from '../../../modules/asset-media/api/server/utils/imageHelpers.js';
-import { getModelDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
+import { mediaRuntime } from '../../../modules/kernel/server.js';
+const resolveImageToBase64 = (...args) => mediaRuntime().imageBase64(...args);
+const getModelDimensions = (...args) => mediaRuntime().dimensions(...args);
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs, submitOpenAiChatWithLogs, pollJsonTask } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
 import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';

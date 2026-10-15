@@ -1,4 +1,4 @@
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 import { observeNodeTask } from './nodeTaskObservation';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
 

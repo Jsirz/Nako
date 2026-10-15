@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import type { ManagerState } from './workflowManagerTypes';
 export const panelHeading = (title: string, copy: string, actions?: HTMLElement) => {
   const row = element('div', 'fwm-panel-head');

@@ -2,15 +2,17 @@
 
 ## 职责与边界
 
-负责节点呈现、连线、分组、选择、拖拽、剪贴板、撤销、设置和根画布。入口 [browser.ts](../../modules/canvas-ui/browser.ts) 安装交互及节点框架，`rootPlugin.tsx` 注册 ui.root。禁止导入 Provider、适配器和 local-runtime API；本地工作流能力通过 kernel 的 `ui.local-runtime` 服务获取。
+负责节点呈现、连线、分组、选择、拖拽、剪贴板、撤销、设置和画布交互。入口 [browser.ts](../../modules/canvas-ui/browser.ts) 安装交互及节点框架；根组件装配和 ui.root 注册归 apps/canvas。禁止导入 Provider、适配器和 local-runtime API；本地工作流能力通过 kernel 的 `ui.local-runtime` 服务获取。
 
-现有项目、媒体、生成、身份等 UI 组件仍由公开 api 静态复用；这不是 AGENTS.md 严格服务化目标已全部完成的证明，见 [规范差异](conformance.md)。
+业务模块的横向调用已改为服务或公共协议，公开组件由应用组合根装配。静态边界通过不代表全部运行行为与 AGENTS.md 其它约束均已验证，见 [规范差异](conformance.md)。
 
 ## 接口契约
 
 `ui.root.mount(element)` 挂载 React 根并登记卸载；根 manifest 显式依赖 `ui.local-runtime`。`node.registry` 提供节点定义，`nodes.client` 处理节点生成与观察。公开纯函数/组件出口列在 [exports.json](../../modules/canvas-ui/exports.json)。
 
-`canvasRuntime.tsx` 装配画布依赖；`canvasApplicationDependencies.ts` 描述当前根 UI 注入形状。跨模块节点和工作流公共协议来自 contracts，画布不获取原始客户端、模型密钥或本地进程对象。`canvasComponents.ts` 经服务渲染工作流卡，设置经服务挂载本地运行时页，Agent 执行请求经相同服务交给节点当前 owner。
+应用组合根 [canvasRuntime.tsx](../../apps/canvas/canvasRuntime.tsx) 装配 React、项目、生成及媒体 hooks；[canvasComponents.ts](../../apps/canvas/canvasComponents.ts)、[canvasPresentations.ts](../../apps/canvas/canvasPresentations.ts) 装配各模块公开组件。[rootPlugin.tsx](../../apps/canvas/rootPlugin.tsx) 挂载与卸载根视图，[promptVendor.ts](../../apps/canvas/promptVendor.ts) 绑定编辑器依赖，[useRecovery.ts](../../apps/canvas/useRecovery.ts) 绑定恢复观察。上述文件归 apps/canvas，不由画布业务模块横向导入。
+
+`canvasApplicationDependencies.ts` 描述应用注入形状，跨模块 hook 输入和返回值来自 contracts/canvasServiceBindings；节点、文档、媒体 composer 和提示词编辑协议同样归 contracts，React 类型留在 UI 或组合根。画布通过 kernel 读取模型、媒体、Agent 文档及呈现服务，不获取原始客户端、模型密钥或本地进程对象。
 ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清理、模态、提示与增强观察能力；ui.media.recovery 由媒体插件提供，预设复制通过 kernel 获取，不静态调用媒体恢复实现。插件声明及磁盘 manifest 的 provides/requires 同步，kernel 负责撤销注册。
 
 ## 数据模型
@@ -22,6 +24,8 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 持久化节点类型与端口身份不同于数组位置；插件缺席保留缺失节点占位，不悄悄改成其他节点。运行中节点的复制限制、只读画布导航及媒体工具栏沿用当前工作区已有实现，本次不回滚用户修改。
 
 ## 功能结构
+
+全景图与角度图的 [imageToolGenerateButton.tsx](../../modules/canvas-ui/ui/dialogs/imageToolGenerateButton.tsx) 订阅 `generation.defaults`，通过 `ui.media.canvas.imageToolModel` 读取当前可用的默认图像模型，保持按钮提示与创建节点的选择一致；没有支持图生图的默认模型时禁用生成并提示设置。已有节点的角度参数编辑仍可保存，不依赖默认模型可用性。浏览器插件显式声明默认模型服务依赖。
 
 设置“存储”页保留 `ui.media.settings` 下载设置，并通过 kernel ServiceRegistry 的 `ui.project.cacheSettings` 挂载作品缓存清理卡片；契约为 contracts/browserCapabilities 的 `ProjectCacheSettingsService`，实现及 HTTP 请求归 project 模块所有。切换分类或关闭设置时释放两个页面挂载，不由 canvas-ui 操作文件系统。
 
@@ -45,20 +49,14 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | 源码 | 职责 | 主要导出 | 副作用 |
 | --- | --- | --- | --- |
 | [modules/canvas-ui/browser.manifest.json](../../modules/canvas-ui/browser.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
-| [modules/canvas-ui/browser.root.manifest.json](../../modules/canvas-ui/browser.root.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
 | [modules/canvas-ui/browser.ts](../../modules/canvas-ui/browser.ts) | 模块入口或装配 | `default` | 含 服务注册/生命周期 调用；时机见实现 |
 | [modules/canvas-ui/exports.json](../../modules/canvas-ui/exports.json) | 公开 API 清单 | 声明式配置 | 无业务运行副作用 |
-| [modules/canvas-ui/index.ts](../../modules/canvas-ui/index.ts) | 模块入口或装配 | `CanvasRoot`, `CanvasApplication` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/rootPlugin.tsx](../../modules/canvas-ui/rootPlugin.tsx) | 模块入口或装配 | `default` | 含 DOM/事件、服务注册/生命周期 调用；时机见实现 |
+| [modules/canvas-ui/index.ts](../../modules/canvas-ui/index.ts) | 模块入口或装配 | `CanvasApplication` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/app/canvas.css](../../modules/canvas-ui/ui/app/canvas.css) | 界面样式 | 样式 | 无业务运行副作用 |
 | [modules/canvas-ui/ui/app/canvasComponentType.ts](../../modules/canvas-ui/ui/app/canvasComponentType.ts) | 浏览器交互与状态辅助 | `CanvasComponent` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/app/canvasComponents.ts](../../modules/canvas-ui/ui/app/canvasComponents.ts) | 浏览器交互与状态辅助 | `ProjectDashboard`, `Settings`, `Header`, `Sidebar`, `Scene`, `ViewportControls`, `SidePanels`, `Overlays`, `ImageAnnotation`, `ImageCrop`, `CropEditor`, `ImageResize`, `ProjectDashboardHeader`, `DashboardFolderCard`, `DashboardProjectCard`, `ProjectDashboardMenu`, `Tooltip`, `Edges`, `SelectionBounds`, `Node`, `Minimap`, `AssetHistory`, `AssetLibrary`, `WorkflowLibrary`, `ContextMenu`, `AssetDialog`, `MediaPreview`, `ComparePreview`, `CompositePreview`, `PanoramaScene`, `TextCard`, `ImageCard`, `VideoCard`, `AudioNode`, `CompareNode`, `CompositeNode`, `WorkflowGenerator`, `MiniMaxNode`, `LegacyWorkflowNode`, `GenericNode`, `SaveDialog`, `NodeFrame`, `NodeHeader`, `MediaToolbar`, `PromptEditor`, `ImagePreview`, `VideoPlayer`, `AudioPlayer`, `ConnectedAssets`, `ModelSelector`, `AdvancedSettings`, `Connectors`, `TextComposerView`, `PromptTag`, `MentionTag`, `PresetList`, `MentionList`, `ImageComposerView`, `VideoComposerView`, `ModelIcon`, `Connector`, `PresetForm`, `PresetCard`, `Dimensions`, `TextComposer`, `ImageComposer`, `VideoComposer` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/app/canvasRuntime.tsx](../../modules/canvas-ui/ui/app/canvasRuntime.tsx) | 运行、调度或服务 | `CanvasRoot` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/app/modelBrandIcons.tsx](../../modules/canvas-ui/ui/app/modelBrandIcons.tsx) | 浏览器交互与状态辅助 | `Gemini`, `OpenAI`, `Jimeng`, `Doubao`, `Kling`, `Aliyun`, `Grok`, `DeepSeek`, `Mureka` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/app/pluginSurfaces.ts](../../modules/canvas-ui/ui/app/pluginSurfaces.ts) | 浏览器交互与状态辅助 | `optionalAgentSurfaces` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/app/presentation.ts](../../modules/canvas-ui/ui/app/presentation.ts) | 浏览器交互与状态辅助 | `bind`, `bindRef` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/app/promptVendor.ts](../../modules/canvas-ui/ui/app/promptVendor.ts) | 浏览器交互与状态辅助 | `createPromptVendor` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/app/useRecovery.ts](../../modules/canvas-ui/ui/app/useRecovery.ts) | 运行、调度或服务 | `RecoveryOptions`, `useRecovery` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/CanvasEmptyState.tsx](../../modules/canvas-ui/ui/canvas/CanvasEmptyState.tsx) | 浏览器交互与状态辅助 | `CanvasEmptyState` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/canvasAlignment.ts](../../modules/canvas-ui/ui/canvas/canvasAlignment.ts) | 浏览器交互与状态辅助 | `AlignmentGuide`, `alignCanvasDrag` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/canvasApplication.tsx](../../modules/canvas-ui/ui/canvas/canvasApplication.tsx) | 浏览器交互与状态辅助 | `CanvasApplication` | 未检出平台调用；不等于纯函数证明 |
@@ -110,15 +108,16 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/canvas/useCanvasConnectionState.tsx](../../modules/canvas-ui/ui/canvas/useCanvasConnectionState.tsx) | 浏览器交互与状态辅助 | `useCanvasConnectionState` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/useCanvasDocumentEffects.tsx](../../modules/canvas-ui/ui/canvas/useCanvasDocumentEffects.tsx) | 浏览器交互与状态辅助 | `useCanvasDocumentEffects` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasDocumentState.tsx](../../modules/canvas-ui/ui/canvas/useCanvasDocumentState.tsx) | 浏览器交互与状态辅助 | `useCanvasDocumentState` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/canvas/useCanvasImageUpscale.ts](../../modules/canvas-ui/ui/canvas/useCanvasImageUpscale.ts) | 浏览器交互与状态辅助 | `useCanvasImageUpscale` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasPointerActions.tsx](../../modules/canvas-ui/ui/canvas/useCanvasPointerActions.tsx) | 浏览器交互与状态辅助 | `useCanvasPointerActions` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasProjectNavigation.tsx](../../modules/canvas-ui/ui/canvas/useCanvasProjectNavigation.tsx) | 浏览器交互与状态辅助 | `useCanvasProjectNavigation` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasSaveAndReferences.tsx](../../modules/canvas-ui/ui/canvas/useCanvasSaveAndReferences.tsx) | 浏览器交互与状态辅助 | `useCanvasSaveAndReferences` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/useCanvasSceneBridge.tsx](../../modules/canvas-ui/ui/canvas/useCanvasSceneBridge.tsx) | 浏览器交互与状态辅助 | `useCanvasSceneBridge` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasWorkspaceState.tsx](../../modules/canvas-ui/ui/canvas/useCanvasWorkspaceState.tsx) | 浏览器交互与状态辅助 | `useCanvasWorkspaceState` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/design/designSystem.ts](../../modules/canvas-ui/ui/design/designSystem.ts) | 浏览器交互与状态辅助 | `DESIGN_TOKENS`, `ButtonVariant`, `ToastTone`, `ConfirmationIntent`, `RUNNINGHUB_PAID_CONFIRMATION_KEY`, `AnchoredConfirmationOptions`, `StableDesignSystemAdapter`, `createButton`, `isConfirmationSuppressed`, `resetConfirmationPreference`, `requestAnchoredConfirmation`, `createInput`, `createSelect`, `createPopover`, `createDialog`, `createDangerousConfirmation`, `createToast`, `createTooltip`, `createTabs`, `createMenu`, `installStableDesignSystem` | 含 DOM/事件 调用；时机见实现 |
-| [modules/canvas-ui/ui/design/designSystemStyles.ts](../../modules/canvas-ui/ui/design/designSystemStyles.ts) | 浏览器交互与状态辅助 | `DESIGN_TOKENS`, `DESIGN_CSS` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/design/dom.ts](../../modules/canvas-ui/ui/design/dom.ts) | 浏览器交互与状态辅助 | `createStableElement`, `createStableTextElement` | 未检出平台调用；不等于纯函数证明 |
-| [modules/canvas-ui/ui/design/modalFocus.ts](../../modules/canvas-ui/ui/design/modalFocus.ts) | 浏览器交互与状态辅助 | `activateModal` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/design/designSystem.ts](../../modules/canvas-ui/ui/design/designSystem.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/designSystem` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/design/designSystemStyles.ts](../../modules/canvas-ui/ui/design/designSystemStyles.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/designSystemStyles` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/design/dom.ts](../../modules/canvas-ui/ui/design/dom.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/dom` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/design/modalFocus.ts](../../modules/canvas-ui/ui/design/modalFocus.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/modalFocus` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/CanvasProjectSwitcher.tsx](../../modules/canvas-ui/ui/dialogs/CanvasProjectSwitcher.tsx) | 界面呈现与交互 | `CanvasProjectSwitcher` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/CanvasTransferMenu.tsx](../../modules/canvas-ui/ui/dialogs/CanvasTransferMenu.tsx) | 界面呈现与交互 | `CanvasTransferMenu` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/canvasAnchoredPanel.css](../../modules/canvas-ui/ui/dialogs/canvasAnchoredPanel.css) | 界面样式 | 样式 | 无业务运行副作用 |
@@ -126,7 +125,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/dialogs/canvasComparePreview.tsx](../../modules/canvas-ui/ui/dialogs/canvasComparePreview.tsx) | 界面呈现与交互 | `CanvasComparePreview` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/canvasCompositePreview.tsx](../../modules/canvas-ui/ui/dialogs/canvasCompositePreview.tsx) | 界面呈现与交互 | `CanvasCompositePreview` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/canvasContextMenu.tsx](../../modules/canvas-ui/ui/dialogs/canvasContextMenu.tsx) | 界面呈现与交互 | `ContextMenuIcons`, `CanvasContextMenuProps`, `CanvasContextMenu` | 含 DOM/事件 调用；时机见实现 |
-| [modules/canvas-ui/ui/dialogs/canvasDialogs.ts](../../modules/canvas-ui/ui/dialogs/canvasDialogs.ts) | 界面呈现与交互 | `CanvasLegacyWorkflowNode`, `CanvasImageResize`, `CanvasImageAnnotation`, `CanvasImageCrop`, `CanvasPanoramaScene`, `CanvasSaveDialog`, `useCanvasPanels`, `CanvasContextMenu`, `CanvasCompositePreview`, `CanvasComparePreview`, `CanvasMediaPreview`, `CanvasAssetDialog`, `CanvasOverlays`, `CanvasCompareNode`, `CanvasCompositeNode`, `CanvasMiniMaxNode`, `CanvasMediaToolbar`, `CanvasHeader`, `ProjectDashboard`, `ProjectDashboardHeader`, `DashboardProjectCard`, `DashboardFolderCard`, `ProjectDashboardMenu`, `CanvasMinimap`, `CanvasSelectionBounds`, `CanvasViewportControls`, `CanvasPromptEditor`, `CanvasPromptTag`, `CanvasMentionTag`, `CanvasMentionList`, `CanvasPresetList`, `CanvasPresetCard`, `CanvasPresetForm`, `CanvasVideoPlayer`, `CanvasImagePreview`, `CanvasTextComposer`, `CanvasImageComposer`, `CanvasVideoComposer`, `CanvasAudioPlayer`, `CanvasAudioNode`, `CanvasTextCard`, `CanvasImageCard`, `CanvasVideoCard`, `CanvasDimensions`, `CanvasAdvancedSettings`, `CanvasModelSelector`, `CanvasConnectedAssets`, `CanvasAssetHistory`, `CanvasTooltip`, `CanvasAssetLibrary`, `CanvasLibraryGrid`, `CanvasWorkflowLibrary`, `CanvasNodeFrame`, `CanvasNodeHeader`, `CanvasConnector`, `CanvasConnectors`, `CanvasNode`, `CanvasGenericNode`, `CanvasSidePanels`, `CanvasEdges`, `CanvasScene`, `equalCanvasNodeProps`, `CanvasSidebar`, `CanvasModelIcon`, `CanvasSettings` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/dialogs/canvasDialogs.ts](../../modules/canvas-ui/ui/dialogs/canvasDialogs.ts) | 界面呈现与交互 | `CanvasLegacyWorkflowNode`, `CanvasImageResize`, `CanvasImageAnnotation`, `CanvasImageCrop`, `CanvasPanoramaScene`, `CanvasSaveDialog`, `useCanvasPanels`, `CanvasContextMenu`, `CanvasCompositePreview`, `CanvasComparePreview`, `CanvasMediaPreview`, `CanvasAssetDialog`, `CanvasOverlays`, `CanvasCompareNode`, `CanvasCompositeNode`, `CanvasMiniMaxNode`, `CanvasMediaToolbar`, `CanvasHeader`, `CanvasMinimap`, `CanvasSelectionBounds`, `CanvasViewportControls`, `CanvasTextComposer`, `CanvasImageComposer`, `CanvasVideoComposer`, `CanvasAudioNode`, `CanvasTextCard`, `CanvasImageCard`, `CanvasVideoCard`, `CanvasDimensions`, `CanvasAdvancedSettings`, `CanvasModelSelector`, `CanvasConnectedAssets`, `CanvasAssetHistory`, `CanvasTooltip`, `CanvasAssetLibrary`, `CanvasLibraryGrid`, `CanvasWorkflowLibrary`, `CanvasNodeFrame`, `CanvasNodeHeader`, `CanvasConnector`, `CanvasConnectors`, `CanvasNode`, `CanvasGenericNode`, `CanvasSidePanels`, `CanvasEdges`, `CanvasScene`, `equalCanvasNodeProps`, `CanvasSidebar`, `CanvasModelIcon`, `CanvasSettings` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/canvasHeader.tsx](../../modules/canvas-ui/ui/dialogs/canvasHeader.tsx) | 界面呈现与交互 | `CanvasHeader` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/canvasImageAngle.tsx](../../modules/canvas-ui/ui/dialogs/canvasImageAngle.tsx) | 界面呈现与交互 | `CanvasImageAngle` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/canvasImageAnnotation.tsx](../../modules/canvas-ui/ui/dialogs/canvasImageAnnotation.tsx) | 界面呈现与交互 | `CanvasImageAnnotation` | 含 DOM/事件 调用；时机见实现 |
@@ -158,7 +157,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/dialogs/imageCropGestures.ts](../../modules/canvas-ui/ui/dialogs/imageCropGestures.ts) | 界面呈现与交互 | `imageCropGestures`, `ImageCropGestures` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/imageCropOverlay.ts](../../modules/canvas-ui/ui/dialogs/imageCropOverlay.ts) | 界面呈现与交互 | `useImageCropOverlay` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/imageCropSave.ts](../../modules/canvas-ui/ui/dialogs/imageCropSave.ts) | 界面呈现与交互 | `imageCropSave`, `ImageCropSave` | 含 DOM/事件 调用；时机见实现 |
-| [modules/canvas-ui/ui/dialogs/imageResizeGeometry.ts](../../modules/canvas-ui/ui/dialogs/imageResizeGeometry.ts) | 界面呈现与交互 | `Size`, `Mode`, `resizeDimensions`, `resizeLimit` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/dialogs/imageResizeGeometry.ts](../../modules/canvas-ui/ui/dialogs/imageResizeGeometry.ts) | 界面呈现与交互 | `重导出 ../../../contracts/imageResizeGeometry` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/imageStudio.css](../../modules/canvas-ui/ui/dialogs/imageStudio.css) | 界面样式 | 样式 | 无业务运行副作用 |
 | [modules/canvas-ui/ui/dialogs/imageToolGenerateButton.tsx](../../modules/canvas-ui/ui/dialogs/imageToolGenerateButton.tsx) | 界面呈现与交互 | `ImageToolGenerateButton` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/minimapGeometry.ts](../../modules/canvas-ui/ui/dialogs/minimapGeometry.ts) | 界面呈现与交互 | `MinimapNode`, `NodeMeasurement`, `minimapScene`, `minimapViewport` | 未检出平台调用；不等于纯函数证明 |
@@ -167,7 +166,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/dialogs/renderImageCropStage.tsx](../../modules/canvas-ui/ui/dialogs/renderImageCropStage.tsx) | 界面呈现与交互 | `renderImageCropStage` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/dialogs/renderImageCropToolbar.tsx](../../modules/canvas-ui/ui/dialogs/renderImageCropToolbar.tsx) | 界面呈现与交互 | `renderImageCropToolbar` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/dialogs/useCanvasImageCropState.ts](../../modules/canvas-ui/ui/dialogs/useCanvasImageCropState.ts) | 界面呈现与交互 | `useCanvasImageCropState`, `ImageCropState` | 含 DOM/事件 调用；时机见实现 |
-| [modules/canvas-ui/ui/lifecycle/enhancementLifecycle.ts](../../modules/canvas-ui/ui/lifecycle/enhancementLifecycle.ts) | 浏览器交互与状态辅助 | `observeStableEnhancement` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/lifecycle/enhancementLifecycle.ts](../../modules/canvas-ui/ui/lifecycle/enhancementLifecycle.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/enhancementLifecycle` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/canvasAudioNode.tsx](../../modules/canvas-ui/ui/nodes/canvasAudioNode.tsx) | 浏览器交互与状态辅助 | `CanvasAudioNode` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/canvasConnectedAssets.tsx](../../modules/canvas-ui/ui/nodes/canvasConnectedAssets.tsx) | 浏览器交互与状态辅助 | `ConnectedAsset`, `ConnectedAssetsProps`, `CanvasConnectedAssets` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/canvasImageComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasImageComposer.tsx) | 界面呈现与交互 | `CanvasImageComposer` | 含 DOM/事件 调用；时机见实现 |
@@ -189,7 +188,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/nodes/canvasPluginNode.ts](../../modules/canvas-ui/ui/nodes/canvasPluginNode.ts) | 浏览器交互与状态辅助 | `CanvasPluginNode` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/canvasTextComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasTextComposer.tsx) | 界面呈现与交互 | `CanvasTextComposer` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx) | 界面呈现与交互 | `CanvasVideoComposer` | 含 DOM/事件 调用；时机见实现 |
-| [modules/canvas-ui/ui/nodes/mediaComposer.ts](../../modules/canvas-ui/ui/nodes/mediaComposer.ts) | 界面呈现与交互 | `ComposerRuntime`, `ComposerNode`, `ComposerAsset`, `ComposerModel`, `MediaComposerProps`, `MediaComposerComponents`, `useComposerBusy`, `changeComposerModel` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/nodes/mediaComposer.ts](../../modules/canvas-ui/ui/nodes/mediaComposer.ts) | 界面呈现与交互 | `ComposerNode`, `ComposerAsset`, `ComposerModel`, `MediaComposerProps`, `ComposerRuntime`, `MediaComposerComponents`, `useComposerBusy`, `changeComposerModel` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/migrateCanvasNodes.ts](../../modules/canvas-ui/ui/nodes/migrateCanvasNodes.ts) | 浏览器交互与状态辅助 | `migrateCanvasNodes` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/nodeApproval.ts](../../modules/canvas-ui/ui/nodes/nodeApproval.ts) | 浏览器交互与状态辅助 | `confirmNodeRun` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/nodeConnectionPorts.ts](../../modules/canvas-ui/ui/nodes/nodeConnectionPorts.ts) | 浏览器交互与状态辅助 | `packagePortY`, `packageDefinition`, `canConnectPackage`, `connectPackage` | 未检出平台调用；不等于纯函数证明 |
@@ -209,7 +208,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/nodes/useCanvasMiniMaxNodeState.ts](../../modules/canvas-ui/ui/nodes/useCanvasMiniMaxNodeState.ts) | 浏览器交互与状态辅助 | `useCanvasMiniMaxNodeState`, `MiniMaxNodeState` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/useGenerationAvailability.ts](../../modules/canvas-ui/ui/nodes/useGenerationAvailability.ts) | 浏览器交互与状态辅助 | `useGenerationAvailability` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/settings/canvasSettings.tsx](../../modules/canvas-ui/ui/settings/canvasSettings.tsx) | 浏览器交互与状态辅助 | `CanvasSettingsProps`, `CanvasSettings` | 含 DOM/事件 调用；时机见实现 |
-| [modules/canvas-ui/ui/settings/settingsOperation.ts](../../modules/canvas-ui/ui/settings/settingsOperation.ts) | 浏览器交互与状态辅助 | `settingsOperation` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/settings/settingsOperation.ts](../../modules/canvas-ui/ui/settings/settingsOperation.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/settingsOperation` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/text/CanvasTextEditor.tsx](../../modules/canvas-ui/ui/text/CanvasTextEditor.tsx) | 浏览器交互与状态辅助 | `CanvasTextEditorHandle`, `CanvasTextEditorProps`, `CanvasTextEditor` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/text/CanvasTextNodeContent.tsx](../../modules/canvas-ui/ui/text/CanvasTextNodeContent.tsx) | 浏览器交互与状态辅助 | `CanvasTextNodeContentProps`, `CanvasTextNodeContent` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/text/CanvasTextTags.tsx](../../modules/canvas-ui/ui/text/CanvasTextTags.tsx) | 浏览器交互与状态辅助 | `CanvasTextTagsProps`, `CanvasTextTags` | 含 DOM/事件 调用；时机见实现 |

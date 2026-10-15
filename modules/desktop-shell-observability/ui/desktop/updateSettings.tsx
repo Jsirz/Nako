@@ -5,7 +5,7 @@ import type { DesktopUpdateBridge, DesktopUpdateState } from '../../../contracts
 import { PREPARE_DESKTOP_RESTART, type PrepareDesktopRestart } from '../../../contracts/desktopUpdates';
 import { desktopBridge } from './desktopBridge';
 import { DESKTOP_ERRORS, desktopError } from '../../../contracts/desktopErrors.js';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import './updateSettings.css';
 
 async function prepareRestart() {

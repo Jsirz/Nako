@@ -1,0 +1,13 @@
+{
+  "id": "module.platform-directories",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "module",
+  "reloadRequired": true,
+  "dependencies": { "host.runtime": "^1.0.0" },
+  "services": {
+    "requires": ["host.runtime", "http.routes"],
+    "provides": ["platform.directories"]
+  },
+  "capabilities": ["module.platform-directories"]
+}

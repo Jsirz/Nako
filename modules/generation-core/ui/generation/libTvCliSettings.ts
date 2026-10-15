@@ -1,6 +1,6 @@
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 import type { LibTvCliStatus, SourceSettingsClient } from './sourceSettingsClient';
-import type { SettingsScope } from './sourceSettingsScope';
+import type { SettingsScope } from '../../../kernel/ui/settingsScope';
 
 export function libTvCliVendor(client: SourceSettingsClient, scope: SettingsScope) {
   const panel = document.createElement('section');

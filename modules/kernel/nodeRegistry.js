@@ -1,4 +1,5 @@
 import { satisfiesVersion } from './index.js';
+import { ERRORS, PluginError } from '../contracts/errors.js';
 import { migrateNodeRecord } from '../contracts/nodeMigrations.js';
 import {
   NODE_SDK_VERSION,
@@ -24,13 +25,19 @@ export class NodeRegistry {
 
   register(nodePackage, owner = nodePackage?.manifest?.id || 'host') {
     const manifest = validateNodePackageManifest(nodePackage?.manifest || nodePackage);
-    if (!satisfiesVersion(this.sdkVersion, manifest.apiVersion)) throw new TypeError(`Incompatible node SDK: ${manifest.id}`);
-    if (this.#packages.has(manifest.id)) throw new TypeError(`Node package already registered: ${manifest.id}`);
+    const context = { moduleId: 'kernel', operation: 'nodes.register', packageId: manifest.id, owner };
+    if (!satisfiesVersion(this.sdkVersion, manifest.apiVersion))
+      throw new PluginError(ERRORS.nodePackage, `Incompatible node SDK: ${manifest.id}`, {
+        status: 400, context: { ...context, sdkVersion: this.sdkVersion, apiVersion: manifest.apiVersion },
+      });
+    if (this.#packages.has(manifest.id))
+      throw new PluginError(ERRORS.nodePackage, `Node package already registered: ${manifest.id}`, { status: 409, context });
     const record = { manifest, owner, migrate: typeof nodePackage?.migrate === 'function' ? nodePackage.migrate : undefined, executors: nodePackage?.executors || {} };
     this.#packages.set(manifest.id, record);
     for (const definition of manifest.nodes) {
       const key = keyFor(manifest.id, definition.type);
-      if (this.#nodes.has(key)) throw new TypeError(`Duplicate node type: ${key}`);
+      if (this.#nodes.has(key)) throw new PluginError(ERRORS.nodePackage, `Duplicate node type: ${key}`,
+        { status: 409, context: { ...context, nodeType: definition.type } });
       this.#nodes.set(key, { ...record, definition: { ...definition, capabilities: definition.capabilities ?? manifest.capabilities, owner: manifest.id } });
     }
     this.#events({ kind: 'registered', packageId: manifest.id, nodeTypes: manifest.nodes.map(node => node.type) });

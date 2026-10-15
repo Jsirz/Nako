@@ -1,5 +1,5 @@
 import type * as ReactTypes from 'react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 type Runtime = Pick<
   typeof ReactTypes,
   'createElement' | 'useState' | 'useRef' | 'useEffect' | 'useCallback'

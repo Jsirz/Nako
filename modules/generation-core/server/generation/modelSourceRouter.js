@@ -9,12 +9,14 @@
  */
 
 import express from 'express';
+import { createModuleLogger } from '../../../kernel/logger.js';
+import { ERRORS } from '../../../contracts/errors.js';
 import { buildModelAvailability, buildSourceSettings } from './modelAvailability.js';
 
 export function createModelSourceRouter({
   catalog,
   readSecret = (key) => process.env[key],
-  logger = console,
+  logger = createModuleLogger('generation-core'),
   getProviderConfiguration = async () => ({}),
 } = {}) {
   const router = express.Router();
@@ -30,8 +32,8 @@ export function createModelSourceRouter({
         }),
       });
     } catch (error) {
-      logger.error('[ModelSource] 读取生成来源失败：', error?.message || error);
-      response.status(500).json({ error: '读取生成来源失败。' });
+      logger.error('读取生成来源失败', { operation: 'models.sources', error });
+      response.status(500).json({ error: '读取生成来源失败。', code: ERRORS.invalidConfiguration });
     }
   });
 
@@ -94,8 +96,8 @@ export function createModelSourceRouter({
         }),
       });
     } catch (error) {
-      logger.error('[ModelSource] 读取模型可用性失败：', error?.message || error);
-      response.status(500).json({ error: '读取模型可用性失败。' });
+      logger.error('读取模型可用性失败', { operation: 'models.availability', error });
+      response.status(500).json({ error: '读取模型可用性失败。', code: ERRORS.invalidConfiguration });
     }
   });
 

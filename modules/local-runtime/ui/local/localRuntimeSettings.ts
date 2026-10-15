@@ -5,9 +5,9 @@ import type {
   RuntimeDiagnostic,
 } from './localRuntimeClient';
 import { createComfyDirectoryGuide } from './comfyDirectoryGuide';
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
-import { createSettingsScope, type SettingsScope } from '../../../generation-core/api/ui/generation/sourceSettingsScope';
-import { settingsOperation } from '../../../canvas-ui/api/ui/settings/settingsOperation';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
+import { createSettingsScope, type SettingsScope } from '../../../kernel/ui/settingsScope';
+import { settingsOperation } from '../../../kernel/ui/settingsOperation';
 
 const PANEL_ATTRIBUTE = 'data-nako-local-runtime-panel';
 

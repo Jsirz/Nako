@@ -15,6 +15,7 @@ export interface ProjectPreferencesService {
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
 }
+export type AccountPreferencesService = Pick<ProjectPreferencesService, 'getItem' | 'setItem' | 'removeItem'>;
 export interface AccountUiService {
   applyAvatar(): void;
   setAvatarFile(file: File, options?: { signal?: AbortSignal }): Promise<unknown>;

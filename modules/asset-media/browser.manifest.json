@@ -8,7 +8,16 @@
     "ui.workflow-runtime": "^1.0.0"
   },
   "services": {
-    "provides": ["ui.media.settings", "ui.media.recovery"]
+    "provides": [
+      "ui.media.settings",
+      "ui.media.recovery",
+      "ui.media.canvas"
+    ],
+    "requires": [
+      "generation.defaults",
+      "ui.generation.catalog",
+      "ui.generation.interaction"
+    ]
   },
   "capabilities": [
     "ui.asset-media"

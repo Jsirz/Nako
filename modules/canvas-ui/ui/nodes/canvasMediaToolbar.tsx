@@ -1,5 +1,5 @@
 import type * as ReactTypes from 'react';
-import { installMediaDownloadFileName } from '../../../asset-media/api/ui/media/mediaDownloadFileName';
+import { mediaCanvas } from '../../../kernel/browser';
 import { localRuntimeUi } from '../../../kernel/browser';
 import { UI_FEATURES } from '../../../contracts/uiFeatures';
 import { Grid2X2, Globe, Box } from 'lucide-react';
@@ -102,7 +102,7 @@ function renderMediaToolbar(
       /* Data URLs use the media type below. */
     }
     extension ||= videoTypes.has(node.type) ? 'mp4' : audioTypes.has(node.type) ? 'mp3' : 'png';
-    void installMediaDownloadFileName().download(
+    void mediaCanvas().downloads().download(
       node,
       node.resultUrl,
       extension,

@@ -6,7 +6,7 @@
 
 ## 接口契约
 
-local.runtime 实现 [LocalRuntimeService](../../modules/contracts/localRuntimeService.d.ts)，只发布 providerConfiguration({waitForFresh}) 来源认证可用性查询，不暴露 ComfyUI 控制器或 CLI 安装器/运行实例。实际进程与登录操作经 /api/local-runtime、/api/comfy 等受限 HTTP 入口；状态 DTO 含诊断、动作及 GPU/模型/服务可用性。目录选择和安装由显式用户操作触发。
+local.runtime 实现 [LocalRuntimeService](../../modules/contracts/localRuntimeService.d.ts)，发布 providerConfiguration({waitForFresh}) 来源认证可用性与 selectDirectory 查询，不暴露 ComfyUI 控制器或 CLI 安装器/运行实例。独立 [directoryPlugin.js](../../modules/local-runtime/directoryPlugin.js) 在媒体启动前注册 platform.directories，仅提供 selectDirectory({description?})，返回用户选择路径；取消以 DIRECTORY_PICKER_CANCELLED/409 拒绝，不支持的平台返回 DIRECTORY_PICKER_UNAVAILABLE/501。filesystem 经 kernel 调用，避免依赖完整 local-runtime 与媒体之间形成循环。实际进程与登录操作经 /api/local-runtime、/api/comfy 等受限 HTTP 入口；目录选择和安装由显式用户操作触发。
 
 contracts 的 [LocalRuntimeUiService](../../modules/contracts/localRuntimeUi.ts) 提供 createWorkflowClient/mountSettings/requestWorkflowNodeRun/renderWorkflowNode。画布通过 kernel.localRuntimeUi 获取，根插件声明必需依赖；节点执行请求交给原挂载节点 owner，不创建第二个执行器。公共客户端 DTO 在 contracts/workflowClient、workflowCanvas、workflowCanvasNodeProtocol。
 
@@ -36,6 +36,8 @@ contracts/localRuntimeErrors 集中本地与工作流错误工厂，日志通过
 | --- | --- | --- | --- |
 | [modules/local-runtime/browser.manifest.json](../../modules/local-runtime/browser.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
 | [modules/local-runtime/browser.ts](../../modules/local-runtime/browser.ts) | 模块入口或装配 | `default` | 含 服务注册/生命周期 调用；时机见实现 |
+| [modules/local-runtime/directory.manifest.json](../../modules/local-runtime/directory.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
+| [modules/local-runtime/directoryPlugin.js](../../modules/local-runtime/directoryPlugin.js) | 模块入口或装配 | `default` | 含 服务注册/生命周期 调用；时机见实现 |
 | [modules/local-runtime/exports.json](../../modules/local-runtime/exports.json) | 公开 API 清单 | 声明式配置 | 无业务运行副作用 |
 | [modules/local-runtime/server.manifest.json](../../modules/local-runtime/server.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
 | [modules/local-runtime/server/comfyui/comfyClient.js](../../modules/local-runtime/server/comfyui/comfyClient.js) | 客户端或传输 | `comfyClient` | 含 文件系统、HTTP/网络 调用；时机见实现 |

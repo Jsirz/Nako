@@ -6,7 +6,7 @@ export function createMediaProcessorPlugin(options) {
   return {
     manifest: { id: 'media.ffmpeg-sharp', version: '1.0.0', apiVersion: '^1.0.0', type: 'media',
       dependencies: { 'media.filesystem': '^1.0.0' },
-      services: { requires: ['media.store'], provides: ['media.processor', 'media.editing'] }, capabilities: ['media.crop', 'media.trim', 'media.frames'], reloadRequired: true },
+      services: { requires: ['platform.paths', 'media.store'], provides: ['media.processor', 'media.editing'] }, capabilities: ['media.crop', 'media.trim', 'media.frames'], reloadRequired: true },
     activate(context) {
       const operations = createLocalMediaProcessor({ ...options, logger: context.logger });
       const store = context.services.get('media.store');

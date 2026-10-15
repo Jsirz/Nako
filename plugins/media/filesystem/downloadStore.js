@@ -1,5 +1,5 @@
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
-import { selectDirectoryWithSystemDialog } from '../../../modules/local-runtime/api/server/platform/directoryPicker.js';
+import { directoryPicker } from '../../../modules/kernel/server.js';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
@@ -408,7 +408,7 @@ function downloadError(error) {
 
 export function createMediaDownloadStore({
   defaultDirectory = () => path.join(os.homedir(), 'Downloads'),
-  selectDirectory = () => selectDirectoryWithSystemDialog({ description: '选择 Nako 下载目录' }),
+  selectDirectory = () => directoryPicker().selectDirectory({ description: '选择 Nako 下载目录' }),
   selectSavePath = selectSavePathWithSystemDialog,
   openDirectory = openDirectoryWithExplorer,
 } = {}) {

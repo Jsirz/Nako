@@ -1,31 +1,12 @@
+import type { VideoInputCounts, VideoModeAdapter } from '../../../contracts/videoModes';
+export type { VideoInputCounts, VideoModeAdapter } from '../../../contracts/videoModes';
 import { getBrowserServices } from '../../../kernel/browser';
 import type { VideoMediaInput, VideoModeDefinition } from '../../../contracts/generationUi';
 export type { VideoMediaInput, VideoModeDefinition } from '../../../contracts/generationUi';
 
-export type VideoInputCounts = {
-  images: number;
-  videos?: number;
-  audios?: number;
-};
 
-export type VideoModeAdapter = {
-  isAutomatic: (mode: string | null | undefined) => boolean;
-  resolve: (
-    mode: string | null | undefined,
-    inputs: number | VideoInputCounts,
-    supportedModes: readonly VideoModeDefinition[] | null | undefined,
-  ) => string;
-  supports: (
-    supportedModes: readonly VideoModeDefinition[] | null | undefined,
-    mode: string,
-  ) => boolean;
-  allowed: (
-    mode: string,
-    inputs: number | VideoInputCounts,
-    supportedModes: readonly VideoModeDefinition[] | null | undefined,
-  ) => boolean;
-  label: (mode: string) => string;
-};
+
+
 
 const TEXT_VIDEO_MODES = new Set(['text-to-video', 'omni-text-to-video']);
 

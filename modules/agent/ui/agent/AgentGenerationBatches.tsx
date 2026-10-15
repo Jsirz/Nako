@@ -2,12 +2,12 @@ import { useSyncExternalStore } from 'react';
 import type { CanvasCreationControl } from './canvasCreationControl';
 
 const states = {
-  pending: '等待确认',
+  pending: '等待确认或调度',
   submitted: '已开始提交，正在等待结果',
   success: '已完成',
-  failed: '生成失败，已停止后续节点',
+  failed: '生成失败，依赖此结果的节点将停止',
   unconfirmed: '请在节点核对原任务，勿重复生成',
-  stopped: '未提交，授权失效、配置变化或检查未通过',
+  stopped: '未提交，上游失败、授权失效、配置变化或检查未通过',
 };
 export function AgentGenerationBatches({
   controller,
@@ -81,7 +81,7 @@ export function AgentGenerationBatches({
             ) : (
               <p>
                 {batch.state === 'running'
-                  ? '正在执行本批；失败或配置变化会停止剩余任务。'
+                  ? '独立节点并行执行（最多 4 个），并发额度已满时等待；关联节点等待上游成功，失败只停止依赖该结果的节点。'
                   : batch.state === 'cancelled'
                     ? '已停止后续提交；已提交任务请核对节点状态。'
                     : '本批已结束。结果及中断恢复请在对应画布节点查看。'}

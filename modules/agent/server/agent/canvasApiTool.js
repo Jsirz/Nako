@@ -52,7 +52,7 @@ export function canvasApiTool() {
       + 'A create ref is used directly as nodeId within that batch, without a prefix. Creation and configuration do not generate media. '
       + 'Connect reference nodes with edit operations using sourceId and targetId, for example {"kind":"connect","sourceId":"existing reference node ID","targetId":"video"}. Put create, configure and all connect operations in the same edit batch. Never use from/to, source/target or write parentIds in create/update. Use sourcePort/targetPort only as numeric port indices when needed. '
       + 'To generate from existing Image/Video/Audio/Text canvas nodes, call generation_control with {"action":"prepareGeneration","revision":"latest canvas revision","nodeIds":["target node ID"]} after connecting references. runNode creates a separate backend node execution using nodeType and literal input values; it does not run an existing canvas node and does not accept nodeId. '
-      + 'prepareGeneration follows the user-selected confirmation mode: awaiting-approval needs the user, running means already submitted for execution; inspect tasks and never submit the batch again. '
+      + 'prepareGeneration follows the user-selected confirmation mode: awaiting-approval needs the user, running means already submitted for execution; inspect tasks and never submit the batch again. Include all intended nodeIds in one batch: independent nodes execute in parallel (up to 4, subject to model capacity), dependent nodes wait for upstream success, and a failed branch does not stop independent branches. '
       + canvasControlTool.description.slice(canvasControlTool.description.indexOf('media inspect')), parameters } };
 }
 

@@ -6,7 +6,7 @@
   "dependencies": { "generation-core": "^1.0.0" },
   "capabilities": ["generation.text", "generation.image", "generation.video", "generation.audio"],
   "services": {
-    "requires": ["generation.providers"],
+    "requires": ["generation.providers", "generation.receipts"],
     "provides": [
       "provider.EcloudTextProvider",
       "provider.EcloudImageProvider",

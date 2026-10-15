@@ -14,7 +14,11 @@
       "host.runtime",
       "http.routes",
       "generation.runtime",
-      "workflow.executors"
+      "workflow.executors",
+      "platform.paths",
+      "media.runtime",
+      "identity.externalUrlFetch",
+      "local.runtime"
     ],
     "provides": [
       "workflow.execution"

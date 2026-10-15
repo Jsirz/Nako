@@ -1,9 +1,9 @@
-import { AgentOperationError } from '../../../contracts/agentErrors.js';
+import { AGENT_ERROR_CODES, AgentOperationError } from '../../../contracts/agentErrors.js';
 import { browserServices } from '../../../kernel/browser';
 import type { AgentActivity, AgentCardReference } from '../../../contracts/agentActivity.js';
 import type { AgentSelectedSkill } from '../../../contracts/skillCatalog.js';
 export type { AgentSelectedSkill } from '../../../contracts/skillCatalog.js';
-import { isAgentEvent, type AgentEvent, type AgentMediaReference } from '../../../contracts/agentProtocol.js';
+import { isAgentEvent, type AgentEvent, type AgentMediaReference, type AgentSessionSnapshot } from '../../../contracts/agentProtocol.js';
 import type { DramaComposition, DramaExecution, DramaPlan } from './dramaClient';
 import {
   projectCanvasResult,
@@ -43,7 +43,7 @@ export type AgentSession = {
   revision: number;
   activeBranch: string;
   branches: Array<{ id: string; tipId: string | null }>;
-  run?: { id: string; status: string } | null;
+  run?: AgentSessionSnapshot['run'];
   receipts?: Array<{ id: string; tool: string; state: string; action: string }>;
   id: string;
   topic: string;
@@ -96,8 +96,9 @@ export class AgentClientError extends AgentOperationError {
     code: string,
     public status: number,
     public retryable: boolean,
+    context: Record<string, unknown> = {},
   ) {
-    super(message, { operation: 'agent-client-request' }, code, status);
+    super(message, { ...context, operation: 'agent-client-request' }, code, status);
     this.name = 'AgentClientError';
   }
 }
@@ -182,6 +183,16 @@ function parseEventBlock(block: string) {
   } catch {
     throw new AgentClientError('Agent 流式响应格式无效', 'AGENT_STREAM_INVALID', 502, false);
   }
+}
+function failedRunError({ payload, sessionId, runId }: AgentEvent) {
+  const status = payload.httpStatus;
+  return new AgentClientError(
+    String(payload.error || '本轮运行失败，已确认的操作和回执已保留。'),
+    String(payload.code || AGENT_ERROR_CODES.operation),
+    typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 599 ? status : 502,
+    false,
+    { sessionId, runId, ...(typeof payload.reason === 'string' ? { reason: payload.reason } : {}) },
+  );
 }
 export function createAgentClient(fetcher: typeof fetch = globalThis.fetch) {
   const projectSnapshot = (body: unknown): unknown => {
@@ -398,12 +409,7 @@ function createStreamClient(fetcher: typeof fetch) {
               request_error: 'error',
             };
             if (envelope.type === 'run_end' && envelope.payload.status === 'failed')
-              throw new AgentClientError(
-                String(envelope.payload.error || '本轮运行失败，已确认的操作和回执已保留。'),
-                String(envelope.payload.code || 'AGENT_RUN_FAILED'),
-                502,
-                false,
-              );
+              throw failedRunError(envelope);
             parsed = {
               event: events[envelope.type] || envelope.type,
               data: {

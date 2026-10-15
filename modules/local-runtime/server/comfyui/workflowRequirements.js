@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+import { fileURLToPath } from 'node:url';
 
 const MODEL_INPUT_TYPES = Object.freeze({
   ckpt_name: 'checkpoints',
@@ -10,7 +10,7 @@ const MODEL_INPUT_TYPES = Object.freeze({
   lora_name: 'loras',
 });
 
-const WORKFLOW_DIRECTORY = path.join(RUNTIME_PATHS.MODULES_DIR, 'local-runtime', 'server', 'comfyui', 'workflows');
+const WORKFLOW_DIRECTORY = fileURLToPath(new URL('./workflows', import.meta.url));
 const registryCache = new WeakMap();
 
 export function extractWorkflowRequirements(workflow) {

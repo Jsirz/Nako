@@ -1,4 +1,5 @@
 import { defineApplicationPlugin } from '../kernel/application.js';
+import { loadModelCatalog } from './server/config/modelCatalog.js';
 import { createGenerationService } from './server/generation/generationService.js';
 import { createNodeModelService, createNodeModelObserver } from './server/generation/nodeModelService.js';
 import { createGenerationRecoveryService } from './server/generation/generationRecoveryService.js';
@@ -15,7 +16,6 @@ import {
 } from './server/generation/defaultModels.js';
 import { createGenerationRuntime, publicGenerationTasks } from './server/generation/generationRuntime.js';
 import { parseTimeToMs } from './timing.js';
-import { getWorkspacePaths } from '../project/api/server/workspace/workspacePaths.js';
 
 export default defineApplicationPlugin({
   ...{
@@ -27,15 +27,25 @@ export default defineApplicationPlugin({
       'media.filesystem',
     ],
     requires: [
+      'platform.paths',
       'local.runtime',
       'generation.taskStore',
       'media.generation',
       'preferences.repository',
       'identity.providerCredentials',
     ],
-    provides: ['generation.runtime', 'generation.defaults'],
+    provides: ['generation.runtime', 'generation.defaults', 'generation.catalog'],
   },
   async activate(context) {
+    /** @type {import('../contracts/generationCatalog').GenerationCatalogService} */
+    const catalog = Object.freeze({
+      resolveImage(name) {
+        const model = Object.values(loadModelCatalog()).find((entry) => entry.imageModes?.length &&
+          (entry.name === name || Object.values(entry.endpoint || {}).some((endpoint) => endpoint.model === name)));
+        return model?.name || null;
+      },
+    });
+    context.services.register('generation.catalog', catalog);
     const {
       paths: RUNTIME_PATHS,
       applicationContext,
@@ -73,11 +83,11 @@ export default defineApplicationPlugin({
     applicationContext.HTTPS_PROXY = process.env.HTTPS_PROXY;
 
     Object.defineProperty(applicationContext, 'LIBRARY_DIR', {
-      get: () => getWorkspacePaths().LIBRARY_DIR,
+      get: () => RUNTIME_PATHS.LIBRARY_DIR,
     });
 
     Object.defineProperty(applicationContext, 'LIBRARY_MEDIA_DIR', {
-      get: () => getWorkspacePaths().LIBRARY_MEDIA_DIR,
+      get: () => RUNTIME_PATHS.LIBRARY_DIR + '/media',
     });
 
     const recoverTask = createGenerationRecoveryService({ generationCoordinator: generationRuntime.coordinator,

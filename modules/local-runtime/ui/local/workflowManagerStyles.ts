@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { HOST_ATTRIBUTE } from './workflowManagerEvents';
 export const STYLE_ID = 'nako-workflow-manager-styles';
 

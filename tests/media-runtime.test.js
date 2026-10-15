@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createMediaMetadataProbe } from '../modules/asset-media/server/media/mediaMetadataProbe.js';
+import { createMediaMetadataProbe } from '../plugins/media/ffmpeg-sharp/mediaMetadataProbe.js';
 import { ensureMediaRuntime } from '../scripts/runtime/mediaRuntime.mjs';
 
 it('reports a missing probe as a component failure rather than an invalid video', async () => {

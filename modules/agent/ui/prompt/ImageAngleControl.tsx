@@ -2,8 +2,10 @@ import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { Box, X } from 'lucide-react';
-import { CanvasImageAngle } from '../../../canvas-ui/api/ui/dialogs/canvasImageAngle';
-import { imageAngleDescription, type ImageAngle } from './imageAngle';
+import { canvasPresentation } from '../../../kernel/browser';
+const CanvasImageAngle = (props: Parameters<ReturnType<typeof canvasPresentation>['imageAngle']>[0]) =>
+  canvasPresentation().imageAngle(props) as React.ReactNode;
+import { imageAngleDescription, type ImageAngle } from '../../../contracts/imageAngle';
 interface Props {
   node: { id: string; imageAngle?: unknown; resultUrl?: string };
   referenceUrl?: string;

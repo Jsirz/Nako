@@ -1,13 +1,9 @@
 import { ERRORS, PluginError } from '../../../contracts/errors.js';
-import { browserServices } from '../../../kernel/browser';
+import { browserServices, mediaCanvas } from '../../../kernel/browser';
 import type * as React from 'react';
 import type { CanvasNode } from '../../../contracts/canvasDocument';
-import { buildMiniMaxH3Request } from '../../../asset-media/api/ui/media/minimaxH3';
-import {
-  createVideoWorkflowClient,
-  type VideoWorkflowClient,
-  type VideoWorkflowRequest,
-} from '../../../asset-media/api/ui/media/videoWorkflows';
+
+import type { VideoWorkflowClient, VideoWorkflowRequest } from '../../../contracts/videoWorkflowUi';
 
 const interruptedMessage =
   '本地工作流结果未确认，请先检查 ComfyUI 任务和素材库；不会自动重新生成。';
@@ -133,7 +129,7 @@ export function createCanvasLocalWorkflows(binding: Binding, runtime: Runtime) {
         if (!projectId) throw new PluginError(ERRORS.invalidConfiguration, '请先保存当前项目，再运行本地工作流。', {
           context: { moduleId: 'generation-core', operation: 'runLocalWorkflow', nodeId: id },
         });
-        request = buildMiniMaxH3Request(binding.getNodes(), source, projectId);
+        request = mediaCanvas().miniMax().buildRequest(binding.getNodes(), source, projectId);
       } catch (error) {
         binding.setNodes((nodes) =>
           nodes.map((node) =>
@@ -236,12 +232,12 @@ export function useCanvasLocalWorkflows(
       {
         createId,
         run: (request) =>
-          (browserServices.__NAKO_VIDEO_WORKFLOWS__ ?? createVideoWorkflowClient()).run(
+          (browserServices.__NAKO_VIDEO_WORKFLOWS__ ?? mediaCanvas().createVideoWorkflowClient()).run(
             'minimax-h3-t2va',
             request,
           ),
         getOperation: (projectId, operationId) =>
-          (browserServices.__NAKO_VIDEO_WORKFLOWS__ ?? createVideoWorkflowClient()).getOperation(
+          (browserServices.__NAKO_VIDEO_WORKFLOWS__ ?? mediaCanvas().createVideoWorkflowClient()).getOperation(
             'minimax-h3-t2va', projectId, operationId,
           ),
       },

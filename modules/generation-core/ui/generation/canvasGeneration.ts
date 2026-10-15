@@ -12,16 +12,13 @@ import {
 } from './generationClient';
 import type { GenerationModels } from '../../../contracts/generationUi';
 export { observeWithin, prepareCanvasGenerationRequest } from './canvasGenerationPreparation';
-import {
-  inspectImage,
-  inspectVideo,
-} from '../../../asset-media/api/ui/media/generationMediaMetadata';
+import { mediaCanvas } from '../../../kernel/browser';
+export const inspectImage = (url: string, timeoutMs?: number) => mediaCanvas().inspectImage(url, timeoutMs);
+const inspectVideo = (url: string, timeoutMs?: number, includeLastFrame?: boolean) => mediaCanvas().inspectVideo(url, timeoutMs, includeLastFrame);
+export const extractVideoLastFrame = (url: string) => mediaCanvas().extractVideoLastFrame(url);
 
 export { generateAudio, generateText, getGenerationConcurrency } from './generationClient';
-export {
-  inspectImage,
-  extractVideoLastFrame,
-} from '../../../asset-media/api/ui/media/generationMediaMetadata';
+
 import type { GenerationBinding, GenerationRuntime, GenerationAuthorization } from '../../../contracts/generationUi';
 export type { GenerationBinding, GenerationRuntime, GenerationAuthorization } from '../../../contracts/generationUi';
 interface Options extends GenerationModels {

@@ -1,53 +1,22 @@
+import type { DownloadableMediaNode, MediaDownloadFileNameAdapter, MediaDownloadOpenResult, MediaDownloadSettings, MediaDownloadResult } from '../../../contracts/mediaDownloads';
+export type { DownloadableMediaNode, MediaDownloadFileNameAdapter, MediaDownloadOpenResult, MediaDownloadSettings, MediaDownloadResult } from '../../../contracts/mediaDownloads';
 import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { getBrowserServices } from '../../../kernel/browser';
-import { desktopBridge } from '../../../desktop-shell-observability/api/ui/desktop/desktopBridge';
+import { desktopBrowser } from '../../../kernel/browser';
 
 const MEDIA_EXTENSION =
   /\.(?:png|jpe?g|webp|gif|bmp|avif|svg|mp4|mov|m4v|webm|mkv|mp3|wav|ogg|m4a|flac|aac)$/iu;
 const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$/iu;
 
-export type DownloadableMediaNode = {
-  id?: unknown;
-  type?: unknown;
-  title?: unknown;
-  resultUrls?: unknown;
-};
 
-export type MediaDownloadFileNameAdapter = {
-  fileName: (node: DownloadableMediaNode, sourceUrl: unknown, extension: unknown) => string;
-  download: (
-    node: DownloadableMediaNode,
-    sourceUrl: unknown,
-    extension: unknown,
-    button?: HTMLButtonElement | null,
-    suggestedFileName?: string,
-  ) => Promise<MediaDownloadResult>;
-  getSettings: () => Promise<MediaDownloadSettings>;
-  chooseDirectory: () => Promise<MediaDownloadSettings | { status: 'cancelled' }>;
-  resetDirectory: () => Promise<MediaDownloadSettings>;
-  setAskEachTime: (enabled: boolean) => Promise<MediaDownloadSettings>;
-  openDirectory: () => Promise<MediaDownloadOpenResult>;
-};
 
-export type MediaDownloadOpenResult = {
-  status: 'opened';
-  foreground: boolean;
-  fileName: string | null;
-  directory: string;
-};
 
-export type MediaDownloadSettings = {
-  directory: string;
-  defaultDirectory: string;
-  customDirectory: boolean;
-  askEachTime: boolean;
-  directoryAvailable: boolean;
-};
 
-export type MediaDownloadResult =
-  | { status: 'saved'; fileName: string; directory: string }
-  | { status: 'cancelled' | 'busy' }
-  | { status: 'failed'; code: string; message: string };
+
+
+
+
+
 
 type DownloadResponse = MediaDownloadSettings & {
   status?: string;
@@ -64,7 +33,7 @@ function savedFilePath(directory: string, fileName: string): string {
 }
 
 function desktopShowItemInFolder(windowObject: Window | null) {
-  const bridge = desktopBridge(windowObject);
+  const bridge = desktopBrowser().bridge(windowObject);
   return bridge ? (path: string) => bridge.showItemInFolder(path) : null;
 }
 

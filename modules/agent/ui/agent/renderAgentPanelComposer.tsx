@@ -91,7 +91,7 @@ export function renderAgentPanelComposer(
     props, workspace, attachments, isLoading, prompt, references, selectedVision, modelId,
     selectedModelId, activeModel, availableModels, showModelMenu, setShowModelMenu,
     showParams, setShowParams, modelMenuRef, paramsRef, advancedParams,
-    composerRef, fileRef, chat, thinking,
+    composerRef, fileRef, chat,
   } = state;
   const { chooseFile, onFileChange, submit, stop } = actions;
   const canSend = !isLoading &&
@@ -177,7 +177,6 @@ export function renderAgentPanelComposer(
             <AgentConversationOptions
               value={workspace.value}
               patch={workspace.patch}
-              thinking={thinking}
               disabled={isLoading}
               generation={Boolean(props.canvasCreation)}
             />

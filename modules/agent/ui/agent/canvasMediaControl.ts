@@ -1,10 +1,6 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
-import { assetNode } from '../../../canvas-ui/api/ui/canvas/canvasAssetInsertion';
-import { loadCollageImage, renderImageCollage } from '../../../asset-media/api/ui/media/imageCollage';
-import { renderAnnotations } from '../../../canvas-ui/api/ui/dialogs/imageAnnotationDrawing';
-import { uploadMediaData } from '../../../asset-media/api/ui/media/canvasMediaTransport';
-import { inspectVideo } from '../../../asset-media/api/ui/media/generationMediaMetadata';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import { canvasEditing, mediaCanvas } from '../../../kernel/browser';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 import type { createCanvasControlExecutor } from './canvasControlExecutor';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
 
@@ -95,25 +91,25 @@ export function createCanvasMediaControl(
           const inputs = command.nodeIds.map(id => getRuntime()!.nodes().find(item => item.id === id));
           if (inputs.some(item => !item || item.status === 'loading' || !localMedia(item.resultUrl, request.projectId, 'images'))) return { ok: false, code: 'UNAVAILABLE' };
           const images = await Promise.all(inputs.map(async item => {
-            const image = await loadCollageImage(localMedia(item!.resultUrl, request.projectId, 'images')!, mediaSignal);
+            const image = await mediaCanvas().loadImage(localMedia(item!.resultUrl, request.projectId, 'images')!, mediaSignal);
             return { image, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight, centerX: item!.x + Number(item!.width || 340) / 2, centerY: item!.y + Number(item!.height || 300) / 2, visualHeight: Number(item!.height || 300) };
           }));
-          ({ data, width, height } = renderImageCollage(images));
+          ({ data, width, height } = mediaCanvas().collage(images));
         } else {
-          const image = await loadCollageImage(source, mediaSignal);
+          const image = await mediaCanvas().loadImage(source, mediaSignal);
           if (image.naturalWidth * image.naturalHeight > 64000000) throw new AgentOperationError('Image too large', { operation: 'annotate-image', reason: 'pixel-limit' });
           const dimensions = { width: image.naturalWidth, height: image.naturalHeight }, canvas = document.createElement('canvas'), overlay = document.createElement('canvas');
           ({ width, height } = dimensions);
           canvas.width = dimensions.width; canvas.height = dimensions.height;
-          renderAnnotations(overlay, command.strokes, dimensions);
+          mediaCanvas().renderAnnotations(overlay, command.strokes, dimensions);
           const context = canvas.getContext('2d'); if (!context) throw new AgentOperationError('Image unavailable', { operation: 'annotate-image', reason: 'missing-context' });
           context.drawImage(image, 0, 0); context.globalCompositeOperation = command.mask ? 'destination-out' : 'source-over'; context.drawImage(overlay, 0, 0);
           data = canvas.toDataURL('image/png');
         }
         if (!active()) return { ok: false, code: 'UNAVAILABLE' };
-        const url = await uploadMediaData(data, 'image', '', request.projectId, mediaSignal);
+        const url = await mediaCanvas().uploadData(data, 'image', '', request.projectId, mediaSignal);
         if (!active() || !localMedia(url, request.projectId, 'images')) return { ok: false, code: 'UNCONFIRMED' };
-        return insert(request, assetNode({ url, type: 'images', projectId: request.projectId, width, height }, {}, request.projectId, { x: node.x + 420, y: node.y }, crypto.randomUUID()));
+        return insert(request, canvasEditing().assetNode({ url, type: 'images', projectId: request.projectId, width, height }, {}, request.projectId, { x: node.x + 420, y: node.y }, crypto.randomUUID()));
       }
       const paths = { crop: '/api/media/images/crop', grid: '/api/media/images/grid', frames: '/api/media/videos/frames', trimVideo: '/api/trim-video', trimAudio: '/api/trim-audio' };
       const body = { projectId: request.projectId, [type === 'images' ? 'imageUrl' : type === 'videos' ? 'videoUrl' : 'audioUrl']: source,
@@ -125,7 +121,7 @@ export function createCanvasMediaControl(
       if (!active()) return { ok: false, code: 'UNCONFIRMED' };
       const assets = Array.isArray(result.assets) ? result.assets : result.asset ? [result.asset] : [];
       if (!assets.length || assets.length > 64 || assets.some((asset: Record<string, unknown>) => !localMedia(asset.url, request.projectId) || !['images', 'videos', 'audios'].includes(String(asset.type)))) return { ok: false, code: 'UNCONFIRMED' };
-      const prepared = await Promise.all(assets.map(async (asset: Record<string, unknown>, index: number) => assetNode(asset, asset.type === 'videos' ? await inspectVideo(String(asset.url), 5000, false) : {}, request.projectId,
+      const prepared = await Promise.all(assets.map(async (asset: Record<string, unknown>, index: number) => canvasEditing().assetNode(asset, asset.type === 'videos' ? await mediaCanvas().inspectVideo(String(asset.url), 5000, false) : {}, request.projectId,
         { x: node.x + 420 + index % 4 * 360, y: node.y + Math.floor(index / 4) * 360 }, crypto.randomUUID())));
       if (!active()) return { ok: false, code: 'UNCONFIRMED' };
       return insert(request, prepared);

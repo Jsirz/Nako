@@ -1,16 +1,11 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
-import { IMAGE_MODELS, VIDEO_MODELS, AUDIO_MODELS, TEXT_MODELS } from '../../../generation-core/api/models/catalog';
-import { prepareCanvasGenerationRequest } from '../../../generation-core/api/ui/generation/canvasGeneration';
+import { modelCatalog, generationPreparation } from '../../../kernel/browser';
 import { modelKey } from './canvasModelControl';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
-import type { CanvasCreationControl } from './canvasCreationControl';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
+import type { CanvasCreationControl, GenerationBudget } from '../../../contracts/agentCanvasWorkspace';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
 
-export interface GenerationBudget {
-  id: string; projectId: string; sessionId: string; state: 'pending' | 'approved' | 'revoked'; expiresAt: number;
-  maxRequests: number; maxOutputs: number; budgetMicros: number | null; profiles: string[]; usedRequests: number; usedOutputs: number; reservedMicros: number;
-}
-const models = { imageModels: IMAGE_MODELS, videoModels: VIDEO_MODELS, audioModels: AUDIO_MODELS, textModels: TEXT_MODELS };
+export type { GenerationBudget } from '../../../contracts/agentCanvasWorkspace';
 export function createCanvasBudgetControl(execute: CanvasActionHandler, creation: CanvasCreationControl,
   getRuntime: () => { projectId: string; nodes(): CanvasNode[] } | null, fetcher: typeof fetch = globalThis.fetch) {
   let snapshot: GenerationBudget[] = [], error = '';
@@ -55,12 +50,13 @@ export function createCanvasBudgetControl(execute: CanvasActionHandler, creation
         return { ok: true, revision: current.revision, generationPlanId: plan.id, generationState: 'running' };
       }
       const runtime = getRuntime()!, nodes = structuredClone(runtime.nodes()), sampleRequests = [];
+      const models = { imageModels: modelCatalog().list('image'), videoModels: modelCatalog().list('video'), audioModels: modelCatalog().list('audio'), textModels: modelCatalog().list('text') };
       for (const nodeId of command.nodeIds) {
         const node = nodes.find(node => node.id === nodeId);
         if (!node || !['Image', 'Video', 'Audio', 'Text'].includes(node.type)) return { ok: false, code: 'NOT_FOUND' };
         const connected = await execute({ ...request, requestId: crypto.randomUUID(), command: { action: 'models', type: node.type as 'Image' | 'Video' | 'Audio' | 'Text', model: String(node[modelKey(node.type)] || '') } });
         if (!connected.ok || !connected.models?.length) return { ok: false, code: 'UNAVAILABLE' };
-        sampleRequests.push(await prepareCanvasGenerationRequest(nodes, node, request.projectId, models));
+        sampleRequests.push(await generationPreparation().prepare(nodes, node, request.projectId, models));
       }
       const current = await execute({ ...request, requestId: crypto.randomUUID(), command: { action: 'read' } });
       if (!current.ok || current.revision !== command.revision || !active(request, signal)) return { ok: false, code: 'CONFLICT' };
@@ -94,4 +90,4 @@ export function createCanvasBudgetControl(execute: CanvasActionHandler, creation
     },
   };
 }
-export type CanvasBudgetControl = ReturnType<typeof createCanvasBudgetControl>;
+export type { CanvasBudgetControl } from '../../../contracts/agentCanvasWorkspace';

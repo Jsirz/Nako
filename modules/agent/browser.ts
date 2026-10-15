@@ -11,6 +11,10 @@ import { installAgentSkillClient } from './ui/skills/skillClient';
 import { installSkillCommunity } from './ui/skills/skillCommunity';
 
 import { agentSurfaces } from './ui/agent/surfaces';
+import { agentCanvasService } from './ui/agent/canvasWorkspaceService';
+
+import { readAgentDocument } from './ui/agent/agentDocuments';
+import type { AgentDocumentService } from '../contracts/agentDocuments';
 
 const plugin: PluginDefinition = {
   manifest: {
@@ -21,9 +25,11 @@ const plugin: PluginDefinition = {
     reloadRequired: true,
     dependencies: { 'ui.project': '^1.0.0' },
     capabilities: ['ui.agent'],
-    services: { provides: ['ui.agent.surfaces'] },
+    services: { provides: ['ui.agent.surfaces', 'ui.agent.canvas', 'ui.agent.documents'], requires: ['ui.generation', 'ui.generation.catalog', 'ui.generation.preparation', 'ui.nodes.runs', 'ui.canvas.editing', 'ui.canvas.presentation', 'ui.project.catalog', 'ui.media.canvas', 'ui.local-runtime'] },
   },
   async activate(context) {
+    context.services.register<AgentDocumentService>('ui.agent.documents', Object.freeze({ read: readAgentDocument }));
+    context.services.register('ui.agent.canvas', agentCanvasService);
     context.services.register('ui.agent.surfaces', agentSurfaces);
     await activateBrowserModule(context, async () => {
       const dramaCanvasBridge = trackBrowserResource(context, installDramaCanvasBridge());

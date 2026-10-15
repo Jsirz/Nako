@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
+useServerCapabilities({ media: true });
 import { mkdtemp, mkdir, writeFile, rm, truncate } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';

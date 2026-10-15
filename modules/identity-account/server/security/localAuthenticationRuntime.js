@@ -1,4 +1,4 @@
-import { createUserScopeResolver } from '../../../project/api/server/workspace/userScopeResolver.js';
+import { createUserScopeResolver } from './userScopeResolver.js';
 
 function configured(value) {
   const normalized = String(value || '').trim();

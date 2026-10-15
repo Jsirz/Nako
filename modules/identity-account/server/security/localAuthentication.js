@@ -2,7 +2,7 @@ import { IDENTITY_ERRORS, identityError } from '../../../contracts/identityError
 import {
   createActiveUserAuthenticationContext,
   UserScopeError,
-} from '../../../project/api/server/workspace/userScopeResolver.js';
+} from './userScopeResolver.js';
 
 const PROXY_HEADERS = [
   'forwarded',

@@ -1,7 +1,7 @@
 import { canvasError } from '../../../contracts/canvasErrors.js';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 
 type Runtime = Pick<
   typeof ReactTypes,

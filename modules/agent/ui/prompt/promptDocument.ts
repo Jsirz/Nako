@@ -1,44 +1,8 @@
 import { parsePromptTags, type PromptPresetType } from './promptPresets';
 
-export interface PromptAsset {
-  id: string;
-  type?: string;
-  url?: string;
-  title?: string;
-  [key: string]: unknown;
-}
-export interface PromptDocumentNode {
-  type: string;
-  text?: string;
-  attrs?: Record<string, unknown>;
-  content?: PromptDocumentNode[];
-}
-export function promptAssetType(asset?: PromptAsset): PromptPresetType {
-  const type = String(asset?.type || '')
-    .toLowerCase()
-    .replace(/[ _-]/g, '');
-  if (type === 'video' || type === 'uploadvideo') return 'video';
-  if (type === 'audio' || type === 'uploadaudio') return 'audio';
-  return type === 'text' ? 'text' : 'image';
-}
-export function promptAssetIndex(assets: readonly PromptAsset[]) {
-  const byType: Record<PromptPresetType, PromptAsset[]> = {
-      text: [],
-      image: [],
-      video: [],
-      audio: [],
-    },
-    byId = new Map<string, { type: PromptPresetType; number: number; asset: PromptAsset }>();
-  for (const asset of assets) {
-    const type = promptAssetType(asset);
-    byType[type].push(asset);
-    if (!byId.has(asset.id)) byId.set(asset.id, { type, number: byType[type].length, asset });
-  }
-  return { byType, byId };
-}
-export function promptAssetLabel(type: PromptPresetType, number: number) {
-  return `${{ image: '图片', video: '视频', audio: '音频', text: '文本' }[type]}${number}`;
-}
+import { promptAssetIndex, promptAssetLabel } from '../../../contracts/promptAssets';
+import type { PromptAsset, PromptDocumentNode } from '../../../contracts/promptAssets';
+export * from '../../../contracts/promptAssets';
 
 /** Build document nodes directly. User text and URLs are never interpolated into HTML attributes. */
 export function promptToDocument(

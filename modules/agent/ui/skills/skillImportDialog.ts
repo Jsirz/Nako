@@ -1,6 +1,6 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { SKILL_CATEGORIES, SKILL_DESCRIPTION_MAX_LENGTH } from '../../../contracts/skillCatalog.js';
 import type { AgentSkillClient } from './skillClient';
 import { button, element } from './skillManagerCards';

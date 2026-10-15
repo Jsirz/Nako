@@ -1,19 +1,7 @@
-export interface MediaMetadata {
-  resultAspectRatio?: string;
-  aspectRatio?: string;
-  lastFrame?: string;
-}
-export function nearestAspectRatio(width: number, height: number): string | undefined {
-  if (!(width > 0) || !(height > 0)) return undefined;
-  const choices = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '5:4', '4:5', '21:9'];
-  return choices.reduce((best, choice) => {
-    const value = (label: string) => {
-      const [w, h] = label.split(':').map(Number);
-      return Math.abs(width / height - w / h);
-    };
-    return value(choice) < value(best) ? choice : best;
-  });
-}
+import { nearestAspectRatio } from '../../../contracts/mediaGeometry';
+import type { GenerationMediaMetadata as MediaMetadata } from '../../../contracts/generationUi';
+export { nearestAspectRatio } from '../../../contracts/mediaGeometry';
+export type { GenerationMediaMetadata as MediaMetadata } from '../../../contracts/generationUi';
 export function readableMediaUrl(url: string): string {
   const parsed = new URL(url, window.location.href);
   return ['http:', 'https:'].includes(parsed.protocol) &&

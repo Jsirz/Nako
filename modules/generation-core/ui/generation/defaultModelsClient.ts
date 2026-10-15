@@ -4,7 +4,7 @@ import type {
   DefaultModelsSnapshot,
   DefaultModelValues,
   ModelKind,
-} from '../../../contracts/defaultModels';
+} from '../../../contracts/defaultModels.js';
 
 export function createDefaultModelsClient(
   fetcher: typeof fetch = globalThis.fetch,

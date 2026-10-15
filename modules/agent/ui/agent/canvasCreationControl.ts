@@ -5,16 +5,10 @@ import {
   type DefaultModelsClient,
   type ModelKind,
 } from '../../../contracts/defaultModels.js';
-import {
-  IMAGE_MODELS,
-  VIDEO_MODELS,
-  AUDIO_MODELS,
-  TEXT_MODELS,
-} from '../../../generation-core/api/models/catalog';
-import { prepareCanvasGenerationRequest } from '../../../generation-core/api/ui/generation/canvasGeneration';
-import type { GenerationAuthorization } from '../../../contracts/generationUi';
-import { createSourceSettingsClient } from '../../../generation-core/api/ui/generation/sourceSettingsClient';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import { modelCatalog, generationPreparation, generationUi } from '../../../kernel/browser';
+import type { CanvasCreationRuntime as Runtime, GenerationBatch } from '../../../contracts/agentCanvasWorkspace';
+import type { GenerationModels } from '../../../contracts/generationUi';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 import { canvasModels, modelKey, modelParameters } from './canvasModelControl';
 import type { GenerationPlanClient, GenerationPlanRecord } from './generationPlanClient';
 import {
@@ -25,37 +19,7 @@ import {
   type CanvasResult,
 } from '../../../contracts/canvasControlProtocol.js';
 
-export type GenerationBatch = {
-  id: string;
-  projectId: string;
-  sessionId: string;
-  expiresAt: number;
-  state: 'pending' | 'running' | 'finished' | 'cancelled';
-  recovered?: boolean;
-  authorizationId?: string;
-  approvalMode?: 'confirm' | 'direct';
-  items: {
-    nodeId: string;
-    title: string;
-    model: string;
-    parameters: string;
-    count: number;
-    references: string[];
-    dependsOn?: string[];
-    state: 'pending' | 'submitted' | 'success' | 'failed' | 'unconfirmed' | 'stopped';
-  }[];
-};
-interface Runtime {
-  projectId: string;
-  nodes(): CanvasNode[];
-  generate(id: string, authorization: GenerationAuthorization): Promise<void> | undefined;
-}
-const models = {
-  imageModels: IMAGE_MODELS,
-  videoModels: VIDEO_MODELS,
-  audioModels: AUDIO_MODELS,
-  textModels: TEXT_MODELS,
-};
+export type { GenerationBatch } from '../../../contracts/agentCanvasWorkspace';
 // Full transitive input snapshots stay in memory; no storage paths/media URLs are sent to the model.
 function inputs(nodes: CanvasNode[], id: string): CanvasNode[] {
   const found = new Map<string, CanvasNode>();
@@ -100,10 +64,9 @@ function configuration(node: CanvasNode) {
 export function createCanvasCreationControl(
   execute: CanvasActionHandler,
   getRuntime: () => Runtime | null,
-  fetcher: typeof fetch = globalThis.fetch,
   journal?: GenerationPlanClient,
 ) {
-  const source = createSourceSettingsClient(fetcher);
+  const models = { imageModels: modelCatalog().list('image'), videoModels: modelCatalog().list('video'), audioModels: modelCatalog().list('audio'), textModels: modelCatalog().list('text') };
   const entries: GenerationEntries = new Map();
   const receipts = new Map<string, { signature: string; promise: Promise<CanvasResult> }>();
   const listeners = new Set<() => void>();
@@ -117,7 +80,7 @@ export function createCanvasCreationControl(
     execute({ ...request, requestId: crypto.randomUUID(), command: { action: 'read' } });
   const active = (request: CanvasActionRequest) =>
     Date.now() < request.expiresAt && getRuntime()?.projectId === request.projectId;
-  const services = { source, entries, read, active, getRuntime, journal, publish };
+  const services = { models, entries, read, active, getRuntime, journal, publish };
   const handle = createGenerationPreparation(services);
   const control = createGenerationControl(execute, handle, receipts);
   const approve = createGenerationApproval(services);
@@ -125,16 +88,19 @@ export function createCanvasCreationControl(
     snapshot: () => snapshot, error: () => restoreError, setError: (value: string) => { restoreError = value; }, listeners }) };
 }
 
-type GenerationEntries = Map<string, {
+type GenerationEntry = {
   batch: GenerationBatch; signatures: string[]; requests: string[]; record?: GenerationPlanRecord;
-}>;
+  writes?: Promise<void>; completion?: Promise<void>; journalFailed?: boolean;
+};
+type GenerationEntries = Map<string, GenerationEntry>;
 type GenerationServices = {
-  source: ReturnType<typeof createSourceSettingsClient>; entries: GenerationEntries;
+  models: GenerationModels; entries: GenerationEntries;
   read(request: CanvasActionRequest): ReturnType<CanvasActionHandler>;
   active(request: CanvasActionRequest): boolean; getRuntime(): Runtime | null;
   journal?: GenerationPlanClient; publish(): void;
 };
-function createGenerationPreparation({ source, entries, read, active, getRuntime, journal, publish }: GenerationServices) {
+type GenerationExecutionServices = Pick<GenerationServices, 'models' | 'getRuntime' | 'journal' | 'publish'>;
+function createGenerationPreparation({ models, entries, read, active, getRuntime, journal, publish }: GenerationServices) {
   async function handle(request: CanvasActionRequest, signal?: AbortSignal): Promise<CanvasResult> {
     if (!active(request) || signal?.aborted) return { ok: false, code: 'UNAVAILABLE' };
     const before = await read(request);
@@ -143,7 +109,7 @@ function createGenerationPreparation({ source, entries, read, active, getRuntime
     if (command.action !== 'models' && command.action !== 'prepareGeneration')
       return { ok: false, code: 'INVALID' };
     try {
-      const blocks = await source.getBlocks({ signal });
+      const blocks = await generationPreparation().sources({ signal });
       if (!active(request) || signal?.aborted) return { ok: false, code: 'UNAVAILABLE' };
       if (command.action === 'models') {
         const allowed = new Set(canvasModels(command.type).map((item) => item.name));
@@ -266,7 +232,7 @@ function createGenerationPreparation({ source, entries, read, active, getRuntime
           .slice(1)
           .filter((input) => command.nodeIds.includes(input.id))
           .map((input) => input.id);
-        const prepared = await prepareCanvasGenerationRequest(
+        const prepared = await generationPreparation().prepare(
           nodes,
           node,
           request.projectId,
@@ -337,7 +303,7 @@ function createGenerationControl(execute: CanvasActionHandler,
   return control;
 }
 
-function createGenerationApproval({ entries, getRuntime, journal, publish }: GenerationServices) {
+function createGenerationApproval({ models, entries, getRuntime, journal, publish }: GenerationServices) {
   // This method is held by the UI only. It is deliberately absent from canvas_control.
   async function approve(
     id: string,
@@ -346,7 +312,7 @@ function createGenerationApproval({ entries, getRuntime, journal, publish }: Gen
   ) {
     const entry = entries.get(id);
     if (!entry || entry.batch.state !== 'pending' || entry.batch.recovered) return;
-    const { batch, signatures, requests } = entry;
+    const { batch, signatures } = entry;
     if (Date.now() >= batch.expiresAt) {
       batch.items.forEach((item) => {
         item.state = 'stopped';
@@ -364,6 +330,7 @@ function createGenerationApproval({ entries, getRuntime, journal, publish }: Gen
       try {
         return (
           batch.state === 'running' &&
+          !entry.journalFailed && Date.now() < batch.expiresAt &&
           runtime?.projectId === batch.projectId &&
           JSON.stringify(inputs(runtime.nodes(), batch.items[index].nodeId)) === signatures[index]
         );
@@ -371,106 +338,150 @@ function createGenerationApproval({ entries, getRuntime, journal, publish }: Gen
         return false;
       }
     };
-    try {
-      if (!batch.items.every((_, index) => unchanged(index))) return;
-      if (journal && entry.record) entry.record = await journal.claim(entry.record);
-      for (const [index, item] of batch.items.entries()) {
-        if (!unchanged(index)) break;
-        if (item.dependsOn?.length) {
-          const runtime = getRuntime()!,
-            nodes = runtime.nodes(),
-            target = nodes.find((node) => node.id === item.nodeId)!;
-          requests[index] = JSON.stringify(
-            await prepareCanvasGenerationRequest(
-              nodes,
-              { ...target, [modelKey(target.type)]: item.model },
-              batch.projectId,
-              models,
-            ),
-          );
-          if (!unchanged(index)) break;
-        }
-        const originalNode = getRuntime()!
-          .nodes()
-          .find((node) => node.id === item.nodeId)!;
-        let submitted = false;
-        await getRuntime()!.generate(item.nodeId, {
-          authorizationId,
-          planId: journal ? batch.id : undefined,
-          valid: () => unchanged(index),
-          request: requests[index],
-          reserve: async (attemptId) => {
-            if (journal && entry.record)
-              entry.record = await journal.record(
-                entry.record,
-                item.nodeId,
-                'submitted',
-                attemptId,
-              );
-          },
-          submitted: () => {
-            submitted = true;
-            item.state = 'submitted';
-            publish();
-          },
+    entry.completion = (async () => {
+      try {
+        if (!batch.items.every((_, index) => unchanged(index))) return;
+        await writeGenerationJournal(entry, journal, (record) => journal!.claim(record));
+        await runGenerationBatch(entry, { models, getRuntime, journal, publish }, unchanged);
+      } catch {
+        /* No replay after claim or journal failure. */
+      } finally {
+        batch.items.forEach((item) => {
+          if (item.state === 'pending') item.state = 'stopped';
+          else if (item.state === 'submitted') item.state = 'unconfirmed';
         });
-        const node =
-          getRuntime()?.projectId === batch.projectId
-            ? getRuntime()!
-                .nodes()
-                .find((node) => node.id === item.nodeId)
-            : undefined;
-        item.state = !submitted
-          ? 'stopped'
-          : node?.status === 'success' && !node.generationAttemptId
-            ? 'success'
-            : node?.status === 'error' && !node.generationAttemptId
-              ? 'failed'
-              : 'unconfirmed';
-        if (item.state === 'success' && node) {
-          if (configuration(originalNode) !== configuration(node)) break;
-          for (let next = index + 1; next < batch.items.length; next++) {
-            const expected: CanvasNode[] = JSON.parse(signatures[next]);
-            signatures[next] = JSON.stringify(
-              expected.map((input) => (input.id === item.nodeId ? node : input)),
-            );
-          }
-        }
-        publish();
-        if (journal && entry.record) {
-          const persisted = entry.record.items.find(
-            (candidate) => candidate.nodeId === item.nodeId,
-          );
-          if (persisted?.state === 'submitted')
-            entry.record = await journal.record(
-              entry.record,
-              item.nodeId,
-              ['success', 'failed'].includes(item.state) ? item.state : 'unconfirmed',
-            );
-        }
-        if (item.state !== 'success') break;
-      }
-    } catch {
-      /* No retry. Original generation attempt/recovery remains authoritative. */
-    } finally {
-      batch.items.forEach((item) => {
-        if (item.state === 'pending') item.state = 'stopped';
-        else if (item.state === 'submitted') item.state = 'unconfirmed';
-      });
-      batch.state = 'finished';
-      if (journal && entry.record) {
+        if (batch.state !== 'cancelled') batch.state = 'finished';
         try {
-          entry.record = await journal.finish(entry.record);
+          await writeGenerationJournal(entry, journal, (record) => journal!.finish(record));
         } catch {
           batch.items.forEach((item) => {
             if (item.state !== 'success' && item.state !== 'failed') item.state = 'unconfirmed';
           });
         }
+        publish();
       }
-      publish();
-    }
+    })();
+    await entry.completion;
   }
   return approve;
+}
+
+// Each write reads the latest revision inside the queue, including cancellation/finalization.
+function writeGenerationJournal(entry: GenerationEntry,
+  journal: GenerationPlanClient | undefined,
+  write: (record: GenerationPlanRecord) => Promise<GenerationPlanRecord>) {
+  if (!journal || !entry.record) return Promise.resolve();
+  const next = (entry.writes || Promise.resolve()).then(async () => {
+    entry.record = await write(entry.record!);
+  }).catch((error: unknown) => {
+    entry.journalFailed = true;
+    throw error;
+  });
+  entry.writes = next;
+  return next;
+}
+
+async function runGenerationBatch(entry: GenerationEntry,
+  services: GenerationExecutionServices, unchanged: (index: number) => boolean) {
+  const { batch, requests } = entry;
+  const pending = new Set(batch.items.map((_, index) => index));
+  const running = new Map<number, Promise<void>>(), byModel = new Map<string, number>();
+  const prepared = new Set<number>();
+  const stop = (index: number) => {
+    batch.items[index].state = 'stopped'; pending.delete(index); services.publish();
+  };
+  try {
+    while (pending.size || running.size) {
+      for (const index of pending) {
+        const item = batch.items[index];
+        const parents = (item.dependsOn || []).map(id => batch.items.find(parent => parent.nodeId === id)!);
+        if (batch.state !== 'running' || entry.journalFailed || Date.now() >= batch.expiresAt ||
+          parents.some(parent => !['pending', 'submitted', 'success'].includes(parent.state))) {
+          stop(index); continue;
+        }
+        if (parents.some(parent => parent.state !== 'success')) continue;
+        if (!unchanged(index)) { stop(index); continue; }
+        if (running.size >= 4) break;
+        try {
+          if (parents.length && !prepared.has(index)) {
+            const runtime = services.getRuntime()!, nodes = runtime.nodes();
+            const node = nodes.find(node => node.id === item.nodeId)!;
+            requests[index] = JSON.stringify(await generationPreparation().prepare(
+              nodes, { ...node, [modelKey(node.type)]: item.model }, batch.projectId, services.models,
+            ));
+            prepared.add(index);
+          }
+          if (!unchanged(index)) { stop(index); continue; }
+          const request = JSON.parse(requests[index]);
+          const mode = String(request.imageMode || request.videoMode || request.audioMode || request.languageMode || '');
+          const capacity = await generationUi().concurrency(item.model, mode, AbortSignal.timeout(15000));
+          if (!unchanged(index)) { stop(index); continue; }
+          const key = capacity.modelId || item.model, local = byModel.get(key) || 0;
+          if (capacity.blocked || (capacity.maxConcurrent > 0 && local >= capacity.maxConcurrent)) continue;
+          pending.delete(index);
+          byModel.set(key, local + 1); // Reserve before awaiting node preflight.
+          const task = runGenerationBatchItem(entry, index, services, unchanged).finally(() => {
+            byModel.set(key, (byModel.get(key) || 1) - 1);
+            running.delete(index);
+          });
+          running.set(index, task);
+        } catch {
+          stop(index); // Preflight failed; nothing is replayed or submitted.
+        }
+      }
+      if (running.size || pending.size) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          await Promise.race([...running.values(), new Promise<void>(resolve => {
+            timer = setTimeout(resolve, 1000);
+          })]);
+        } finally { if (timer) clearTimeout(timer); }
+      }
+    }
+  } finally {
+    // Finalization must never overtake still-running branches.
+    await Promise.allSettled(running.values());
+  }
+}
+
+async function runGenerationBatchItem(entry: GenerationEntry,
+  index: number, { getRuntime, journal, publish }: GenerationExecutionServices, unchanged: (index: number) => boolean) {
+  const { batch, signatures, requests } = entry, item = batch.items[index];
+  let submitted = false;
+  try {
+    if (!unchanged(index)) { item.state = 'stopped'; return; }
+    const original = getRuntime()!.nodes().find(node => node.id === item.nodeId)!;
+    await getRuntime()!.generate(item.nodeId, {
+      authorizationId: batch.authorizationId,
+      planId: journal ? batch.id : undefined,
+      valid: () => unchanged(index),
+      request: requests[index],
+      reserve: (attemptId) => writeGenerationJournal(entry, journal,
+        (record) => journal!.record(record, item.nodeId, 'submitted', attemptId)),
+      submitted: () => { submitted = true; item.state = 'submitted'; publish(); },
+    });
+    const runtime = getRuntime();
+    const node = runtime?.projectId === batch.projectId ? runtime.nodes().find(node => node.id === item.nodeId) : undefined;
+    let state: GenerationBatch['items'][number]['state'] = !submitted ? 'stopped'
+      : node?.status === 'success' && !node.generationAttemptId ? 'success'
+        : node?.status === 'error' && !node.generationAttemptId ? 'failed' : 'unconfirmed';
+    if (state === 'success' && node && configuration(original) !== configuration(node)) state = 'unconfirmed';
+    await writeGenerationJournal(entry, journal, (record) => {
+      const persisted = record.items.find(candidate => candidate.nodeId === item.nodeId);
+      return persisted?.state === 'submitted'
+        ? journal!.record(record, item.nodeId, ['success', 'failed'].includes(state) ? state : 'unconfirmed')
+        : Promise.resolve(record);
+    });
+    if (state === 'success' && node) {
+      for (let next = index + 1; next < batch.items.length; next++) {
+        const expected: CanvasNode[] = JSON.parse(signatures[next]);
+        signatures[next] = JSON.stringify(expected.map(input => input.id === item.nodeId ? node : input));
+      }
+    }
+    item.state = state; // Downstream becomes ready only after the success journal commits.
+  } catch {
+    item.state = submitted || entry.journalFailed ? 'unconfirmed' : 'stopped';
+  } finally { publish(); }
 }
 
 function createGenerationHistory({ entries, getRuntime, journal, publish, snapshot, error, setError, listeners }: {
@@ -531,11 +542,13 @@ function createGenerationHistory({ entries, getRuntime, journal, publish, snapsh
     cancel: async (id: string) => {
       const entry = entries.get(id);
       if (entry && ['pending', 'running'].includes(entry.batch.state)) {
+        const running = entry.batch.state === 'running';
         entry.batch.state = 'cancelled';
         publish();
-        if (journal && entry.record) {
+        if (running) await entry.completion;
+        else if (journal && entry.record) {
           try {
-            entry.record = await journal.finish(entry.record);
+            await writeGenerationJournal(entry, journal, (record) => journal.finish(record));
           } catch {
             /* Keep local stop; never replay. */
           }
@@ -557,4 +570,4 @@ function generationParameterDisplay(prepared: Record<string, unknown>, type: str
     .map(([key, value]) => `${labels[key] || key}：${value}`).join('\n');
 }
 
-export type CanvasCreationControl = ReturnType<typeof createCanvasCreationControl>;
+export type { CanvasCreationControl } from '../../../contracts/agentCanvasWorkspace';

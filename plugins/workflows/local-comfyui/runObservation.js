@@ -1,10 +1,9 @@
+import { workflowSupport } from '../../../modules/kernel/server.js';
 import { LocalComfyClientError } from './client.js';
 
-import {
-  classifyHistoryState,
-  normalizeAvailableHistoryOutputs,
-  toOutputCandidateDto,
-} from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowOutputs.js';
+const classifyHistoryState = (...args) => workflowSupport().classifyHistory(...args);
+const normalizeAvailableHistoryOutputs = (...args) => workflowSupport().availableHistoryOutputs(...args);
+const toOutputCandidateDto = (...args) => workflowSupport().outputCandidate(...args);
 
 export function handleRealtimeEvent({ coordinator }, { event, promptId, runId }) {
   const data = event?.data;

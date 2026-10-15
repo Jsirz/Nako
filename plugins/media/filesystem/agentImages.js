@@ -10,7 +10,8 @@ function assertReferenceObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !['type', 'url'].includes(key)))
     throw referenceError('参考图片无效', 'DRAMA_CHAT_MEDIA_INVALID');
 }
-import { resolveMediaArtifact } from '../../../modules/asset-media/api/server/media/mediaArtifact.js';
+import { mediaFiles } from '../../../modules/kernel/server.js';
+const resolveMediaArtifact = (...args) => mediaFiles().resolveArtifact(...args);
 
 /** Shared bounded reference reader for explicit prompt/storyboard operations. */
 export async function readAgentReference({ libraryDirectory, projectId, url }) {

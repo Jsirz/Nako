@@ -5,15 +5,12 @@ import type * as Editor from './canvasEditorHooks';
 import type { useCanvasNodes } from '../nodes/canvasNodeState';
 import type { useCanvasViewport } from './canvasViewport';
 import type { useCanvasPanels } from '../dialogs/canvasPanels';
-import type { useCanvasWorkflow } from '../../../project/api/ui/persistence/canvasWorkflow';
-import type { useCanvasGeneration } from '../../../generation-core/api/ui/generation/canvasGeneration';
-import type { useCanvasLocalWorkflows } from '../../../generation-core/api/ui/generation/canvasLocalWorkflows';
-import type * as Media from '../../../asset-media/api/ui/media/canvasMediaOperations';
 import type { useCanvasWorkflowPresets } from './canvasWorkflowPresets';
 import type { useCanvasCommands } from './canvasCommands';
 import type { useCanvasContextMenu } from './canvasContextHooks';
 import type { createCanvasTextActions } from './canvasTextActions';
 import type { useCanvasConnections } from './canvasConnectionHooks';
+import type { CanvasWorkflowBinding, CanvasGenerationBinding, CanvasLocalWorkflowBinding, CanvasSnapshotBinding, CanvasAudioTrimBinding, CanvasAssetBinding, CanvasMediaEditingBindings } from '../../../contracts/canvasServiceBindings';
 export type Runtime = Pick<
   typeof React,
   | 'createElement'
@@ -28,14 +25,7 @@ export type Runtime = Pick<
 type Props = Record<string, unknown>;
 type Component = React.ComponentType<Props>;
 type Hook<F extends (...args: never[]) => unknown> = (options: Props) => ReturnType<F>;
-interface LoadedProject extends Props {
-  nodes: CanvasNode[];
-  groups: CanvasGroup[];
-  folderId?: string;
-  lastSavedAt?: number;
-  lastSavedBy?: string;
-  revision?: number;
-}
+
 /** Native bindings supply existing React/store/collaboration instances; application behavior lives in source. */
 export interface Dependencies {
   usePanels(): ReturnType<typeof useCanvasPanels>;
@@ -55,11 +45,7 @@ export interface Dependencies {
     initial: { nodes: CanvasNode[]; groups: CanvasGroup[] },
     limit: number,
   ): ReturnType<typeof Editor.useCanvasHistory<{ nodes: CanvasNode[]; groups: CanvasGroup[] }>>;
-  useWorkflow(
-    options: Props,
-  ): Omit<ReturnType<typeof useCanvasWorkflow>, 'handleLoadWorkflow'> & {
-    handleLoadWorkflow(id: string): Promise<LoadedProject | null>;
-  };
+  useWorkflow(options: Props): CanvasWorkflowBinding;
   useLocalUser(): { id: string; no: string; name: string; setName(value: string): void };
   userColorForId(id: string): string;
   NodeStatus: Record<'LOADING' | 'SUCCESS', string>;
@@ -67,19 +53,19 @@ export interface Dependencies {
     'IMAGE' | 'VIDEO' | 'AUDIO' | 'TEXT' | 'UPLOAD_IMAGE' | 'UPLOAD_VIDEO' | 'UPLOAD_AUDIO',
     string
   >;
-  useGeneration: Hook<typeof useCanvasGeneration>;
-  useSnapshots: Hook<typeof Media.useCanvasSnapshots>;
-  useAudioTrim: Hook<typeof Media.useCanvasAudioTrim>;
+  useGeneration(options: Props): CanvasGenerationBinding;
+  useSnapshots(options: Props): CanvasSnapshotBinding;
+  useAudioTrim(options: Props): CanvasAudioTrimBinding;
   useTextActions: Hook<typeof createCanvasTextActions>;
-  useLocalWorkflows: Hook<typeof useCanvasLocalWorkflows>;
-  useAssets: Hook<typeof Media.useCanvasAssets>;
+  useLocalWorkflows(options: Props): CanvasLocalWorkflowBinding;
+  useAssets(options: Props): CanvasAssetBinding;
   usePresets: Hook<typeof useCanvasWorkflowPresets>;
   useCommands: Hook<typeof useCanvasCommands>;
   useAutoSave(options: Props): void;
   useVideoResults(options: Props): void;
   useImageResults(options: Props): void;
   useContextMenu: Hook<typeof useCanvasContextMenu>;
-  media: typeof Media;
+  media: CanvasMediaEditingBindings;
   getNodeWidth(node: CanvasNode): number;
   getNodeHeight(node: CanvasNode): number;
   createId(): string;

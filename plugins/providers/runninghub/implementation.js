@@ -1,7 +1,10 @@
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { buildJsonFetchOptions, submitJsonWithLogs } from '../../../modules/generation-providers/api/server/providers/providerKit.js';
-import { matchesRemoteTask, remoteTaskReference } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
-import { validateRecoveredVideo } from '../../../modules/asset-media/api/server/media/recoveredVideo.js';
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
+import { mediaRuntime } from '../../../modules/kernel/server.js';
+const validateRecoveredVideo = (...args) => mediaRuntime().validateRecoveredVideo(...args);
 import sharp from 'sharp';
 import { hasMeaningfulValue, formatRunningHubError, buildStandardImageBody, buildStandardVideoBody } from './standardRequestHelpers.js';
 export { formatRunningHubError, buildStandardImageBody, buildStandardVideoBody, standardVideoMode } from './standardRequestHelpers.js';

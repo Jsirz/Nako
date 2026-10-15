@@ -1,18 +1,12 @@
 import { defineApplicationPlugin } from '../kernel/application.js';
-import { RUNTIME_PATHS } from '../project/api/server/workspace/runtimePaths.js';
 import express from 'express';
 import { createExecutionWorkflowRuntime } from './server/workflowRuntime/executionWorkflowRuntime.js';
-import {
-  BASE_LIBRARY_DIR,
-  getWorkspacePaths,
-  getUrlPrefix,
-} from '../project/api/server/workspace/workspacePaths.js';
 
 export default defineApplicationPlugin({
   ...{
     id: 'module.workflow-runtime',
     dependencies: ['module.generation', 'workflow-runtime'],
-    requires: ['generation.runtime', 'workflow.executors'],
+    requires: ['generation.runtime', 'workflow.executors', 'platform.paths', 'media.runtime', 'identity.externalUrlFetch', 'local.runtime'],
     provides: ['workflow.execution'],
   },
   async activate(context) {

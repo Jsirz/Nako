@@ -1,6 +1,6 @@
 import { IDENTITY_ERRORS, identityError, avatarCancelled } from '../../../contracts/identityErrors.js';
 import { browserServices } from '../../../kernel/browser';
-import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { accountPreferences as preferenceStorage } from '../../../kernel/browser';
 
 const AVATAR_STORAGE_KEY = 'nako-local-avatar';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -174,4 +174,4 @@ export function uninstallLocalProfileForTests() {
   profileObservation = null;
   delete browserServices.__NAKO_LOCAL_PROFILE__;
 }
-import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
+import { observeStableEnhancement } from '../../../kernel/ui/enhancementLifecycle';

@@ -13,6 +13,8 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 [workflowRouter.js](../../modules/project/server/workflow/workflowRouter.js) 挂载 `/api/workflows`；folderRouter 挂载 `/api/folders`；projectTransferRouter 承接项目包、整库包、JSON、复制与只读预览。保存返回 success/id/revision，冲突返回 409/REVISION_CONFLICT/currentRevision，其他结构和限额由归档协议及实现校验。
 浏览器项目经 ui.canvas.project 消费图重映射、分组清理、模态和提示能力，经 ui.media.recovery 恢复中断节点；服务由画布/媒体插件提供，project manifest 声明 requires。公共文档和坐标协议不依赖 React，hooks 类型保留在项目 UI。
 
+ui.project.catalog 为 Agent/画布提供当前用户项目读取、创建与导航能力，参数及回执归 contracts/projectCatalog.ts。应用组合根装配项目 hooks，contracts/canvasServiceBindings.ts 定义保存、载入、文件读取与归档传输输入输出。认证作用域由 identity-account 负责；本模块只消费公共用户标识与注入仓储，不反向读取身份模块内部对象。
+
 ## 数据模型
 
 项目含 id/title/revision/status/folderId/coverUrl/createdAt/updatedAt、nodes/groups/viewport。数据库保存 payload_json 与摘要字段；workflows.db 位于当前用户 library。folders 维护层级/项目数量；workflow_recovery_points 保存项目版本与快照，workflow_quarantine 隔离损坏记录。
@@ -22,6 +24,10 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 ## 功能结构
 
 `projectDashboardHeader.tsx` 的首页品牌显示“NAKO Agent 纳科画布智能体”，顶部只保留设置入口；创建画布使用最近项目区的新建画布卡片或全部项目中的创建入口。
+
+首页顶部由 [homeBannerCarousel.tsx](../../modules/project/ui/navigation/homeBannerCarousel.tsx) 展示 `public/homepage/` 直属目录中的 PNG、JPEG、WebP、GIF、AVIF、SVG 图片。Vite 的 `Object.keys(import.meta.glob(...))` 只枚举文件名，图片通过 `/homepage/<编码后的文件名>` 静态 URL 加载，不读取到 JavaScript 包中，也无需手写索引。文件按中文自然文件名排序；添加、删除或重命名图片后需重新构建前端，安装应用随新安装包更新图片列表。轮播中间突出当前图片，两侧预览，支持左右箭头、图片选择圆点及点击两侧图片，每 5 秒自动切换；悬停、键盘聚焦、页面隐藏或偏好减少动态时暂停自动切换，卸载清理计时器。窄窗口仅展示当前图片；只有一张时不显示切换按钮。目录不存在、没有支持的图片或图片全部加载失败时，保留 `projectDashboardHome.tsx` 原有欢迎区域；单张加载失败仅从本次展示中移除。资源枚举和展示位于 project UI，不增加后端文件系统调用或跨模块依赖。
+
+轮播样式 `homeBannerCarousel.css` 在宽窗口中将区域上移 14px、左侧扩展 20px，中央图片占展示区宽度 42%，展示区宽高比为 4.2:1，两侧图片随之放大并调整重叠位置。680px 以下恢复左右对称布局，仅展示当前图片。
 
 保存流程：校验文档与 revision -> 仓储写入/内联媒体规范化 -> JSON 快照 -> 同步文件夹计数 -> 返回保存回执。浏览器只有确认当前修改都已保存才导出或切换；revision 冲突不覆盖最新版本。
 
@@ -83,7 +89,6 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/server/workflow/workflowSnapshot.js](../../modules/project/server/workflow/workflowSnapshot.js) | 服务端领域实现 | `createWorkflowSnapshotWriter` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/workspace/resourceOwnership.js](../../modules/project/server/workspace/resourceOwnership.js) | 服务端领域实现 | `DEFAULT_SHARED_RESOURCE_ALLOWLIST`, `listResourceOwnership`, `getResourceOwnership`, `assertResourceOwnershipCoverage` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/workspace/runtimePaths.js](../../modules/project/server/workspace/runtimePaths.js) | 运行、调度或服务 | `resolveRuntimePaths`, `RUNTIME_PATHS` | 未检出平台调用；不等于纯函数证明 |
-| [modules/project/server/workspace/userScopeResolver.js](../../modules/project/server/workspace/userScopeResolver.js) | 服务端领域实现 | `UserScopeError`, `assertCanonicalOpaqueUserId`, `createServerAuthenticationContext`, `createActiveUserAuthenticationContext`, `resolveServerAuthenticationIdentity`, `createUserScopeResolver` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/server/workspace/workspacePaths.js](../../modules/project/server/workspace/workspacePaths.js) | 服务端领域实现 | `BASE_LIBRARY_DIR`, `getWorkspacePaths`, `getUrlPrefix` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/serverPlugin.js](../../modules/project/serverPlugin.js) | 模块入口或装配 | `default` | 含 HTTP/网络、服务注册/生命周期 调用；时机见实现 |
 | [modules/project/ui/navigation/dashboardBrowserHeader.css](../../modules/project/ui/navigation/dashboardBrowserHeader.css) | 界面样式 | 样式 | 无业务运行副作用 |
@@ -96,7 +101,9 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/ui/navigation/dashboardParts.tsx](../../modules/project/ui/navigation/dashboardParts.tsx) | 浏览器交互与状态辅助 | `DashboardErrorStatus`, `ModalProps`, `DashboardModal`, `DashboardBreadcrumbs`, `DashboardCleanupStatus` | 含 DOM/事件 调用；时机见实现 |
 | [modules/project/ui/navigation/dashboardRename.tsx](../../modules/project/ui/navigation/dashboardRename.tsx) | 浏览器交互与状态辅助 | `useDashboardRename` | 含 DOM/事件 调用；时机见实现 |
 | [modules/project/ui/navigation/dashboardRuntime.ts](../../modules/project/ui/navigation/dashboardRuntime.ts) | 运行、调度或服务 | `DashboardRuntime`, `DashboardIcon` | 未检出平台调用；不等于纯函数证明 |
-| [modules/project/ui/navigation/openSettings.ts](../../modules/project/ui/navigation/openSettings.ts) | 浏览器交互与状态辅助 | `SettingsSection`, `openSettings` | 含 DOM/事件 调用；时机见实现 |
+| [modules/project/ui/navigation/homeBannerCarousel.css](../../modules/project/ui/navigation/homeBannerCarousel.css) | 界面样式 | 样式 | 无业务运行副作用 |
+| [modules/project/ui/navigation/homeBannerCarousel.tsx](../../modules/project/ui/navigation/homeBannerCarousel.tsx) | 浏览器交互与状态辅助 | `HomeBannerCarousel` | 含 DOM/事件 调用；时机见实现 |
+| [modules/project/ui/navigation/openSettings.ts](../../modules/project/ui/navigation/openSettings.ts) | 浏览器交互与状态辅助 | `openSettings`, `SettingsSection` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/navigation/projectDashboard.tsx](../../modules/project/ui/navigation/projectDashboard.tsx) | 浏览器交互与状态辅助 | `ProjectDashboardProps`, `ProjectDashboard` | 含 DOM/事件 调用；时机见实现 |
 | [modules/project/ui/navigation/projectDashboardCards.tsx](../../modules/project/ui/navigation/projectDashboardCards.tsx) | 界面呈现与交互 | `DashboardCardProps`, `DashboardProjectCard`, `DashboardFolderCard` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/navigation/projectDashboardChrome.ts](../../modules/project/ui/navigation/projectDashboardChrome.ts) | 浏览器交互与状态辅助 | `projectCoverPreviewUrl` | 含 DOM/事件 调用；时机见实现 |
@@ -124,7 +131,7 @@ contracts 的 ProjectRepository 提供 get/list/save/delete，目录、恢复点
 | [modules/project/ui/persistence/canvasWorkflowSave.ts](../../modules/project/ui/persistence/canvasWorkflowSave.ts) | 浏览器交互与状态辅助 | `useWorkflowSave` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/persistence/canvasWorkflowState.ts](../../modules/project/ui/persistence/canvasWorkflowState.ts) | 浏览器交互与状态辅助 | `useWorkflowState`, `WorkflowState` | 含 DOM/事件 调用；时机见实现 |
 | [modules/project/ui/persistence/canvasWorkflowView.ts](../../modules/project/ui/persistence/canvasWorkflowView.ts) | 界面呈现与交互 | `useWorkflowView`, `WorkflowView` | 含 DOM/事件 调用；时机见实现 |
-| [modules/project/ui/persistence/preferenceStore.ts](../../modules/project/ui/persistence/preferenceStore.ts) | 存储访问或状态管理 | `PreferenceStorage`, `PreferenceStoreOptions`, `createPreferenceStore`, `installPreferenceStore`, `preferenceStorage`, `uninstallPreferenceStoreForTests` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
+| [modules/project/ui/persistence/preferenceStore.ts](../../modules/project/ui/persistence/preferenceStore.ts) | 存储访问或状态管理 | `preferenceStorage` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/persistence/projectMediaImport.ts](../../modules/project/ui/persistence/projectMediaImport.ts) | 浏览器交互与状态辅助 | `prepareProjectMedia` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/project/ui/persistence/workflowMerge.ts](../../modules/project/ui/persistence/workflowMerge.ts) | 浏览器交互与状态辅助 | `WorkflowRecord`, `WorkflowConflictError`, `sameWorkflowValue`, `mergeWorkflow` | 未检出平台调用；不等于纯函数证明 |
 | [modules/project/ui/projectUiServices.ts](../../modules/project/ui/projectUiServices.ts) | 运行、调度或服务 | `canvasProjectUi`, `projectMediaRecovery` | 未检出平台调用；不等于纯函数证明 |

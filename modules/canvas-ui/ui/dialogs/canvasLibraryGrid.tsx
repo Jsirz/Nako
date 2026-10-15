@@ -1,5 +1,5 @@
 import type { Runtime, GridProps, Icons, LibraryItem, AssetFields } from './canvasLibrary';
-import { ASSET_CATEGORIES, assetCategory } from '../../../asset-media/api/ui/media/assetOrganization';
+import { ASSET_CATEGORIES, assetCategory } from '../../../contracts/assetOrganization';
 
 export function CanvasLibraryGrid(React: Runtime, props: GridProps, icons: Icons) {
   const state = useLibraryGridState(React, props);

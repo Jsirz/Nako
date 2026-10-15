@@ -5,6 +5,9 @@ export interface LocalProviderConfiguration {
   DreaminaCliImageProvider: boolean;
   DreaminaCliVideoProvider: boolean;
 }
-export interface LocalRuntimeService {
+export interface DirectoryPickerService {
+  selectDirectory(options?: { description?: string }): Promise<string>;
+}
+export interface LocalRuntimeService extends DirectoryPickerService {
   providerConfiguration(options?: { waitForFresh?: boolean }): Promise<LocalProviderConfiguration>;
 }

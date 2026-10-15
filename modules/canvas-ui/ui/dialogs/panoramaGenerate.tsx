@@ -1,7 +1,7 @@
 import { canvasError } from '../../../contracts/canvasErrors.js';
 import * as React from 'react';
 import { X, Globe } from 'lucide-react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { ImageToolGenerateButton } from './imageToolGenerateButton';
 import './imageAngle.css';
 export function PanoramaGenerate({

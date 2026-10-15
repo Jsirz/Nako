@@ -1,10 +1,6 @@
 import { browserHost } from '../../../kernel/browser';
 import { declaredModel, type DefaultModelsClient } from '../../../contracts/defaultModels.js';
 import { useGenerationAvailability } from './useGenerationAvailability';
-import {
-  CreativeLibraryTools,
-  CreativePromptTokens,
-} from '../../../agent/api/ui/prompt/CreativeLibrary';
 import { rememberNodeDimensions } from './nodeCreationDimensions';
 import {
   useComposerBusy,
@@ -13,9 +9,9 @@ import {
   type MediaComposerProps,
   type MediaComposerComponents,
 } from './mediaComposer';
-import { installVideoModeAdapter } from '../../../generation-core/api/ui/generation/videoMode';
+import { generationInteraction } from '../../../kernel/browser';
 import { declaredNodeOutput } from '../../../contracts/nodeValues.js';
-import { externalReferenceMedia } from '../../../generation-core/api/ui/generation/canvasGenerationRequests';
+
 export function CanvasVideoComposer(
   React: ComposerRuntime,
   props: MediaComposerProps,
@@ -41,7 +37,7 @@ function useVideoComposerState(React: ComposerRuntime, props: MediaComposerProps
       browserHost.services.optional<DefaultModelsClient>('generation.defaults')?.get('video') ||
       '',
   };
-  const external = externalReferenceMedia(node, model);
+  const external = generationInteraction().externalReferences(node, model);
   const inputs = {
     images:
       assets.filter((asset) => ['Image', 'Upload Image'].includes(asset.type)).length +
@@ -53,7 +49,7 @@ function useVideoComposerState(React: ComposerRuntime, props: MediaComposerProps
       assets.filter((asset) => ['Audio', 'Upload Audio'].includes(asset.type)).length +
       external.filter((input) => input.kind === 'audio').length,
   };
-  const videoModes = installVideoModeAdapter(),
+  const videoModes = generationInteraction().videoModes(),
     selectableModes = model.videoModes || [];
   const effectiveMode = videoModes.resolve(node.videoMode, inputs, selectableModes),
     modeKnown = videoModes.supports(selectableModes, effectiveMode),
@@ -216,6 +212,7 @@ function renderVideoComposer(
   React: ComposerRuntime, props: MediaComposerProps, components: MediaComposerComponents,
   state: ReturnType<typeof useVideoComposerState>,
 ) {
+  const { CreativeLibraryTools, CreativePromptTokens } = components;
   const { data: node, readOnly = false, connectedImageNodes: assets = [], onUpdate, onGenerate, onSelect } = props;
   const { models, ratios, resolutions, PromptEditor, ConnectedAssets, ModelSelector, Dimensions,
     AdvancedSettings, Tooltip, CollapseIcon, SettingsIcon, GenerateIcon } = components;

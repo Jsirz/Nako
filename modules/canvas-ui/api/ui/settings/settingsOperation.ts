@@ -1,2 +1,2 @@
 // Public module API. Implementation ownership stays inside canvas-ui.
-export * from '../../../ui/settings/settingsOperation';
+export * from '../../../../kernel/ui/settingsOperation';

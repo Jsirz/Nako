@@ -3,7 +3,7 @@ import { declaredModel, type DefaultModelsClient } from '../../../contracts/defa
 import { browserServices } from '../../../kernel/browser';
 import type { ConnectedAssetsProps } from './canvasConnectedAssets';
 import type * as ReactTypes from 'react';
-import type { CanvasPromptEditor } from '../../../agent/api/ui/prompt/canvasPromptEditor';
+import type { PromptEditorProps } from '../../../contracts/promptEditing';
 import { useGenerationAvailability } from './useGenerationAvailability';
 type Runtime = Pick<
   typeof ReactTypes,
@@ -50,7 +50,7 @@ interface Props {
 type Icon = ReactTypes.ComponentType<{ size: number }>;
 interface Components {
   models: TextModel[];
-  PromptEditor: ReactTypes.ComponentType<Parameters<typeof CanvasPromptEditor>[1]>;
+  PromptEditor: ReactTypes.ComponentType<PromptEditorProps>;
   ConnectedAssets: ReactTypes.ComponentType<ConnectedAssetsProps>;
   ModelSelector: ReactTypes.ComponentType<{
     isVideoNode: boolean;

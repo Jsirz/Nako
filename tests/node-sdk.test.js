@@ -43,6 +43,19 @@ describe('Node SDK and registry', () => {
     expect(registry.migrate({ id: 'n1', type: 'source', nodeVersion: '0.9.0', pluginId: 'fixture.nodes' }).node.prompt).toBe('migrated');
     expect(registry.validateEdge({ source: { nodeId: 'a', portId: 'out' }, target: { nodeId: 'b', portId: 'input' } }, [{ id: 'a', type: 'source' }, { id: 'b', type: 'sink' }])).toEqual({ valid: true });
   });
+  it('rejects incompatible and duplicate packages with actionable registration context', () => {
+    const registry = new NodeRegistry();
+    expect(() => registry.register(packageValue({ apiVersion: '^99.0.0' }))).toThrow(expect.objectContaining({
+      code: ERRORS.nodePackage, status: 400,
+      context: expect.objectContaining({ moduleId: 'kernel', operation: 'nodes.register', packageId: 'fixture.nodes' }),
+    }));
+    registry.register(packageValue());
+    expect(() => registry.register(packageValue())).toThrow(expect.objectContaining({
+      code: ERRORS.nodePackage, status: 409,
+      context: expect.objectContaining({ operation: 'nodes.register', packageId: 'fixture.nodes' }),
+    }));
+    expect(registry.listPackages()).toHaveLength(1);
+  });
 });
 
 describe('Node DAG scheduler and RPC boundary', () => {

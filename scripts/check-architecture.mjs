@@ -11,6 +11,16 @@ import {
   importSpecifiers,
 } from './architecture/sourceGraph.mjs';
 const modelImports = new Set(readModelContributions().map((item) => item.target));
+// Only the host composition root may wire this account-owned adapter directly.
+const hostBindings = new Set([
+  'modules/desktop-shell-observability/serverHost.js->modules/identity-account/api/credentialStore.js',
+]);
+const providerSdk = new Set([
+  'modules/generation-providers/index.js',
+  'modules/generation-providers/api/server/providers/baseProvider.js',
+  'modules/generation-providers/api/server/providers/providerKit.js',
+  'modules/generation-providers/api/server/providers/cliMediaInputs.js',
+]);
 const skip = new Set(['node_modules', 'dist', '.verification', '.desktop-dev', '.git']);
 const walk = (dir) =>
   fs
@@ -86,15 +96,11 @@ for (const file of files) {
       failures.push(`${own}: pi is private to agent: ${spec}`);
     if (own.startsWith('modules/agent/') && /^(?:node:)?fs(?:\/|$)/.test(spec))
       failures.push(`${own}: Harness persistence must use the storage adapter`);
-    if (
-      /^modules\/asset-media\/.*Router\.[cm]?[jt]s$/.test(own) &&
-      /^(?:node:)?(?:fs|path|child_process)(?:\/|$)/.test(spec)
-    )
-      failures.push(`${own}: media routers must use storage/processor services`);
+    if (own.startsWith('modules/asset-media/')
+      && /^(?:(?:node:)?(?:fs|path|os|crypto|child_process)(?:\/|$)|sharp$)/.test(spec))
+      failures.push(`${own}: media platform operations must use adapter services`);
     if (own.startsWith('modules/project/') && /^(?:sqlite3|better-sqlite3|node:sqlite)(?:\/|$)/.test(spec))
       failures.push(`${own}: project persistence must use ProjectRepository`);
-    if (own === 'modules/asset-media/serverPlugin.js' && /^(?:node:)?(?:fs|path|child_process)(?:\/|$)/.test(spec))
-      failures.push(`${own}: media composition must use storage/processor services`);
     if (!spec.startsWith('.')) {
       if (/^modules\/(contracts|kernel)\//.test(own))
         failures.push(`${own}: package/platform dependency ${spec}`);
@@ -107,6 +113,16 @@ for (const file of files) {
     }
     if (own.startsWith('modules/canvas-ui/') && target.startsWith('modules/local-runtime/'))
       failures.push(`${own}: canvas must obtain local-runtime capabilities through kernel services`);
+    const targetBusiness = target.startsWith('modules/') && !/^modules\/(?:contracts|kernel)\//.test(target);
+    if (targetBusiness && own.startsWith('modules/') && moduleOwner(own) !== moduleOwner(target)
+        && !hostBindings.has(`${own}->${target}`))
+      failures.push(`${own}: cross-module calls and types must use kernel services/contracts: ${spec}`);
+    if (targetBusiness && own.startsWith('plugins/')) {
+      const sdk = (own.startsWith('plugins/providers/') || own.startsWith('plugins/platform/text-transport/'))
+          && providerSdk.has(target)
+        || own.startsWith('plugins/workflows/') && target === 'modules/workflow-runtime/api/defineExecutor.js';
+      if (!sdk) failures.push(`${own}: adapter must use kernel services/contracts, not business implementations: ${spec}`);
+    }
     if (moduleOwner(own) && moduleOwner(target) && isBackendSource(own))
       backendEdges.push({ from: moduleOwner(own), to: moduleOwner(target), source: own, target });
     if (
@@ -137,7 +153,8 @@ for (const file of files) {
     if (own.startsWith('plugins/') && target.startsWith('plugins/')) {
       const owner = own.split('/').slice(0, 3).join('/'),
         targetOwner = target.split('/').slice(0, 3).join('/');
-      if (owner !== targetOwner && !target.includes('/shared/'))
+      const workflowShared = own.startsWith('plugins/workflows/') && target.startsWith('plugins/workflows/shared/');
+      if (owner !== targetOwner && !workflowShared)
         failures.push(`${own}: imports another adapter implementation ${spec}`);
     }
     if (
@@ -188,5 +205,5 @@ if (failures.length) {
   process.exitCode = 1;
 } else
   console.log(
-    `Architecture passed: ${files.length} source files; no retired directories; public module APIs; 5 plugin catalogs.`,
+    `Architecture passed: ${files.length} source files; kernel service boundaries; public module APIs; 5 plugin catalogs.`,
   );

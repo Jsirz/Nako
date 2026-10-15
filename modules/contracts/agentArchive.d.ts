@@ -1,3 +1,4 @@
+import type { PluginError } from './errors.js';
 export interface AgentHistoryEntry {
   id: string;
   parentId: string | null;
@@ -31,5 +32,5 @@ export interface AgentArchiveService {
   ): Promise<() => Promise<void>>;
 }
 export const AGENT_ARCHIVE_FORMAT: 'nako-agent-history';
-export function agentArchiveError(message: string): Error & { code: string; status: number };
+export function agentArchiveError(message: string): PluginError & { status: number };
 export function validateAgentArchive(archive: unknown, projectId: string): AgentHistoryArchive;

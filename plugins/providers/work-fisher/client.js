@@ -1,6 +1,6 @@
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
-import { annotateProviderError } from '../../../modules/desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
+import { annotateProviderError } from '../../../modules/contracts/providerDiagnostics.js';
 import { providerError, wrapProviderError } from '../../../modules/contracts/providerErrors.js';
 export const defaultFetcher = (...args) => BaseProvider.fetch(...args);
 export const failure = (message, extra = {}) =>

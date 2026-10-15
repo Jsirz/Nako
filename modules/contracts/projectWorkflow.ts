@@ -43,5 +43,5 @@ export interface CanvasProjectUiService {
   observeStableEnhancement(callback: () => void): () => void;
 }
 export interface ProjectMediaRecoveryService {
-  interruptedMediaNode(node: WorkflowRecord): WorkflowRecord;
+  interruptedMediaNode<T extends WorkflowRecord>(node: T): T;
 }

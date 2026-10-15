@@ -1,9 +1,10 @@
+import { mediaRuntime } from '../../../kernel/server.js';
 import { WebSocket } from 'ws';
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { resolveLocalPath } from '../../../asset-media/api/server/utils/imageHelpers.js';
+const resolveLocalPath = (input) => mediaRuntime().resolveLocalPath(input);
 import FormData from 'form-data';
 import { normalizeLocalComfyServer } from '../../../contracts/comfyServerAddress.js';
 import { createModuleLogger } from '../../../kernel/logger.js';

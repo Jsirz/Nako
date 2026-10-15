@@ -1,4 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
+import './helpers/modelCatalog.js';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
+useServerCapabilities();
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';

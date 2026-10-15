@@ -1,6 +1,6 @@
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
-import { isResizableMediaNode } from '../../../asset-media/api/ui/media/mediaNodeSizing';
+import { mediaCanvas } from '../../../kernel/browser';
 import { installNodeFramework } from './nodeFramework';
 import { CanvasPluginNode } from './canvasPluginNode';
 import type { NodeDefinition } from './nodeFramework';
@@ -210,7 +210,7 @@ export function CanvasNodeFrame(
             )}
           </div>
         )}
-        {selected && !props.readOnly && props.onResizeStart && isResizableMediaNode(data) && (
+        {selected && !props.readOnly && props.onResizeStart && mediaCanvas().isResizable(data) && (
           <div
             data-nako-media-resize-handle="true"
             aria-label="缩放媒体节点"

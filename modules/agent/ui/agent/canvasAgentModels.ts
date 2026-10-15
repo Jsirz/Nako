@@ -1,5 +1,5 @@
 import type { AgentVision } from './agentVision';
-import { modelDisplayName } from '../../../generation-core/api/models/modelDisplayName';
+import { modelCatalog } from '../../../kernel/browser';
 import { isGenerationSourceVisible } from '../../../contracts/uiFeatures';
 const CHAT_PROVIDERS = new Set([
   'DoubaoTextProvider',
@@ -31,7 +31,7 @@ export function canvasAgentModels<Parameter>(catalog: readonly CatalogModel<Para
     )
     .map((model) => ({
       id: model.name,
-      label: modelDisplayName(model.name),
+      label: modelCatalog().displayName(model.name),
       vision: (model.supportedReferenceTypes?.includes('image')
         ? 'supported'
         : model.supportedReferenceTypes?.includes('text')

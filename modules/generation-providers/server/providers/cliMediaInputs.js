@@ -1,7 +1,10 @@
+import { mediaRuntime } from '../../../kernel/server.js';
 import { copyFile, lstat, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { getWorkspacePaths } from '../../../project/api/server/workspace/workspacePaths.js';
-import { resolveLocalPath } from '../../../asset-media/api/server/utils/imageHelpers.js';
+import { platformPaths } from '../../../kernel/server.js';
+const getWorkspacePaths = () => platformPaths().workspace();
+const getUrlPrefix = () => platformPaths().publicLibraryPrefix();
+const resolveLocalPath = (input) => mediaRuntime().resolveLocalPath(input);
 import { ProviderError } from '../../../contracts/providerErrors.js';
 const INPUT_LIMITS = Object.freeze({
   image: 25 * 1024 * 1024,

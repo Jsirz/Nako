@@ -2,6 +2,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PluginHost } from '../kernel/index.js';
+import { serverServices } from '../kernel/server.js';
+import { createModuleLogger } from '../kernel/logger.js';
 import { lazyPlugin } from '../kernel/lazyPlugin.js';
 import { createCredentialStore } from '../identity-account/api/credentialStore.js';
 import { createNodeRegistry } from '../kernel/nodeRegistry.js';
@@ -17,6 +19,7 @@ export async function createServerPluginHost({
   runtime,
   routes,
 } = {}) {
+  const moduleLogger = createModuleLogger('desktop-shell-observability', logger);
   const settings =
     configuration ||
     JSON.parse(
@@ -35,6 +38,7 @@ export async function createServerPluginHost({
     entries.map((entry) => [entry.id, entry.credentialGrants || []]),
   );
   const host = new PluginHost({
+    services: serverServices,
     config: settings.options || {},
     credentialStore,
     credentialGrants,
@@ -63,11 +67,13 @@ export async function createServerPluginHost({
   const nodeRegistry = createNodeRegistry();
   const nodePackages = createNodeDirectoryLoader({ directory: nodeDirectory, builtinDirectory: path.join(installedNodeDirectory, 'canvas-core'), registry: nodeRegistry, logger });
   await nodePackages.reload();
-  if (nodePackages.list().errors.length) logger.warn(`[nodes] ${nodePackages.list().errors.length} package(s) could not be loaded`);
+  if (nodePackages.list().errors.length) moduleLogger.warn('Node packages could not be loaded', {
+    operation: 'nodes.load', failureCount: nodePackages.list().errors.length,
+  });
   async function register(entries, base) {
     for (const entry of entries) {
       const manifest = JSON.parse(await fs.readFile(new URL(entry.manifest, base), 'utf8'));
-      if (entry.id !== manifest.id) throw new PluginError(ERRORS.invalidManifest, `Catalog identity mismatch: ${entry.id}`, { context: { moduleId: 'desktop-shell-observability', pluginId: entry.id } });
+      if (entry.id !== manifest.id) throw new PluginError(ERRORS.invalidManifest, `Catalog identity mismatch: ${entry.id}`, { context: { moduleId: 'desktop-shell-observability', operation: 'plugin.register', pluginId: entry.id } });
       host.register(
         lazyPlugin(manifest, async () => {
           const module = await import(new URL(entry.entry, base));
@@ -90,10 +96,21 @@ export async function createServerPluginHost({
         version: '1.0.0',
         apiVersion: '^1.0.0',
         type: 'platform',
-        services: { provides: ['host.runtime', 'http.routes', 'node.registry', 'node.packages'] },
+        services: { provides: ['host.runtime', 'platform.paths', 'http.routes', 'node.registry', 'node.packages'] },
       },
       activate(context) {
         context.services.register('host.runtime', Object.freeze(runtime));
+        context.services.register('platform.paths', Object.freeze({
+          runtime: Object.freeze({ ...runtime.paths }),
+          workspace: () => ({
+            LIBRARY_DIR: runtime.paths.LIBRARY_DIR,
+            LIBRARY_MEDIA_DIR: path.join(runtime.paths.LIBRARY_DIR, 'media'),
+            WORKFLOWS_DIR: path.join(runtime.paths.LIBRARY_DIR, 'media'),
+            LIBRARY_ASSETS_DIR: path.join(runtime.paths.LIBRARY_DIR, 'assets'),
+            FOLDERS_JSON_PATH: path.join(runtime.paths.LIBRARY_DIR, 'folders.json'),
+          }),
+          publicLibraryPrefix: () => '/library',
+        }));
         context.services.register('http.routes', routes);
         context.services.register('node.registry', nodeRegistry);
         context.services.register('node.packages', nodePackages);
@@ -106,7 +123,7 @@ export async function createServerPluginHost({
   for (const plugin of selected)
     for (const dependency of Object.keys(plugin.dependencies || {})) {
       if (settings.disabled?.includes(dependency))
-        throw new PluginError(ERRORS.dependency, `Enabled plugin ${plugin.id} requires disabled plugin ${dependency}`, { context: { moduleId: 'desktop-shell-observability', pluginId: plugin.id, dependency } });
+        throw new PluginError(ERRORS.dependency, `Enabled plugin ${plugin.id} requires disabled plugin ${dependency}`, { context: { moduleId: 'desktop-shell-observability', operation: 'plugin.activate', pluginId: plugin.id, dependency } });
     }
   await host.start(selected.map((plugin) => plugin.id));
   return host;

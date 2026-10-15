@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { ERRORS, PluginError } from '../../../contracts/index.js';
-import { projectArchiveRestoreRequest } from '../../../desktop-shell-observability/api/ui/desktop/localFileUpload';
+import { desktopBrowser } from '../../../kernel/browser';
 
 interface Options {
   enabled: boolean;
@@ -64,7 +64,7 @@ export function useCanvasProjectTransfer(
       await live.current.openJson({ target: { files: [file], value: '' } });
       return;
     }
-    const response = await fetch('/api/workflows/restore?copy=true', projectArchiveRestoreRequest(file));
+    const response = await fetch('/api/workflows/restore?copy=true', desktopBrowser().projectArchiveRestoreRequest(file));
     if (!response.ok) throw await responseError(response);
     const result = await response.json();
     if (typeof result.id !== 'string') throw new PluginError(ERRORS.projectTransfer, '导入回执无效，请核对项目列表。');

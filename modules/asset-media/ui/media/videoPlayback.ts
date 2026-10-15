@@ -1,5 +1,5 @@
 import { getBrowserServices } from '../../../kernel/browser';
-import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { accountPreferences as preferenceStorage } from '../../../kernel/browser';
 
 const VIDEO_VOLUME_STORAGE_KEY = 'nako:video-volume';
 

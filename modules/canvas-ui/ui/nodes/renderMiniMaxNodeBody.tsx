@@ -1,4 +1,4 @@
-import { MINIMAX_H3_DURATION } from '../../../asset-media/api/ui/media/minimaxH3';
+import { MINIMAX_H3_DURATION } from '../../../contracts/minimaxCanvas';
 import type { Components, Runtime } from './canvasMiniMaxNodeTypes';
 import type { MiniMaxNodeState } from './useCanvasMiniMaxNodeState';
 import { settingControlStyle, settingLabelStyle } from './canvasMiniMaxNodeStyles';

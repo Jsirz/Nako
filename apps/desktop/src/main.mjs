@@ -24,6 +24,8 @@ import { createTray } from './tray.mjs';
 import { startupFailureMessage } from './startupFailure.mjs';
 import { createUpdateEnvironment } from './updateEnvironment.mjs';
 import { acknowledgeUpdatedApplication } from '../../../modules/desktop-shell-observability/api/desktop/windowsUpdateHandoff.mjs';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
+import { DESKTOP_ERRORS, desktopError } from '../../../modules/contracts/desktopErrors.js';
 import {
   CANVAS_URL,
   LAUNCHER_URL,
@@ -31,6 +33,8 @@ import {
   isAppUrl,
   isExternalUrl,
 } from './windowManager.mjs';
+
+const logger = createModuleLogger('desktop-shell-observability');
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 app.setName('NAKO Agent 纳科画布智能体');
@@ -105,14 +109,15 @@ function showWindow() {
 
 function senderPath(event) {
   const url = event.senderFrame?.url ?? '';
-  if (!isAppUrl(url)) throw new Error('UNTRUSTED_SENDER');
+  if (!isAppUrl(url)) throw desktopError(DESKTOP_ERRORS.untrustedSender, 'UNTRUSTED_SENDER', 'ipc.sender', 403);
   return new URL(url).pathname;
 }
 
 function handle(channel, work, { launcherOnly = false } = {}) {
   ipcMain.handle(channel, (event, ...args) => {
     const pathname = senderPath(event);
-    if (launcherOnly && !pathname.startsWith('/launcher/')) throw new Error('UNTRUSTED_SENDER');
+    if (launcherOnly && !pathname.startsWith('/launcher/'))
+      throw desktopError(DESKTOP_ERRORS.untrustedSender, 'UNTRUSTED_SENDER', 'ipc.sender', 403);
     return work(...args);
   });
 }
@@ -308,7 +313,9 @@ if (!primaryInstance || quitRequested) {
         await desktopHost?.stop();
       }
     })()
-      .catch((error) => console.error('Desktop shutdown failed', error))
+      .catch((error) => logger.error('Desktop shutdown failed', {
+        moduleId: 'desktop-shell-observability', operation: 'desktop.shutdown', error,
+      }))
       .finally(() => {
         shutdownComplete = true;
         app.quit();
@@ -319,7 +326,9 @@ if (!primaryInstance || quitRequested) {
     .then(start)
     .then(() => acknowledgeUpdatedApplication(productVersion).catch(() => {}))
     .catch((error) => {
-      console.error('Nako 启动失败', error);
+      logger.error('Nako 启动失败', {
+        moduleId: 'desktop-shell-observability', operation: 'desktop.start', error,
+      });
       app.exit(1);
     });
 }

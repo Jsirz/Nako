@@ -16,9 +16,9 @@ import type {
   SourceSecret,
   SourceSettingsClient,
 } from './sourceSettingsClient';
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 import { scopeSourceSettingsClient } from './sourceSettingsClient';
-import { createSettingsScope, type SettingsScope } from './sourceSettingsScope';
+import { createSettingsScope, type SettingsScope } from '../../../kernel/ui/settingsScope';
 import { mountDefaultModelsSettings } from './defaultModelsSettings';
 import { libTvCliVendor } from './libTvCliSettings';
 import { visibleSourceBlocks } from './hiddenProviderPolicy';

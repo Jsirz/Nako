@@ -1,2 +1,2 @@
 // Public module API. Implementation ownership stays inside asset-media.
-export * from '../../../ui/media/assetOrganization';
+export * from '../../../../contracts/assetOrganization';

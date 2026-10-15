@@ -1,4 +1,6 @@
 /** Stable Agent wire protocol. Business modules depend on these JSON values only. */
+import { PluginError } from './errors.js';
+import { AGENT_ERROR_CODES } from './agentErrors.js';
 export const AGENT_PROTOCOL_VERSION = 2;
 export const AGENT_EVENT_TYPES = Object.freeze([
   'run_start',
@@ -20,7 +22,10 @@ export const AGENT_EVENT_TYPES = Object.freeze([
   'request_error',
 ]);
 export function agentEvent(type, data = {}) {
-  if (!AGENT_EVENT_TYPES.includes(type)) throw new TypeError(`Unknown Agent event: ${type}`);
+  if (!AGENT_EVENT_TYPES.includes(type)) throw new PluginError(AGENT_ERROR_CODES.invalidResponse,
+    `Unknown Agent event: ${type}`, {
+      status: 400, context: { moduleId: 'contracts', protocol: 'agentEvent', operation: 'create', type },
+    });
   return Object.freeze({ ...data, protocol: AGENT_PROTOCOL_VERSION, type });
 }
 export function isAgentEvent(value) {

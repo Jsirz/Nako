@@ -8,6 +8,12 @@
 
 contracts/index.d.ts 的 WorkflowExecutor 提供 canExecute/execute，可选 resume/cleanup 方法；请求携带 signal。客户端仅暴露 pluginValidation 的方法白名单，不公布 store、密钥或原始客户端。defineExecutor 经注册表注入 factory，插件关闭后旧引用失效。
 
+[registryPlugin.js](../../modules/workflow-runtime/registryPlugin.js) 在完整 workflow.execution 启动前提供 workflow.executors 与 workflow.support，显式依赖媒体能力、身份外部读取服务和 platform.paths。三个 executor 插件依赖该注册阶段，不依赖后续 module.workflow-runtime，避免与 generation 的启动循环。
+
+workflow.support 契约见 [workflowSupport.d.ts](../../modules/contracts/workflowSupport.d.ts)：compileBindings 接收执行计划、绑定、部署、项目、值及素材解析回调，返回编译计划、摘要、种子和素材；historyOutputs/runningHubOutputs 返回中立输出候选；localizeOutputs 接收候选、下载客户端与保存范围，返回 outputs/commit/rollback 事务；validateReceipt 接收受限任务查询及输出配置查询，在发布前核对回执。WebApp 投影、上传压缩、兼容投影、封面与 history 状态也通过明确方法发布。实现仍在 workflow-runtime/server/workflowRuntime；服务不发布内部 store 或插件实例。失败保留领域 code/status/retryable，历史错误上下文差异仍记录于 conformance。
+
+RunningHub 输出归一化实现为 [runningHubOutputs.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubOutputs.js)。WebApp 输出标识及项目媒体身份函数属于 contracts/workflowSupport.js；SeedVR2 与执行器经服务共用归一化规则。客户端白名单增加 uploadBuffer/createWebAppTask/getWebAppTaskOutputs，SeedVR2 只使用 credentialRef 建立客户端，恢复观察原 taskId，不自动再次提交。
+
 [executionWorkflowRuntime.js](../../modules/workflow-runtime/server/workflowRuntime/executionWorkflowRuntime.js) 装配定义、部署、测试运行、资产及路由。编辑 DTO/客户端/画布协议分别在 contracts/workflowEditor、workflowClient、workflowCanvasNodeProtocol。服务调用须使用定义、部署、绑定版本及项目归属，不能由画布覆盖编译后的执行目标。
 
 [workflowRuntimeRouter.js](../../modules/workflow-runtime/server/workflowRuntime/workflowRuntimeRouter.js) 与 workflowLibraryRouter 承接 HTTP 校验；公共错误类型在 contracts/workflowProtocols.js。预检返回检查项和 compiledPromptHash，运行返回 WorkflowRun；参数/绑定变化需要重新核对。
@@ -27,6 +33,8 @@ contracts/index.d.ts 的 WorkflowExecutor 提供 canExecute/execute，可选 res
 恢复只观察原远端任务，不重新上传或提交。观察暂停保留资源；输入清理需原账本、目录授权和远端停止证明，失败保留 pending/orphaned 等状态并可显式重试。取消经 AbortSignal，不能承诺撤回远端已扣费任务。三个具体 executor 在 plugins/workflows；浏览器管理界面目前位于 local-runtime，归属差异见规范差异。
 workflowOutputPublication 负责输出 manifest 与提交/回滚，workflowOutputLocalizer 负责本地化编排。格式探测的 MEDIA_STREAM_NOT_FOUND 位于公共媒体错误 context.operationCode；领域错误保留路由 instanceof，通用错误使用 contracts/localRuntimeErrors，日志通过 kernel Logger。客户端接收 credentialRef、拒绝外部 apiKey，由执行器插件授权上下文读取凭据。
 
+local-comfyui 与 RunningHub 执行器未注入日志时使用带插件标识的 kernel Logger。RunningHub 请求超时的 AbortSignal 原因使用 PluginError 并附 request.timeout/timeoutMs；客户端现有失败转换仍返回 RUNNINGHUB_REQUEST_TIMEOUT 和 504，取消与重试策略不变。工作流历史领域错误的上下文与集中错误码尚需收敛，详见 conformance。
+
 <!-- source-inventory:start -->
 ## 文件目录
 
@@ -35,7 +43,7 @@ workflowOutputPublication 负责输出 manifest 与提交/回滚，workflowOutpu
 | 源码 | 职责 | 主要导出 | 副作用 |
 | --- | --- | --- | --- |
 | [modules/workflow-runtime/browser.manifest.json](../../modules/workflow-runtime/browser.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
-| [modules/workflow-runtime/browser.ts](../../modules/workflow-runtime/browser.ts) | 模块入口或装配 | `default` | 未检出平台调用；不等于纯函数证明 |
+| [modules/workflow-runtime/browser.ts](../../modules/workflow-runtime/browser.ts) | 模块入口或装配 | `default` | 含 服务注册/生命周期 调用；时机见实现 |
 | [modules/workflow-runtime/defineExecutor.js](../../modules/workflow-runtime/defineExecutor.js) | 运行、调度或服务 | `defineExecutorPlugin` | 含 服务注册/生命周期 调用；时机见实现 |
 | [modules/workflow-runtime/exports.json](../../modules/workflow-runtime/exports.json) | 公开 API 清单 | 声明式配置 | 无业务运行副作用 |
 | [modules/workflow-runtime/index.js](../../modules/workflow-runtime/index.js) | 模块入口或装配 | `WorkflowExecutorRegistry` | 未检出平台调用；不等于纯函数证明 |
@@ -52,7 +60,8 @@ workflowOutputPublication 负责输出 manifest 与提交/回滚，workflowOutpu
 | [modules/workflow-runtime/server/workflowRuntime/nodeWorkflowService.js](../../modules/workflow-runtime/server/workflowRuntime/nodeWorkflowService.js) | 运行、调度或服务 | `createNodeWorkflowService` | 未检出平台调用；不等于纯函数证明 |
 | [modules/workflow-runtime/server/workflowRuntime/officialWorkflowCatalog.js](../../modules/workflow-runtime/server/workflowRuntime/officialWorkflowCatalog.js) | 运行、调度或服务 | `OFFICIAL_WORKFLOWS` | 未检出平台调用；不等于纯函数证明 |
 | [modules/workflow-runtime/server/workflowRuntime/privateRecoveryDirectory.js](../../modules/workflow-runtime/server/workflowRuntime/privateRecoveryDirectory.js) | 运行、调度或服务 | `PrivateRecoveryDirectoryError`, `preparePrivateRecoveryRoot`, `quarantinePrivateRecoveryEntry`, `removeQuarantinedFlatDirectory` | 含 文件系统 调用；时机见实现 |
-| [modules/workflow-runtime/server/workflowRuntime/runningHubCover.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubCover.js) | 运行、调度或服务 | `coverUrlFromInfo`, `downloadRunningHubCover`, `readRunningHubPageCover` | 含 文件系统 调用；时机见实现 |
+| [modules/workflow-runtime/server/workflowRuntime/runningHubCover.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubCover.js) | 运行、调度或服务 | `coverUrlFromInfo`, `downloadRunningHubCover`, `readRunningHubPageCover` | 含 文件系统、HTTP/网络 调用；时机见实现 |
+| [modules/workflow-runtime/server/workflowRuntime/runningHubOutputs.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubOutputs.js) | 运行、调度或服务 | `normalizeRunningHubOutputs` | 未检出平台调用；不等于纯函数证明 |
 | [modules/workflow-runtime/server/workflowRuntime/runningHubUploadAdapter.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubUploadAdapter.js) | 运行、调度或服务 | `RUNNINGHUB_UPLOAD_MAX_BYTES`, `RUNNINGHUB_UPLOAD_TARGET_BYTES`, `RunningHubUploadAdapterError`, `prepareRunningHubUploadAsset` | 含 文件系统、子进程 调用；时机见实现 |
 | [modules/workflow-runtime/server/workflowRuntime/runningHubWebApp.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubWebApp.js) | 运行、调度或服务 | `RUNNINGHUB_WEBAPP_OUTPUT_NODE_ID`, `RunningHubWebAppError`, `inferRunningHubWebAppCategory`, `createRunningHubWebAppProjection` | 未检出平台调用；不等于纯函数证明 |
 | [modules/workflow-runtime/server/workflowRuntime/runningHubWebAppCompatibility.js](../../modules/workflow-runtime/server/workflowRuntime/runningHubWebAppCompatibility.js) | 运行、调度或服务 | `adaptLegacyAnimaWebAppWorkflow`, `prepareRunningHubWebAppCompatibility` | 未检出平台调用；不等于纯函数证明 |

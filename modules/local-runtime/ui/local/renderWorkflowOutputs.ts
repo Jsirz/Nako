@@ -1,5 +1,5 @@
 import { localRuntimeError } from '../../../contracts/localRuntimeErrors.js';
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { browserServices } from '../../../kernel/browser';
 import type {
   OutputCandidate,

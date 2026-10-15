@@ -1,4 +1,4 @@
-import '../apps/canvas/installModelCatalog';
+import './helpers/modelCatalog.js';
 import { it, expect, vi } from 'vitest';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -10,6 +10,8 @@ import { loadModelCatalog } from '../modules/generation-core/server/config/model
 import { createDramaExecutionService } from '../modules/agent/server/agent/drama/dramaExecutionService.js';
 import { createImageAngleDraft } from '../modules/asset-media/ui/media/imageAngleDraft';
 import { IMAGE_MODELS } from '../modules/generation-core/models/catalog';
+import { browserHost } from '../modules/kernel/browser';
+import { createDefaultModelsClient } from '../modules/generation-core/ui/generation/defaultModelsClient';
 
 it('selects existing local data without reading retired device secrets', async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'nako-local-workspace-'));
@@ -163,20 +165,41 @@ it('rejects retired paid scene presets before persisting or submitting any task'
   expect(submit).not.toHaveBeenCalled();
 });
 
-it('creates an image-tool draft with a supported third-party model and valid parameters', () => {
+it.each([null, { azimuth: 45, elevation: 15, zoom: 5 }])('creates an image-tool draft using the current default with angle %j', async (angle) => {
   const source = { id: 'source', type: 'Image', resultUrl: '/library/image.png', x: 0, y: 0 };
-  const result = createImageAngleDraft([source], source.id, null, 'project', {
+  const previous = IMAGE_MODELS.find((model) => model.provider === 'DoubaoImageProvider');
+  const current = IMAGE_MODELS.find((model) => model.provider === 'WorkFisherImageProvider');
+  const snapshot = {
+    defaults: { text: '', image: previous.name, video: '', audio: '' },
+    candidates: { text: [], image: [previous, current].map(({ name }) => ({ name, configured: true })), video: [], audio: [] },
+  };
+  const defaults = createDefaultModelsClient(async (_url, options) => {
+    if (options.method === 'PUT') Object.assign(snapshot.defaults, JSON.parse(options.body));
+    return Response.json(snapshot);
+  });
+  await defaults.read();
+  const release = browserHost.services.register('generation.defaults', defaults);
+  const runtime = {
     create: () => ({ id: 'draft', type: 'Image' }),
     width: () => 300,
     configure: (nodes, id, patch) =>
       nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)),
     connect: (nodes, sourceId, targetId) =>
       nodes.map((node) => (node.id === targetId ? { ...node, parentIds: [sourceId] } : node)),
-  });
-  const draft = result.nodes.find((node) => node.id === result.id);
-  const model = IMAGE_MODELS.find((model) => model.name === draft.imageModel);
-  expect(model.provider).toBe('DoubaoImageProvider');
-  expect(model.endpoint['image-to-image']).toBeTruthy();
-  expect(model.resolutions).toContain(draft.resolution);
-  expect(model.aspectRatios).toContain(draft.aspectRatio);
+  };
+  try {
+    const original = createImageAngleDraft([source], source.id, angle, 'project', runtime);
+    expect(original.nodes.find((node) => node.id === original.id).imageModel).toBe(previous.name);
+    await defaults.update({ image: current.name });
+    const result = createImageAngleDraft([source], source.id, angle, 'project', runtime);
+    const draft = result.nodes.find((node) => node.id === result.id);
+    expect(draft.imageModel).toBe(current.name);
+    expect(current.resolutions).toContain(draft.resolution);
+    expect(current.aspectRatios).toContain(draft.aspectRatio);
+    expect(draft.parentIds).toEqual([source.id]);
+    expect(draft.imageAngle).toEqual(angle);
+    expect(original.nodes.find((node) => node.id === original.id).imageModel).toBe(previous.name);
+  } finally {
+    release();
+  }
 });

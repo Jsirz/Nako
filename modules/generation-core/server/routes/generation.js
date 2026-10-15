@@ -9,11 +9,12 @@ import { createModuleLogger } from '../../../kernel/logger.js';
 import { ERRORS, PluginError } from '../../../contracts/errors.js';
 const logger = createModuleLogger('generation-core');
 import express from 'express';
-import { getUrlPrefix } from '../../../project/api/server/workspace/workspacePaths.js';
+import { platformPaths } from '../../../kernel/server.js';
+const getUrlPrefix = () => platformPaths().publicLibraryPrefix();
 import { PROVIDERS, resolveFinalExecutionContext } from '../generation/providerDispatch.js';
 import { createGenerationService, createImageGenerationService } from '../generation/generationService.js';
 export { createImageGenerationService } from '../generation/generationService.js';
-import { classifyGenerationError } from '../generation/generationErrors.js';
+import { classifyGenerationError } from '../../../contracts/generationFailure.js';
 import { createGenerationRecoveryRouter } from '../generation/generationRecoveryRouter.js';
 import { createGenerationRecoveryService } from '../generation/generationRecoveryService.js';
 

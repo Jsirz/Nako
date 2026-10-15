@@ -1,7 +1,4 @@
-import {
-  fileUploadBody,
-  localFilePath,
-} from '../../../desktop-shell-observability/api/ui/desktop/localFileUpload';
+import { desktopBrowser } from '../../../kernel/browser';
 
 import type { WorkflowManagerClient } from '../../../contracts/workflowClient';
 import type {
@@ -202,7 +199,7 @@ function createWorkflowLibraryClient(
     },
     async uploadAsset(projectId, mediaKind, file) {
       const type = mediaAssetType(mediaKind);
-      const path = localFilePath(file);
+      const path = desktopBrowser().localFilePath(file);
       const result = await api<{
         asset: { id: string; filename?: string; url?: string; type: string };
       }>(
@@ -216,7 +213,7 @@ function createWorkflowLibraryClient(
                 'X-Filename': encodeURIComponent(file.name),
                 'X-Project-Id': projectId,
               },
-              ...fileUploadBody(file),
+              ...desktopBrowser().fileUploadBody(file),
             },
       );
       return result.asset;

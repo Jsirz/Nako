@@ -1,5 +1,5 @@
 import type * as React from 'react';
-import { ASSET_CATEGORIES, assetDefaultName } from '../../../asset-media/api/ui/media/assetOrganization';
+import { ASSET_CATEGORIES, assetDefaultName } from '../../../contracts/assetOrganization';
 import type { CanvasSaveDialogProps } from './canvasSaveDialog';
 type Runtime = Pick<typeof React, 'createElement'>;
 type SharedProps = Pick<CanvasSaveDialogProps, 'isOpen' | 'onClose' | 'categories' | 'onSave'>;

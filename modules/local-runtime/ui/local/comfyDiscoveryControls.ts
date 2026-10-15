@@ -1,7 +1,7 @@
 import type { LocalRuntimeClient } from './localRuntimeClient';
-import type { SettingsScope } from '../../../generation-core/api/ui/generation/sourceSettingsScope';
-import { settingsOperation } from '../../../canvas-ui/api/ui/settings/settingsOperation';
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import type { SettingsScope } from '../../../kernel/ui/settingsScope';
+import { settingsOperation } from '../../../kernel/ui/settingsOperation';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 
 export function createComfyDiscoveryControls(
   client: LocalRuntimeClient,

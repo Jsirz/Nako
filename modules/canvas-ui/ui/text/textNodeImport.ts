@@ -1,6 +1,6 @@
 import { canvasError } from '../../../contracts/canvasErrors.js';
 import { agentDocumentAccept, isAgentDocument } from '../../../contracts/shared/agentDocumentFormats.js';
-import { readAgentDocument } from '../../../agent/api/ui/agent/agentDocuments';
+import { agentDocuments } from '../../../kernel/browser';
 
 export const TEXT_NODE_FILE_ACCEPT = agentDocumentAccept;
 
@@ -18,7 +18,7 @@ export async function readTextNodeFile(
     throw canvasError('文件名无效，请选择本机文档文件。', 'text-import.file-name');
   }
   if (!file.size) throw canvasError('文件为空，请选择有正文的文档。', 'text-import.empty-file');
-  const document = await readAgentDocument(file, signal, { preserveWhitespace: true });
+  const document = await agentDocuments().read(file, signal, { preserveWhitespace: true });
   if (signal.aborted) throw new DOMException('已取消', 'AbortError');
   if (!document.text.trim()) throw canvasError('文档中没有可导入的正文。', 'text-import.empty-document');
   return { name: document.name, text: document.text };

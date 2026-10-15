@@ -8,6 +8,9 @@ import { createWorkflowManagerClient } from './ui/local/workflowManagerClient';
 import { requestWorkflowNodeRun } from './ui/local/workflowNodeSession';
 import { CanvasWorkflowGenerator } from './ui/local/canvasWorkflowGenerator';
 import type { LocalRuntimeUiService } from '../contracts/localRuntimeUi';
+import { createWorkflowCanvasNodes, normalizeNumericParameterValues } from './ui/local/workflowCanvasNodes';
+import { installWorkflowCanvasNodes } from './ui/local/workflowCanvasNodes';
+import { installWorkflowManager } from './ui/local/installWorkflowManager';
 
 const plugin: PluginDefinition = {
   manifest: {
@@ -18,7 +21,7 @@ const plugin: PluginDefinition = {
     reloadRequired: true,
     dependencies: { 'ui.generation-core': '^1.0.0' },
     capabilities: ['ui.local-runtime'],
-    services: { provides: ['ui.local-runtime'] },
+    services: { provides: ['ui.local-runtime'], requires: ['ui.generation.interaction', 'ui.account.preferences'] },
   },
   async activate(context) {
     await activateBrowserModule(context, async () => {
@@ -26,6 +29,10 @@ const plugin: PluginDefinition = {
       trackBrowserResource(context, installComfyLogPanel(localRuntimeClient));
       const service: LocalRuntimeUiService = {
         createWorkflowClient: createWorkflowManagerClient,
+        createWorkflowNodes: createWorkflowCanvasNodes,
+        installWorkflowNodes: installWorkflowCanvasNodes,
+        mountWorkflowManager: installWorkflowManager,
+        normalizeParameters: normalizeNumericParameterValues,
         mountSettings: host => mountLocalRuntimeSettings(host, localRuntimeClient),
         requestWorkflowNodeRun,
         renderWorkflowNode: (runtime, props, frame) => CanvasWorkflowGenerator(

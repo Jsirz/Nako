@@ -1,6 +1,5 @@
 [
   "modules/project/api/server/workspace/runtimePaths.js",
-  "modules/project/api/server/workspace/userScopeResolver.js",
   "modules/project/api/server/workspace/workspacePaths.js",
   "modules/project/api/ui/navigation/openSettings.ts",
   "modules/project/api/ui/navigation/projectDashboard.ts",

@@ -1,7 +1,7 @@
 import type { AgentSkill, AgentSkillDocument } from '../../../contracts/skillCatalog.js';
 import { SKILL_CATEGORIES, SKILL_DESCRIPTION_MAX_LENGTH } from '../../../contracts/skillCatalog.js';
 import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { createAgentSkillClient, type AgentSkillClient } from './skillClient';
 import { installSkillStyles } from './skillCommunityStyles';
 import { button, element } from './skillManagerCards';

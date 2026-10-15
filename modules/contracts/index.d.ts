@@ -20,9 +20,9 @@ export interface ServiceRegistry {
   removeOwner(owner: string): void;
 }
 export interface Logger {
-  info(message: string, context?: Record<string, unknown>): void;
-  warn(message: string, context?: Record<string, unknown>): void;
-  error(message: string, context?: Record<string, unknown>): void;
+  info(message: string, context?: Record<string, unknown> | Error): void;
+  warn(message: string, context?: Record<string, unknown> | Error): void;
+  error(message: string, context?: Record<string, unknown> | Error): void;
 }
 export interface ProviderCredentialManager {
   read(): Promise<Record<string, string>>;
@@ -120,7 +120,7 @@ export interface WorkflowExecutor {
   markInputsOrphaned?(request: WorkflowInputCleanup): Promise<void>;
   cleanupInputs?(request: WorkflowInputCleanup): Promise<void>;
 }
-export type WorkflowClientMethod = 'getSystemStats' | 'getObjectInfo' | 'supportsAtomicJobCancel' | 'uploadInput' | 'getWebAppInfoForProtocol' | 'getWebAppInfo' | 'getWorkflowApiFormat' | 'getGlobalAiAppPageInfo' | 'getWebAppCover' | 'openOutput' | 'validateCredential' | 'resolveWebAppInfo';
+export type WorkflowClientMethod = 'getSystemStats' | 'getObjectInfo' | 'supportsAtomicJobCancel' | 'uploadInput' | 'getWebAppInfoForProtocol' | 'getWebAppInfo' | 'getWorkflowApiFormat' | 'getGlobalAiAppPageInfo' | 'getWebAppCover' | 'openOutput' | 'validateCredential' | 'resolveWebAppInfo' | 'uploadBuffer' | 'createWebAppTask' | 'getWebAppTaskOutputs';
 export type WorkflowClient = Readonly<Partial<Record<WorkflowClientMethod, (...args: unknown[]) => unknown>>>;
 export interface WorkflowExecutors {
   createClient(id: string, options: Record<string, unknown>): WorkflowClient;

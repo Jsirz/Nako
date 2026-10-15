@@ -4,7 +4,7 @@ import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js
 import { SKILL_CATALOG_CHANGED, SKILL_PREVIEW_EVENT, SKILL_NEW_CANVAS_EVENT } from '../../../contracts/skillCatalog.js';
 import type { AgentSkill } from '../../../contracts/skillCatalog.js';
 import { browserHost } from '../../../kernel/browser';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { createAgentSkillClient } from './skillClient';
 import './skillShowcase.css';
 

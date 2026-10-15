@@ -10,6 +10,8 @@
 
 handler 只发布 id/capabilities/generate*/canRecover*/recover*。来源配置由宿主 config 获取；密钥仅经 context.credentials.get(manifest.id)，需 manifest.credentials 与宿主 credentialGrants 双重授权。关闭后保留的 handler 也失效；有在途调用时拒绝普通卸载。
 
+Provider 经 kernel 服务使用 media.runtime 和 generation.receipts，manifest 明确声明对应 requires，媒体调用方依赖早期 module.media-capabilities。SeedVR2 依赖 workflow.runninghub-webapp，从 workflow.executors 获取受限客户端；提交只传 RunningHub 凭据引用，恢复继续查询原任务。
+
 基础 Provider 辅助在 server/providers/baseProvider.js，模型请求上下文、恢复身份与错误协议由公共 contracts 和模块 API 定义。来源名、模型能力、密钥键登记必须一致，否则激活或模型构建失败。
 contracts/providerErrors.js 定义错误码、分类工厂及边界包装；context 包含 moduleId/providerId/operation，上游 HTTP 状态、transportCode 与提交不确定/恢复标记保留。已有 PluginError 保持对象和子类身份，非结构化异常在公开 handler 边界包装；日志通过 kernel Logger 输出。
 

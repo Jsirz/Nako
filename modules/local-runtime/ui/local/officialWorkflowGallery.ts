@@ -1,6 +1,5 @@
 import type { OfficialWorkflow } from './workflowManagerClient';
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
-import { officialSkillCover } from '../../../agent/api/ui/skills/officialSkillCovers';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 // Original cover from https://www.runninghub.cn/ai-detail/2052744677727715329.
 import characterCover from './assets/official-character.svg';
 
@@ -31,7 +30,7 @@ export function createOfficialWorkflowGallery(
     const cover =
       item.id === 'official-character'
         ? characterCover
-        : officialSkillCover({ slug: item.skillSlug, source: 'official' });
+        : item.coverUrl;
     if (cover) {
       const image = element('img', '');
       image.src = cover;

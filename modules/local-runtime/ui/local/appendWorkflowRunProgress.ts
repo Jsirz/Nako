@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { isRunningHubRunner } from './workflowManagerMetadata';
 import { ManagerState } from './workflowManagerTypes';
 import { terminalRunNotice, workflowRunProgressLabel } from './workflowRunObservation';

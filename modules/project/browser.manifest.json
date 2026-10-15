@@ -8,5 +8,5 @@
     "ui.canvas-ui": "^1.0.0"
   },
   "capabilities": ["ui.project"],
-  "services": { "provides": ["ui.project.preferences", "ui.project.cacheSettings"], "requires": ["ui.canvas.project", "ui.media.recovery"] }
+  "services": { "provides": ["ui.project.preferences", "ui.project.cacheSettings", "ui.project.catalog"], "requires": ["ui.canvas.project", "ui.media.recovery", "ui.account.preferences"] }
 }

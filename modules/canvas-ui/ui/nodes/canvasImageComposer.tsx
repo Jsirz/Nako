@@ -1,12 +1,6 @@
 import { browserHost } from '../../../kernel/browser';
 import { declaredModel, type DefaultModelsClient } from '../../../contracts/defaultModels.js';
 import { useGenerationAvailability } from './useGenerationAvailability';
-import {
-  CreativeLibraryTools,
-  CreativePromptTokens,
-  MjStyleStatus,
-} from '../../../agent/api/ui/prompt/CreativeLibrary';
-import { ImageAngleControl } from '../../../agent/api/ui/prompt/ImageAngleControl';
 import { rememberNodeDimensions } from './nodeCreationDimensions';
 import {
   useComposerBusy,
@@ -15,12 +9,10 @@ import {
   type MediaComposerProps,
   type MediaComposerComponents,
 } from './mediaComposer';
-import {
-  isAutomaticImageMode,
-  resolveImageGenerationMode,
-  supportsImageGenerationMode,
-} from '../../../generation-core/api/ui/generation/imageMode';
-import { installMidjourneyReferenceAdapter } from '../../../generation-core/api/ui/generation/midjourneyReferences';
+import { generationInteraction } from '../../../kernel/browser';
+const isAutomaticImageMode = (mode: string | null | undefined) => generationInteraction().imageModes().isAutomatic(mode);
+const resolveImageGenerationMode: ReturnType<ReturnType<typeof generationInteraction>['imageModes']>['resolve'] = (...args) => generationInteraction().imageModes().resolve(...args);
+const supportsImageGenerationMode: ReturnType<ReturnType<typeof generationInteraction>['imageModes']>['supports'] = (...args) => generationInteraction().imageModes().supports(...args);
 const imageModes = { isAutomatic: isAutomaticImageMode };
 export function CanvasImageComposer(
   React: ComposerRuntime,
@@ -74,7 +66,7 @@ function useImageComposerState(React: ComposerRuntime, props: MediaComposerProps
       (asset) => asset.type === 'Text' && !!(asset.textContent || asset.prompt || '').trim(),
     );
   const disabled = busy || !hasInput || checking || blocked || !modeSupported;
-  const references = installMidjourneyReferenceAdapter();
+  const references = generationInteraction().imageReferences();
   const referenceOptions = assets.filter(
     (asset) => asset.type === 'Image' || asset.type === 'Upload Image',
   );
@@ -108,6 +100,7 @@ function renderImageComposer(
   React: ComposerRuntime, props: MediaComposerProps, components: MediaComposerComponents,
   state: ReturnType<typeof useImageComposerState>,
 ) {
+  const { CreativeLibraryTools, CreativePromptTokens, MjStyleStatus, ImageAngleControl } = components;
   const { data: node, readOnly = false, connectedImageNodes: assets = [], onUpdate, onGenerate, onSelect } = props;
   const { models, ratios, resolutions, PromptEditor, ConnectedAssets, ModelSelector, Dimensions,
     AdvancedSettings, Tooltip, CollapseIcon, SettingsIcon, GenerateIcon } = components;

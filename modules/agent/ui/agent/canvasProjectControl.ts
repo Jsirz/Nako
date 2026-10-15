@@ -1,21 +1,11 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
-import { createDashboardClient } from '../../../project/api/ui/navigation/projectDashboardData';
+import { projectCatalog } from '../../../kernel/browser';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult, type ProjectCommand } from '../../../contracts/canvasControlProtocol.js';
+import type { CanvasProjectRuntime as Runtime, PendingControl, ProjectRequest } from '../../../contracts/agentCanvasWorkspace';
 
-interface Runtime {
-  projectId: string;
-  folderId?: string | null;
-  save(): Promise<boolean>;
-  rename(title: string): Promise<boolean>;
-  move(folderId: string | null): void;
-  open(id: string): Promise<void>;
-  exit(): Promise<void>;
-  importFile(): void;
-  download(id: string): void;
-}
-export type ProjectRequest = { id: string; sessionId: string; label: string; kind: 'delete' | 'deleteFolder' | 'export' | 'import'; state: 'pending' | 'running' | 'completed' | 'unconfirmed' | 'cancelled' };
+export type { ProjectRequest } from '../../../contracts/agentCanvasWorkspace';
 export function createCanvasProjectControl(execute: CanvasActionHandler, getRuntime: () => Runtime | null, fetcher: typeof fetch = globalThis.fetch) {
-  const client = createDashboardClient(fetcher);
+  const client = projectCatalog().createClient(fetcher);
   const receipts = new Map<string, { signature: string; promise: Promise<CanvasResult> }>();
   const pending = new Map<string, { item: ProjectRequest; request: CanvasActionRequest; command: ProjectCommand }>();
   const listeners = new Set<() => void>();
@@ -161,4 +151,4 @@ export function createCanvasProjectControl(execute: CanvasActionHandler, getRunt
     cancel: (id: string) => { const entry = pending.get(id); if (entry?.item.state === 'pending') { entry.item.state = 'cancelled'; publish(); } },
   };
 }
-export type CanvasProjectControl = ReturnType<typeof createCanvasProjectControl>;
+export type CanvasProjectControl = PendingControl<ProjectRequest>;

@@ -28,6 +28,9 @@ import {
   getAuthenticatedRequest,
 } from '../../modules/identity-account/api/server/security/localAuthentication.js';
 import { RouteContributions } from '../../modules/kernel/application.js';
+import { createModuleLogger } from '../../modules/kernel/logger.js';
+
+const logger = createModuleLogger('backend');
 if (RUNTIME_PATHS.ACTIVE_OPAQUE_USER_ID) {
   const protectedProviderValues = Object.fromEntries(
     USER_PROVIDER_SECRET_KEYS.filter((key) => process.env[key]).map((key) => [
@@ -109,7 +112,7 @@ function launchRuntime(runtime, description) {
     shutdownPromise = runtime
       .stop()
       .catch((error) => {
-        console.error('本机服务关闭失败:', error);
+        logger.error('本机服务关闭失败', { operation: 'runtime.stop', error });
         exitCode = 1;
       })
       .then(() => process.exit(exitCode));
@@ -122,11 +125,11 @@ function launchRuntime(runtime, description) {
     .start()
     .then((started) => {
       if (!started) return;
-      console.log(description);
+      logger.info('本机服务已启动', { operation: 'runtime.start', description });
       parentChannel.notifyReady();
     })
     .catch((error) => {
-      console.error('初始化本机服务失败:', error);
+      logger.error('初始化本机服务失败', { operation: 'runtime.start', error });
       return shutdown(1, 'startup-failed');
     });
   return shutdown;

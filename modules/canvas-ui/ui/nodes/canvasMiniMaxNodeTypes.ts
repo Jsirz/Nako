@@ -1,6 +1,6 @@
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
-import type { MiniMaxH3CanvasNode } from '../../../asset-media/api/ui/media/minimaxH3';
+import type { MiniMaxH3CanvasNode } from '../../../contracts/minimaxCanvas';
 
 export type Runtime = Pick<
   typeof ReactTypes,

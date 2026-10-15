@@ -1,4 +1,4 @@
-import { useCanvasImageUpscale } from '../../../asset-media/api/ui/media/canvasImageUpscale';
+import { useCanvasImageUpscale } from './useCanvasImageUpscale';
 import './canvasWorkspace.css';
 import type { useCanvasAgentControls } from './useCanvasAgentControls';
 import { defaultCanvasTitle } from './canvasEditorHooks';

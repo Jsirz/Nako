@@ -8,6 +8,7 @@
   },
   "services": {
     "requires": [
+      "platform.paths",
       "media.store"
     ],
     "provides": [

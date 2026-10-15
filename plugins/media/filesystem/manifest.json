@@ -5,10 +5,15 @@
   "type": "media",
   "dependencies": {
     "storage.sqlite": "^1.0.0",
-    "module.identity-account": "^1.0.0"
+    "module.identity-account": "^1.0.0",
+    "media.filesystem-runtime": "^1.0.0",
+    "module.platform-directories": "^1.0.0"
   },
   "services": {
     "requires": [
+      "media.files",
+      "platform.paths",
+      "platform.directories",
       "project.repository",
       "identity.externalUrlFetch"
     ],

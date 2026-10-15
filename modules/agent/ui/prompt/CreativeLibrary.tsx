@@ -2,14 +2,14 @@ import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Palette, Clapperboard, SlidersHorizontal, X, Star } from 'lucide-react';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import {
   creativeSelection,
   validCreativePreset,
   type CreativeKind,
   type CreativePreset,
 } from './creativePresets';
-import type { MediaComposerProps } from '../../../canvas-ui/api/ui/nodes/mediaComposer';
+import type { MediaComposerProps } from '../../../contracts/mediaComposer';
 import './CreativeLibrary.css';
 import MjStyleLibrary from './MjStyleLibrary';
 import { activateSidePanel, useNodeSidePanel } from './nodeSidePanel';

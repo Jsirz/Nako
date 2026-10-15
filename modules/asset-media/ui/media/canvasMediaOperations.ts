@@ -1,9 +1,9 @@
 import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { loadCollageImage, renderImageCollage } from './imageCollage';
-import { ASSET_CATEGORIES, assetCategory } from './assetOrganization';
+import { ASSET_CATEGORIES, assetCategory } from '../../../contracts/assetOrganization';
 import type * as React from 'react';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
-import type { CanvasViewport } from '../../../canvas-ui/api/ui/canvas/canvasNavigation';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
+import type { CanvasViewport } from '../../../contracts/projectUi';
 import { interruptedMediaNode } from './mediaOperationRecovery';
 import {
   inspectImage,

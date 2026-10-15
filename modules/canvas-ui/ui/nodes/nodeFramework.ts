@@ -5,7 +5,7 @@ import {
   type ModelKind,
 } from '../../../contracts/defaultModels.js';
 import { browserServices } from '../../../kernel/browser';
-import { createNodeRegistry } from '../../../kernel/nodeRegistry';
+import { createNodeRegistry } from '../../../kernel/nodeRegistry.js';
 export * from './nodeFrameworkTypes';
 import type { NodeDefinition, NodeResult, NodeResultRecord, NodeInputReference, NodeInputIssue, NodeInputValidation, NodeParameterField, StableNodeRecord, NodeState, NodeFrameworkAdapter } from './nodeFrameworkTypes';
 

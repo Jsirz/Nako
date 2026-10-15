@@ -1,7 +1,5 @@
 import type * as ReactTypes from 'react';
-import { modelDisplayName } from '../../../generation-core/api/models/modelDisplayName';
-import { mountModelPicker } from '../../../generation-core/api/ui/generation/modelPicker';
-import { createSourceSettingsClient } from '../../../generation-core/api/ui/generation/sourceSettingsClient';
+import { modelCatalog, generationInteraction } from '../../../kernel/browser';
 type Runtime = Pick<
   typeof ReactTypes,
   'createElement' | 'useState' | 'useEffect' | 'useLayoutEffect' | 'useRef'
@@ -93,7 +91,7 @@ export function CanvasModelSelector(React: Runtime, props: Props, { ModelIcon }:
   React.useEffect(() => {
     if (!open || props.disabled || !panel.current) return;
     // Each opening reads current availability; closed menus do not retain stale key configuration.
-    return mountModelPicker(panel.current, createSourceSettingsClient(), {
+    return generationInteraction().mountModelPicker(panel.current, {
       names: JSON.parse(modelNames) as string[],
       currentName: name,
       onSelect(selected) {
@@ -125,7 +123,7 @@ export function CanvasModelSelector(React: Runtime, props: Props, { ModelIcon }:
         className={`inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring h-8 gap-1.5 px-2 py-1 text-sm rounded-lg ${props.disabled ? 'text-[var(--nk-text-muted)] opacity-50' : 'text-[var(--nk-text-secondary)] hover:bg-[var(--nk-surface-raised)] active:bg-[var(--nk-hover)]'}`}
       >
         <ModelIcon model={props.currentModel} size={18} />
-        <span className="whitespace-nowrap capitalize">{modelDisplayName(name)}</span>
+        <span className="whitespace-nowrap capitalize">{modelCatalog().displayName(name)}</span>
       </button>
       {open && (
         <div ref={overlay} onWheel={(event) => event.stopPropagation()}>

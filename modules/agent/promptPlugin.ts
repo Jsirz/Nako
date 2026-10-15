@@ -5,7 +5,7 @@ import { installPromptAssistant } from './ui/prompt/promptAssistant';
 import { installPromptExpand } from './ui/prompt/promptExpand';
 import { installPromptPresets, expandPromptTags } from './ui/prompt/promptPresets';
 import { composeCreativePrompt } from './ui/prompt/creativePresets';
-import { imageAnglePrompt } from './ui/prompt/imageAngle';
+import { imageAnglePrompt } from '../contracts/imageAngle';
 import type { PromptCompositionService } from '../contracts/browserCapabilities';
 
 const plugin: PluginDefinition = {

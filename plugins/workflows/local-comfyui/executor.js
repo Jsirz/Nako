@@ -1,4 +1,5 @@
 import { LocalComfyClient } from './client.js';
+import { createModuleLogger } from '../../../modules/kernel/logger.js';
 
 import {
   cleanupInputs,
@@ -31,7 +32,7 @@ export class LocalComfyExecutor {
     clientFactory = (options) => new LocalComfyClient(options),
     wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
     now = () => Date.now(),
-    logger = console,
+    logger = createModuleLogger('workflow.local-comfyui'),
   }) {
     const ports = {
       definitionStore,

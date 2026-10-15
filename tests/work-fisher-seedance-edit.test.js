@@ -3,9 +3,10 @@ import { mkdtemp, mkdir, writeFile, rm, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createWorkFisherHandlers } from '../plugins/providers/work-fisher/implementation.js';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
 
 const probe = vi.hoisted(() => vi.fn());
-vi.mock('../modules/asset-media/api/server/media/mediaMetadataProbe.js', () => ({ createMediaMetadataProbe: () => probe }));
+useServerCapabilities({ media: true, probe });
 const root = 'https://api.work-fisher.com';
 const videoUrl = 'https://media.example.test/reference.mp4';
 const imageUrl = 'https://media.example.test/character.png';

@@ -1,10 +1,20 @@
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 import { mediaError } from '../../../modules/contracts/mediaDelivery.js';
 import { createModuleLogger } from '../../../modules/kernel/logger.js';
-import { generateAssetId, saveAssetMetadata } from '../../../modules/asset-media/api/server/utils/imageHelpers.js';
+import { mediaFiles } from '../../../modules/kernel/server.js';
+import { removeIncomplete } from './mediaWrites.js';
+const generateAssetId = (...args) => mediaFiles().createId(...args);
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'node:crypto';
+
+function saveAssetMetadata(directory, metadata, logger) {
+    try { mediaFiles().saveMetadata(directory, metadata); }
+    catch (error) {
+        removeIncomplete(path.join(directory, metadata.filename), logger, 'libraryImport.cleanup');
+        throw error;
+    }
+}
 
 class FilesystemLibraryStore {
     constructor({ libraryDirectory, publicDirectory, logger = createModuleLogger('media.filesystem') }) {
@@ -383,7 +393,7 @@ importWorkflowPresetNodeAssets = (nodes, presetDir, folderName, projectId) => {
                 resultAspectRatio: copiedMeta?.resultAspectRatio || nextNode.resultAspectRatio || '',
                 resolution: copiedMeta?.resolution || nextNode.resolution || '',
                 duration: copiedMeta?.duration || nextNode.videoDuration || null
-            });
+            }, this.logger);
 
             const url = `${getUrlPrefix()}/media/${encodeURIComponent(projectId || 'default')}/${mediaType}/${targetFilename}`;
             importedAssets.set(currentValue, url);
@@ -592,7 +602,7 @@ async importAsset(req) {
             resultAspectRatio: assetMeta.resultAspectRatio || '',
             resolution: assetMeta.resolution || '',
             duration: normalizedDuration
-        });
+        }, logger);
 
         return { status: 200, body: {
             success: true,
@@ -621,8 +631,8 @@ async importAsset(req) {
             }
         } };
     } catch (error) {
-        logger.error('Library import failed', { operation: 'importAsset', code: error.code });
-        return { status: 500, body: { error: error.message } };
+        logger.error('Library import failed', { operation: 'importAsset', error });
+        return { status: error.status || 500, body: { error: error instanceof PluginError ? error.message : '素材导入失败', code: error.code } };
     }
 }
 

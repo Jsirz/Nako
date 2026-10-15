@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "apiVersion": "^1.0.0",
   "type": "module",
+  "dependencies": { "module.media-capabilities": "^1.0.0", "module.identity-account": "^1.0.0" },
   "services": {
+    "requires": ["media.runtime", "identity.externalUrlFetch", "platform.paths"],
     "provides": [
-      "workflow.executors"
+      "workflow.executors",
+      "workflow.support"
     ]
   }
 }

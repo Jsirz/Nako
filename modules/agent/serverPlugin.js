@@ -6,7 +6,6 @@ import { createAgentRouter } from './server/agent/agentRouter.js';
 import { createNodeToolDispatch } from './server/harness/nodeTools.js';
 import { createAgentArchiveService } from './server/harness/archive.js';
 import { createAgentSkillRouter } from './server/agent/agentSkillRouter.js';
-import { getWorkspacePaths } from '../project/api/server/workspace/workspacePaths.js';
 
 export default defineApplicationPlugin({
   ...{
@@ -87,7 +86,7 @@ export default defineApplicationPlugin({
         sessionStore,
         textTransport: context.services.get('generation.textTransport'),
         defaultModels: context.services.get('generation.defaults'),
-        libraryDirectory: getWorkspacePaths().LIBRARY_DIR,
+        libraryDirectory: RUNTIME_PATHS.LIBRARY_DIR,
         skillLibrary: agentSkillLibrary,
         createDramaConversation: context.services.get('agent.drama').createConversation,
         applicationContext,

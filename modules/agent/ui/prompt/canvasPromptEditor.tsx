@@ -1,3 +1,4 @@
+import type { PromptEditorProps as Props } from '../../../contracts/promptEditing';
 import { validCreativePreset } from './creativePresets';
 import type * as ReactTypes from 'react';
 import {
@@ -58,19 +59,6 @@ interface Vendor {
   MentionList: unknown;
   ui: SuggestionUI;
   EditorContent: ReactTypes.ComponentType<{ editor: Editor | null; className: string }>;
-}
-interface Props {
-  value: string;
-  onChange(value: string): void;
-  connectedAssets?: PromptAsset[];
-  placeholder?: string;
-  isDark?: boolean;
-  onBlur?(): void;
-  className?: string;
-  type?: PromptPresetType;
-  disableMentions?: boolean;
-  disablePromptPresets?: boolean;
-  disableDirectEdit?: boolean;
 }
 interface Position {
   pos: number;

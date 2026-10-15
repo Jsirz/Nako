@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { currentStage, stageReachable } from './workflowManagerBindings';
 import type { WorkflowManagerClient } from './workflowManagerClient';
 import { button } from './workflowManagerControls';

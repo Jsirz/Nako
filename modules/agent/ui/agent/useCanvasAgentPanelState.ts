@@ -1,8 +1,7 @@
 import { browserHost } from '../../../kernel/browser';
 import type { DefaultModelsClient } from '../../../contracts/defaultModels.js';
 import { useEffectEvent } from 'react';
-import { installAgentModelAvailability } from '../../../generation-core/api/ui/generation/agentModelAvailability';
-import { createSourceSettingsClient } from '../../../generation-core/api/ui/generation/sourceSettingsClient';
+import { generationPreparation } from '../../../kernel/browser';
 import { useCanvasAgentChat } from './canvasAgentChat';
 import { useAgentScroll } from './useAgentScroll';
 import { useCanvasAgentReferences } from './canvasAgentReferenceState';
@@ -112,7 +111,7 @@ function useAgentPanelModels(
   const paramsRef = React.useRef<HTMLDivElement>(null);
   const [, setAvailabilityVersion] = React.useState(0);
   const availability = React.useMemo(
-    () => installAgentModelAvailability(createSourceSettingsClient()),
+    () => generationPreparation().availability(),
     [],
   );
   const availableModels = availability.filter(models);

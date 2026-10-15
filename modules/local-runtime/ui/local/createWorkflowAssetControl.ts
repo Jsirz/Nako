@@ -1,5 +1,5 @@
 import { bindWorkflowAssetLibrary } from './bindWorkflowAssetLibrary';
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import type { BindingSet, WorkflowManagerClient } from './workflowManagerClient';
 import { assetControlPresentation } from './workflowManagerControls';
 import { ManagerState } from './workflowManagerTypes';

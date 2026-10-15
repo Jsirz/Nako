@@ -6,5 +6,5 @@
   "reloadRequired": true,
   "dependencies": {},
   "capabilities": ["ui.identity-account"],
-  "services": { "provides": ["ui.account"] }
+  "services": { "provides": ["ui.account", "ui.account.preferences"] }
 }

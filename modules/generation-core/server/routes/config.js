@@ -15,14 +15,14 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+import { platformPaths } from '../../../kernel/server.js';
 import { loadModelNames as loadCatalogModelNames } from '../config/modelCatalog.js';
 import { ERRORS, PluginError } from '../../../contracts/index.js';
 import { createModuleLogger } from '../../../kernel/logger.js';
 
-const DEFAULT_ENV_PATH = RUNTIME_PATHS.ENV_PATH;
-const DEFAULT_MODEL_CONFIG_PATH = path.join(
-  RUNTIME_PATHS.APP_DIR,
+const defaultEnvPath = () => platformPaths().runtime.ENV_PATH;
+const defaultModelConfigPath = () => path.join(
+  platformPaths().runtime.APP_DIR,
   'modules',
   'generation-core',
   'models',
@@ -58,8 +58,8 @@ function writePrivateFile(filePath, content) {
 
 
 export function createConfigRouter({
-  envPath = DEFAULT_ENV_PATH,
-  modelConfigPath = DEFAULT_MODEL_CONFIG_PATH,
+  envPath = defaultEnvPath(),
+  modelConfigPath = defaultModelConfigPath(),
   modelNames = loadModelNames(modelConfigPath),
   credentialStore,
   logger = createModuleLogger('generation-core'),

@@ -1,6 +1,6 @@
 import { IDENTITY_ERRORS, identityError } from '../../../contracts/identityErrors.js';
 import { useSyncExternalStore } from 'react';
-import { preferenceStorage, type PreferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { preferenceStorage, type PreferenceStorage } from '../profile/preferenceStore';
 import { applyCanvasTheme, themeTokenCss, type CanvasTheme } from './themeTokens';
 
 export const APPEARANCE_KEY = 'nako.canvas.appearance.v1';

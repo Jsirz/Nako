@@ -1,9 +1,9 @@
 import { browserServices } from '../../../kernel/browser';
 import type { ConnectedAssetsProps } from './canvasConnectedAssets';
 import type * as ReactTypes from 'react';
-import type { CanvasPromptEditor } from '../../../agent/api/ui/prompt/canvasPromptEditor';
-import type { GenerationModel } from '../../../contracts/generationUi';
-import type { CatalogMode } from '../../../contracts/modelCatalog';
+import type { PromptEditorProps } from '../../../contracts/promptEditing';
+import type { ComposerNode, ComposerModel, MediaComposerProps } from '../../../contracts/mediaComposer';
+export type { ComposerNode, ComposerAsset, ComposerModel, MediaComposerProps } from '../../../contracts/mediaComposer';
 export type ComposerRuntime = Pick<
   typeof ReactTypes,
   | 'createElement'
@@ -14,62 +14,12 @@ export type ComposerRuntime = Pick<
   | 'useLayoutEffect'
   | 'useSyncExternalStore'
 >;
-export interface ComposerNode {
-  id: string;
-  type: string;
-  projectId?: string;
-  parentIds?: string[];
-  prompt?: string;
-  imageModel?: string;
-  videoModel?: string;
-  imageMode?: string;
-  videoMode?: string;
-  resolution?: string;
-  aspectRatio?: string;
-  generateCount?: number;
-  duration?: number;
-  generate_audio?: boolean;
-  speed?: string;
-  errorMessage?: string;
-  generationDurationMs?: number;
-  [key: string]: unknown;
-}
-export interface ComposerAsset {
-  id: string;
-  type: string;
-  url?: string;
-  prompt?: string;
-  textContent?: string;
-  [key: string]: unknown;
-}
-export interface ComposerModel extends GenerationModel {
-  advancedParams?: (NonNullable<GenerationModel['advancedParams']>[number] & {
-    type?: string;
-    step?: number;
-    options?: { value: string | number | boolean; label: string }[];
-  })[];
-  imageModes?: Array<{ value: string; label: string }>;
-  videoModes?: Array<
-    Omit<CatalogMode, 'allowedInputs'> & { allowedInputs?: CatalogMode['allowedInputs'] }
-  >;
-  aspectRatios?: string[];
-  resolutions?: string[];
-}
-export interface MediaComposerProps {
-  data: ComposerNode;
-  readOnly?: boolean;
-  isLoading?: boolean;
-  connectedImageNodes?: ComposerAsset[];
-  onUpdate(id: string, patch: Partial<ComposerNode>): void;
-  onGenerate(id: string): void;
-  onSelect(id: string): void;
-}
 type Icon = ReactTypes.ComponentType<{ size: number }>;
 export interface MediaComposerComponents {
   models: ComposerModel[];
   ratios: string[];
   resolutions: string[];
-  PromptEditor: ReactTypes.ComponentType<Parameters<typeof CanvasPromptEditor>[1]>;
+  PromptEditor: ReactTypes.ComponentType<PromptEditorProps>;
   ConnectedAssets: ReactTypes.ComponentType<ConnectedAssetsProps>;
   ModelSelector: ReactTypes.ComponentType<{
     isVideoNode: boolean;
@@ -101,6 +51,13 @@ export interface MediaComposerComponents {
   GenerateIcon: Icon;
   VolumeIcon?: Icon;
   MuteIcon?: Icon;
+  CreativePromptTokens: ReactTypes.ComponentType<Pick<MediaComposerProps, 'data' | 'onUpdate'> & { disabled?: boolean }>;
+  CreativeLibraryTools: ReactTypes.ComponentType<Pick<MediaComposerProps, 'data' | 'onUpdate'> & { disabled?: boolean }>;
+  MjStyleStatus: ReactTypes.ComponentType<{ prompt: string }>;
+  ImageAngleControl: ReactTypes.ComponentType<{
+    node: ComposerNode; referenceUrl?: string; disabled?: boolean;
+    onUpdate: MediaComposerProps['onUpdate'];
+  }>;
 }
 const subscribeNone = () => () => {},
   zero = () => 0;

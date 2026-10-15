@@ -1,10 +1,11 @@
+import { workflowSupport } from '../../../modules/kernel/server.js';
 import path from 'node:path';
 
-import { localizeWorkflowOutputs } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowOutputLocalizer.js';
+const localizeWorkflowOutputs = (...args) => workflowSupport().localizeOutputs(...args);
 
-import { normalizeHistoryOutputs } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowOutputs.js';
+const normalizeHistoryOutputs = (...args) => workflowSupport().historyOutputs(...args);
 
-import { validateWorkflowRunReceipt } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowRunResult.js';
+const validateWorkflowRunReceipt = (...args) => workflowSupport().validateReceipt(...args);
 
 export async function localizeExecution(ports, input, state, plan, terminal) {
   const { coordinator, libraryDirectory, runStore } = ports;

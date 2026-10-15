@@ -1,6 +1,6 @@
 import { CARD_PLACEHOLDER_IMAGE } from '../../../contracts/presentationAssets.js';
 import type { AgentSkill } from '../../../contracts/skillCatalog.js';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { button, element } from './skillManagerCards';
 import { openSkillEditDialog } from './skillEditDialog';
 import type { AgentSkillClient } from './skillClient';

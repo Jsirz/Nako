@@ -1,6 +1,7 @@
 import type { WorkflowCanvasNodesAdapter } from '../../../contracts/workflowCanvasNodeProtocol';
 
-import { registerWorkflowRecoveryOwner } from '../../../generation-core/api/ui/generation/workflowRecoveryBoundary';
+import { generationInteraction } from '../../../kernel/browser';
+const registerWorkflowRecoveryOwner = (nodeId: unknown) => generationInteraction().registerWorkflowRecoveryOwner(nodeId);
 
 import type { WorkflowCanvasOperationContext } from './workflowNodeContext';
 import {

@@ -2,7 +2,9 @@ import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as React from 'react';
 import type { CanvasNode } from '../nodes/canvasNodeOperations';
 import type { CanvasViewport } from './canvasNavigation';
-import { inspectImage, inspectVideo, nearestAspectRatio, type MediaMetadata } from '../../../asset-media/api/ui/media/generationMediaMetadata';
+import { mediaCanvas } from '../../../kernel/browser';
+import { nearestAspectRatio } from '../../../contracts/mediaGeometry';
+import type { GenerationMediaMetadata as MediaMetadata } from '../../../contracts/generationUi';
 
 type Asset = Record<string, unknown>;
 interface Options {
@@ -40,9 +42,9 @@ const defaults: Runtime = {
   },
   inspect: (url, kind) =>
     kind === 'images'
-      ? inspectImage(url)
+      ? mediaCanvas().inspectImage(url)
       : kind === 'videos'
-        ? inspectVideo(url, 5000, false)
+        ? mediaCanvas().inspectVideo(url, 5000, false)
         : Promise.resolve({}),
   report: (message) => window.alert(message),
 };

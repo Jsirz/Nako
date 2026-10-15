@@ -1,14 +1,9 @@
+import type { ImageModeDefinition, ImageModeAdapter } from '../../../contracts/imageModes';
+export type { ImageModeDefinition, ImageModeAdapter } from '../../../contracts/imageModes';
 import { getBrowserServices } from '../../../kernel/browser';
-export type ImageModeDefinition = { value: string };
 
-export type ImageModeAdapter = {
-  isAutomatic: (mode: string | null | undefined) => boolean;
-  resolve: (mode: string | null | undefined, hasImageInput: boolean) => string;
-  supports: (
-    supportedModes: readonly ImageModeDefinition[] | null | undefined,
-    mode: string,
-  ) => boolean;
-};
+
+
 
 const STANDARD_IMAGE_MODES = new Set(['text-to-image', 'image-to-image']);
 

@@ -1,7 +1,32 @@
 [
   {
-    "id": "storage.node-runs", "entry": "../plugins/storage/node-runs/index.js", "manifest": "../plugins/storage/node-runs/manifest.json",
-    "factory": "createNodeRunStoragePlugin", "options": { "privateDirectory": "privateDirectory" }
+    "id": "module.platform-directories",
+    "entry": "../modules/local-runtime/directoryPlugin.js",
+    "manifest": "../modules/local-runtime/directory.manifest.json"
+  },
+  {
+    "id": "media.ffmpeg-probe",
+    "entry": "../plugins/media/ffmpeg-sharp/probePlugin.js",
+    "manifest": "../plugins/media/ffmpeg-sharp/probe.manifest.json"
+  },
+  {
+    "id": "media.filesystem-runtime",
+    "entry": "../plugins/media/filesystem/runtimePlugin.js",
+    "manifest": "../plugins/media/filesystem/runtime.manifest.json"
+  },
+  {
+    "id": "module.media-capabilities",
+    "entry": "../modules/asset-media/runtimePlugin.js",
+    "manifest": "../modules/asset-media/runtime.manifest.json"
+  },
+  {
+    "id": "storage.node-runs",
+    "entry": "../plugins/storage/node-runs/index.js",
+    "manifest": "../plugins/storage/node-runs/manifest.json",
+    "factory": "createNodeRunStoragePlugin",
+    "options": {
+      "privateDirectory": "privateDirectory"
+    }
   },
   {
     "id": "generation-core",
@@ -250,7 +275,11 @@
     "id": "provider.work-fisher",
     "entry": "../plugins/providers/work-fisher/index.js",
     "manifest": "../plugins/providers/work-fisher/manifest.json",
-    "credentialKeys": ["WORK_FISHER_API_KEY"],
-    "credentialGrants": ["provider.work-fisher"]
+    "credentialKeys": [
+      "WORK_FISHER_API_KEY"
+    ],
+    "credentialGrants": [
+      "provider.work-fisher"
+    ]
   }
 ]

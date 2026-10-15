@@ -9,8 +9,8 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { normalizeLocalComfyServer } from '../../../contracts/comfyServerAddress.js';
-import { redactSecretsOnly } from '../../../identity-account/api/server/security/redaction.js';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+import { redactSecretsOnly } from '../../../kernel/redaction.js';
+import { platformPaths } from '../../../kernel/server.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -213,7 +213,7 @@ export async function inspectProcessDefault(pid) {
  * （见 scripts/release/runtimeControl.mjs）。便携版里用户双击 exe 全程没有控制台，
  * 单独给 ComfyUI 开一个黑窗口会是唯一的异类，而且用户误关就等于杀掉它。
  */
-export function openComfyLogTargetsDefault(logsDirectory = RUNTIME_PATHS.LOGS_DIR) {
+export function openComfyLogTargetsDefault(logsDirectory = platformPaths().runtime.LOGS_DIR) {
   fs.mkdirSync(logsDirectory, { recursive: true });
   const stdout = fs.openSync(path.join(logsDirectory, 'comfyui-stdout.log'), 'a');
   const stderr = fs.openSync(path.join(logsDirectory, 'comfyui-stderr.log'), 'a');
@@ -238,7 +238,7 @@ const ANSI_PATTERN = /\[[0-9;]*m/g;
  * 从末尾截取时可能切断多字节字符，所以丢掉第一行残句。
  */
 export function readComfyLogTail({
-  logsDirectory = RUNTIME_PATHS.LOGS_DIR,
+  logsDirectory = platformPaths().runtime.LOGS_DIR,
   lines = 200,
   fileSystem = fs,
 } = {}) {
@@ -336,9 +336,9 @@ class ComfyProcessController {
   openLogTargets = openComfyLogTargetsDefault,
   openBrowser = openComfyBrowserDefault,
   readLogTail = readComfyLogTail,
-  logsDirectory = RUNTIME_PATHS.LOGS_DIR,
+  logsDirectory = platformPaths().runtime.LOGS_DIR,
   isPortFree = isPortFreeDefault,
-  recordPath = path.join(RUNTIME_PATHS.RUN_DIR, 'comfyui-process.json'),
+  recordPath = path.join(platformPaths().runtime.RUN_DIR, 'comfyui-process.json'),
   fileSystem = fs,
   sleep = delay,
   pollIntervalMs = 1_500,

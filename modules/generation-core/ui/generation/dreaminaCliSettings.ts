@@ -1,5 +1,5 @@
 import type { SourceSettingsClient } from './sourceSettingsClient';
-import type { SettingsScope } from './sourceSettingsScope';
+import type { SettingsScope } from '../../../kernel/ui/settingsScope';
 import { isOfficialDreaminaLoginUrl } from './dreaminaLoginUrl';
 import { createDreaminaCliSettingsView } from './dreaminaCliSettingsRender';
 import { badge } from './sourceSettingsDom';

@@ -1,6 +1,16 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { buildWorkflowCanvasValues, createWorkflowCanvasNodes, } from '../modules/local-runtime/ui/local/workflowCanvasNodes';
+import { browserHost } from '../modules/kernel/browser.ts';
+import { registerWorkflowRecoveryOwner } from '../modules/generation-core/ui/generation/workflowRecoveryBoundary.ts';
+import { interruptedGenerationPatch } from '../modules/generation-core/ui/generation/generationRecovery.ts';
+let release;
+beforeEach(() => {
+    release = browserHost.services.register('ui.generation.interaction', {
+        registerWorkflowRecoveryOwner, interruptedPatch: interruptedGenerationPatch,
+    });
+});
+afterEach(() => release());
 function blueprint() {
     return {
         title: 'Test workflow', subtitle: 'Local', executionTarget: 'local', canvasNodeHash: 'hash',

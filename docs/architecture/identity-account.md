@@ -13,6 +13,8 @@
 preferences.repository 提供本机键值偏好，默认模型与 UI 设置共用；preferenceRouter 接收限定键和值。网络安全公共 API 包括 safeProxy、externalUrlPolicy、requestContext/publicLibraryGuard/privateLibraryGuard，分别处理认证上下文、请求限额、外部网络及私有内容边界。
 identity.httpSecurity 以 contracts/httpSecurity.d.ts 为协议，发布代理 Router、公共库 Guard、私有路径拒绝和 getAuthenticatedScope。媒体 Router 通过服务获取当前请求的下载作用域；不接受客户端提供目录或认证上下文。插件清理时 kernel 撤销服务。
 
+认证作用域解析实现归 [userScopeResolver.js](../../modules/identity-account/server/security/userScopeResolver.js)，公共 opaque user id 校验与共享白名单归 contracts/userIdentity.js；project/runtimePaths 只使用公共校验，不拥有认证实现。AuthenticatedUserScope 包含 opaqueUserId 和当前用户目录，节点路由经身份服务读取该标识，不自行获取业务内部认证对象。用户目录创建仍经宿主注入的适配器执行。
+
 身份异常统一使用 contracts/identityErrors 的错误码及 IdentityError，保留 HTTP status、取消 AbortError 名称和领域 instanceof 语义。凭据解密/读取错误不泄露底层密钥内容；日志经 kernel Logger。Windows 使用 DPAPI，macOS 使用本机 Keychain，保护器保留密钥生成、缓冲区清零和缺失密钥处理。
 
 ## 数据模型
@@ -25,7 +27,7 @@ identity.httpSecurity 以 contracts/httpSecurity.d.ts 为协议，发布代理 R
 
 宿主选定用户域 -> 读取/保护运行凭据 -> 插件激活按双重授权获取来源密钥。HTTP 请求先经过本机安全边界再进入业务 Router；媒体静态请求再经私有目录拒绝与公开素材授权。
 
-启动时，[apps/backend/main.mjs](../../apps/backend/main.mjs) 将同步目录创建适配器传入 `inspectLocalAuthenticationConfiguration`，由它继续注入 `createUserScopeResolver`。`createActiveUserContext` 在插件激活前同步初始化当前用户目录；项目作用域解析器不直接调用文件系统。缺少适配器时会抛出 `USER_SCOPE_DIRECTORY_SERVICE_MISSING`，后端无法启动。
+启动时，[apps/backend/main.mjs](../../apps/backend/main.mjs) 将同步目录创建适配器传入 `inspectLocalAuthenticationConfiguration`，由它继续注入 `createUserScopeResolver`。`createActiveUserContext` 在插件激活前同步初始化当前用户目录；作用域解析器不直接调用文件系统。缺少适配器时会抛出 `USER_SCOPE_DIRECTORY_SERVICE_MISSING`，后端无法启动。通用脱敏函数归 kernel/redaction.js，身份模块仅转出同一实现。
 
 外部 URL 策略限制协议、地址解析/重定向和本机网络范围；安全代理与媒体远端读取复用此边界。偏好保存保留版本冲突语义，头像取消/失败不覆写新状态。当前旧工作区状态和个别兼容读取仍存在，按规范差异记录，不宣称已清理所有旧数据分支。
 identity.externalUrlFetch 通过受限服务复用外部 URL 策略；每次重定向重新验证，丢弃的响应体释放。地址范围交给 Node BlockList，IPv6 映射/转换和非公网范围拒绝；undici dispatcher 的 lookup 绑定已验证地址，不再次解析到未校验目标，TLS/Host 保留原域名。整条重定向链共用超时信号；响应消费结束关闭连接池，传输失败销毁连接池。自定义 fetchImpl 是可信注入点，必须遵循 dispatcher。浏览器 ui.account 提供头像操作和外观挂载/卸载，不暴露偏好存储实现。
@@ -62,6 +64,7 @@ identity.externalUrlFetch 通过受限服务复用外部 URL 策略；每次重�
 | [modules/identity-account/server/security/redaction.js](../../modules/identity-account/server/security/redaction.js) | 服务端领域实现 | `redactSensitive`, `redactSecretsOnly`, `redactString` | 未检出平台调用；不等于纯函数证明 |
 | [modules/identity-account/server/security/requestContext.js](../../modules/identity-account/server/security/requestContext.js) | 服务端领域实现 | `getRequestContext`, `createSecureLogger`, `createRequestContextMiddleware`, `installSecureConsole` | 未检出平台调用；不等于纯函数证明 |
 | [modules/identity-account/server/security/safeProxyRouter.js](../../modules/identity-account/server/security/safeProxyRouter.js) | HTTP 转换与校验 | `createSafeProxyRouter` | 含 HTTP/网络 调用；时机见实现 |
+| [modules/identity-account/server/security/userScopeResolver.js](../../modules/identity-account/server/security/userScopeResolver.js) | 服务端领域实现 | `UserScopeError`, `createServerAuthenticationContext`, `createActiveUserAuthenticationContext`, `resolveServerAuthenticationIdentity`, `createUserScopeResolver` | 未检出平台调用；不等于纯函数证明 |
 | [modules/identity-account/serverPlugin.js](../../modules/identity-account/serverPlugin.js) | 模块入口或装配 | `default` | 含 HTTP/网络、服务注册/生命周期 调用；时机见实现 |
 | [modules/identity-account/ui/appearance/CanvasAppearanceSettings.tsx](../../modules/identity-account/ui/appearance/CanvasAppearanceSettings.tsx) | 浏览器交互与状态辅助 | `CanvasAppearanceSettings` | 未检出平台调用；不等于纯函数证明 |
 | [modules/identity-account/ui/appearance/CanvasWallpaper.tsx](../../modules/identity-account/ui/appearance/CanvasWallpaper.tsx) | 浏览器交互与状态辅助 | `WallpaperLayers`, `CanvasWallpaper` | 未检出平台调用；不等于纯函数证明 |
@@ -72,5 +75,6 @@ identity.externalUrlFetch 通过受限服务复用外部 URL 策略；每次重�
 | [modules/identity-account/ui/profile/canvasAvatar.ts](../../modules/identity-account/ui/profile/canvasAvatar.ts) | 浏览器交互与状态辅助 | `avatarColor`, `avatarText`, `avatarClass` | 未检出平台调用；不等于纯函数证明 |
 | [modules/identity-account/ui/profile/localProfile.ts](../../modules/identity-account/ui/profile/localProfile.ts) | 浏览器交互与状态辅助 | `StableLocalProfileAdapter`, `applyStoredAvatar`, `installLocalProfile`, `uninstallLocalProfileForTests` | 未检出平台调用；不等于纯函数证明 |
 | [modules/identity-account/ui/profile/localUser.ts](../../modules/identity-account/ui/profile/localUser.ts) | 浏览器交互与状态辅助 | `LocalUser`, `readLocalUser`, `useLocalUser` | 未检出平台调用；不等于纯函数证明 |
+| [modules/identity-account/ui/profile/preferenceStore.ts](../../modules/identity-account/ui/profile/preferenceStore.ts) | 存储访问或状态管理 | `PreferenceStorage`, `PreferenceStoreOptions`, `createPreferenceStore`, `installPreferenceStore`, `preferenceStorage`, `uninstallPreferenceStoreForTests` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 
 <!-- source-inventory:end -->

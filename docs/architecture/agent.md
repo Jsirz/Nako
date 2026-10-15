@@ -12,15 +12,21 @@
 
 ## 接口契约
 
+浏览器生成计划通过 ui.generation.preparation 获取来源和预检能力，通过 ui.generation 查询模型并发额度；两项服务均在浏览器 manifest 显式声明。createCanvasCreationControl 不再接收未使用的 fetcher；应用装配只传画布运行能力和生成计划 journal。来源失败保留现有不可执行结果，不回退到业务实现。
+
 HTTP 前缀 `/api/agent/v2`、协议版本 2，事件与操作封套在 contracts/agentProtocol.*；会话树、展示活动和归档分别在 agentSession/agentActivity/agentArchive。完整运行流程见 [Agent Harness](agent-harness.md)。
 
 agent.persistence 由 storage.agent-files 提供会话、工作区、计划、预算等 store 工厂；agent.skills 提供技能目录；agent.archive 为项目包提供只读历史导出和独立导入。模型能力经 [AgentTextGenerationService](../../modules/contracts/agentTextGeneration.d.ts) 获取，Agent 只提交中立消息、工具和参数，不获取明文密钥、端点或构造 Authorization。wire 协议和来源参数位于 plugins/platform/text-transport；生成经业务服务或节点运行服务。
+
+DramaPlanStoreOptions/DramaPlanValidation 定义于 contracts/agentDrama.d.ts，dramaServerPlugin 把计划校验回调传给存储工厂；storage.agent-files 不再反向导入 Agent 实现。缺少校验明确以 DRAMA_STORAGE_UNAVAILABLE/503 拒绝；DramaPlanError 归 contracts/dramaPlanError.js，业务与存储保留同一 instanceof、修订冲突及确认规则。
+
+浏览器 Agent 通过 ui.canvas.editing、ui.nodes.runs、ui.project.catalog、ui.media.canvas、ui.generation.catalog/preparation 与 ui.local-runtime 操作画布；ui.agent.canvas 只发布受限工作区操作，ui.agent.documents 提供文档及封面相关能力。提示词编辑和媒体 composer 数据归 contracts，业务 UI 不静态导入画布实现。公开服务输入须携带当前项目及节点身份，保持只读、授权和迟到响应检查。
 
 技能选择使用 contracts/skillCatalog 的 `AgentSelectedSkill`，后端 `agentRouter.js` 从技能目录保存 `slug/name/source` 及版本、项目标识；客户端 `agentClient.ts` 引用并转出同一类型，快捷选择与制作计划可使用保存的展示名称。
 
 用户技能编辑协议定义在 [skillCatalog.d.ts](../../modules/contracts/skillCatalog.d.ts)。[agentSkillRouter.js](../../modules/agent/server/agent/agentSkillRouter.js) 将 `GET /api/agent-skills/:slug/edit` 转发到注入技能服务的 `readDocument(slug)`，返回元数据、可编辑文本及附件路径；`PUT /api/agent-skills/:slug` 调用 `update(slug, request)`，返回 `{skill}`。请求包含读取时的 `updatedAt`、名称/简介/分类、变更文件、删除路径及可选封面路径，未传的文件保留。不存在返回 404，官方条目返回 403，过期编辑返回 409，路径、元数据或参考文件错误通过 contracts 的 `AgentSkillError` 返回 400；非领域异常返回 500。Router 不操作文件系统。
 
-工具参数先校验 schema，再绑定项目/会话/操作身份；变更先写执行意图，确认后写回执。nodeTools 直接使用受限节点服务，不通过浏览器猜测节点参数。通用操作错误使用 contracts/agentErrors；保留的字符串诊断码和横向 UI 调用差异见 conformance。
+工具参数先校验 schema，再绑定项目/会话/操作身份；变更先写执行意图，确认后写回执。nodeTools 直接使用受限节点服务，不通过浏览器猜测节点参数。通用操作错误使用 contracts/agentErrors；历史字符串诊断码与错误上下文差异见 conformance。
 
 ## 数据模型
 
@@ -44,7 +50,7 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 
 任务名称明确区分图像描述、提示词提取、视频生成计划、要素/分镜、技能草稿和音频转写；选择任务只追加可编辑请求并将生成执行方式切为手动确认，不发送消息、不调用模型、不创建或运行工作流。用户显式发送后由现有 Agent 流程分析并预览结果，媒体能力不足时请求说明限制。`AgentMessageExport.tsx` 可编辑单条回复的导出草稿，再显式创建文本节点并复制编辑后文本；草稿不改写已归档的助手回复，创建后的节点沿用画布编辑和连接流程。媒体生成仍经既有授权卡确认。
 
-空会话副标题显示“纳科画布智能体”，面板收起按钮沿用减号图标；输入框上方不显示左侧“技能”标题，保留右侧“选择技能”入口，编辑框保留“调用技能”。文本模型选择 AUTO 时，`useCanvasAgentPanelState.ts` 优先使用已配置且可用的默认文本模型；没有可用默认模型时，按可选列表顺序使用第一个已连接的文本模型，不写回默认设置或工作区模型选择。手动指定模型仍优先，发送给后端的是解析后的具体模型。`agentPanelActions.ts` 在无模型时拦截发送并弹出提示，区分模型读取中、读取失败和没有可用模型，保留输入与附件；用户可在设置中连接服务后重试。
+空会话副标题显示“纳科画布智能体”，面板收起按钮沿用减号图标；输入框上方不显示左侧“技能”标题，保留右侧“选择技能”入口，编辑框保留“调用技能”。底部隐藏思考设置按钮，仅保留生成执行方式入口；思考能力仍由 `useCanvasAgentPanelState.ts` 根据模型声明和工作区草稿计算，并在发送时按原逻辑传递，不改变模型调用行为。文本模型选择 AUTO 时，`useCanvasAgentPanelState.ts` 优先使用已配置且可用的默认文本模型；没有可用默认模型时，按可选列表顺序使用第一个已连接的文本模型，不写回默认设置或工作区模型选择。手动指定模型仍优先，发送给后端的是解析后的具体模型。`agentPanelActions.ts` 在无模型时拦截发送并弹出提示，区分模型读取中、读取失败和没有可用模型，保留输入与附件；用户可在设置中连接服务后重试。
 
 `CanvasAgentLauncher` 在面板收起时显示，入口按钮为 72px、机器人图标为 36px，外层容器固定距窗口右侧 80px、底部 76px，尺寸及位置由 `agentWorkspace.css` 管理。`surfaces.ts` 注入现有 `CanvasTooltip`，鼠标悬停或键盘聚焦时在图标上方显示“nako agent”，延迟设为 0；离开、失焦或按 Escape 隐藏提示。
 
@@ -53,7 +59,15 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 `canvasAgentPanel.tsx` 不挂载顶部 `renderAgentHarnessControls` 工具栏，因此不显示“对话分支”、分支选择、“压缩上下文”和“刷新运行状态”，也不占用工具栏空间；`renderAgentPanelConversation.tsx` 不显示回复下方的“从此处分支”按钮。聊天控制器中的相关能力仍保留。
 
 发送校验 -> 会话锁和唯一 operationId -> pi 工具循环 -> 写会话/意图 -> 执行业务 -> 写回执 -> SSE 投影 -> run_end。断流读取快照，不重发消息；应用退出等待停止及持久化。
+
+[canvasCreationControl.ts](../../modules/agent/ui/agent/canvasCreationControl.ts) 对已批准的同一生成批次并行调度独立节点，批次最多同时占用 4 个执行位置；按并发查询返回的 modelId 共享本批模型位置，受该模型 maxConcurrent 限制（0 表示本机不设模型上限）。已满的模型每秒查询可用性，也在本批任务完成时重新调度；等待不创建生成尝试，批准期限、项目身份和配置每次异步预检后重新检查。并发查询失败停止对应未提交节点，真实请求仍由 generation-core 后端原子准入，其他窗口或手动生成竞争额度时后端可能拒绝，批次不重放该请求。
+
+依赖项全部成功且成功记录已落盘后，下游重新准备请求并使用新结果，不等待无关分支完成。失败、未确认或停止的节点只阻止其依赖分支；配置改变只停止受影响的未提交任务。计划 claim、submitted、终态和 finish 共用本批写入队列，操作在队列内读取最新 revision，避免并发 CAS 冲突；写入结果不确定时停止本批后续提交。停止操作立即标记 cancelled，已启动任务继续核对原结果，全部执行收尾后才 finish，界面保留取消状态。恢复记录不会重新提交。工具调用及画布编辑仍按顺序执行，避免 revision 竞争；模型工具说明要求把可并行节点放入同一 prepareGeneration。
+
+回归测试位于 `tests/agent-generation-parallel.test.js`，覆盖并行上限、模型排队、依赖汇合、独立分支失败隔离、重复批准、CAS 写入、取消及配置变化；测试使用模拟生成与 journal，不调用真实模型。
 模型 stream 的 textDelta 是暂态显示，工具参数必须完整并校验后才进入 pi；截断或非法 JSON 明确拒绝，不自动重发。usage 和 stopReason 经公共结果映射，AbortSignal 覆盖凭据解析、提交及响应消费。
+
+[runtime.js](../../modules/agent/server/harness/runtime.js) 将文本传输服务已分类的 `AgentTextGenerationError` 安全提示写入运行记录和 `run_end`，保留 `code`、`httpStatus` 与分类 `reason`；未知内部异常使用通用提示，不暴露原始响应。失败日志经 kernel Logger 输出固定事件、操作、会话/项目/运行标识和模型名，错误对象仅提取脱敏结构。[agentClient.ts](../../modules/agent/ui/agent/agentClient.ts) 使用回执中的有效 HTTP 错误状态构造客户端领域错误，保留分类及会话/运行上下文；[canvasAgentChat.ts](../../modules/agent/ui/agent/canvasAgentChat.ts) 从终态快照恢复安全错误提示，重新打开面板或读取历史时不清除失败原因。上游不可用仍标记本轮失败，不自动重发请求、换模型或重放已完成操作。
 
 关闭面板只断前端观察；退出或切换项目停止相应 Agent 运行。Skill 导入、分类、封面、中文展示及删除由同一存储服务维护，脚本不执行。技能管理由 `skillManager.ts` 提供“官方预设”和“用户自定义”来源页签，默认官方，切换来源重置分类与搜索，导入成功转到用户自定义。卡片只展示封面、名称和简介，点击查看详情；卡片不提供分类输入、保存分类或删除控件，保留分类筛选、搜索和导入。详情显示来源，底部提供“使用技能”，用户自定义另在左侧提供“编辑技能”；管理页和对话选择器详情使用相同编辑窗口。首页仅展示官方预设，分类和预览事件均排除用户自定义技能，空状态不提供导入入口。关闭通过右上角按钮、Escape 或点击遮罩完成。面板展示与时间线渲染分担职责，保留工具确认原位置和焦点恢复。
 
@@ -89,7 +103,7 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/server/agent/drama/dramaConversation.js](../../modules/agent/server/agent/drama/dramaConversation.js) | 服务端领域实现 | `requireDramaSession`, `createDramaConversationMessages`, `parseDramaConversationReply`, `createDramaConversationService` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/server/agent/drama/dramaExecutionService.js](../../modules/agent/server/agent/drama/dramaExecutionService.js) | 运行、调度或服务 | `DramaExecutionError`, `createDramaExecutionService` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/server/agent/drama/dramaModelGenerator.js](../../modules/agent/server/agent/drama/dramaModelGenerator.js) | 服务端领域实现 | `createDramaModelGenerator` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/server/agent/drama/dramaPlan.js](../../modules/agent/server/agent/drama/dramaPlan.js) | 服务端领域实现 | `DRAMA_PLAN_LIMITS`, `DRAMA_FIXED_TAIL`, `DramaPlanError`, `assertDramaObject`, `requireDramaProjectId`, `requireDramaPlanId`, `requireDramaRevision`, `normalizeDramaScript`, `countDramaDialogue`, `validateDramaPlan`, `assertDramaPlanReviewable`, `parseGeneratedDramaPlan`, `createFightAssetPlanningPrompt`, `createDramaPlanningPrompt`, `compileDramaSegment` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/server/agent/drama/dramaPlan.js](../../modules/agent/server/agent/drama/dramaPlan.js) | 服务端领域实现 | `DramaPlanError`, `DRAMA_PLAN_LIMITS`, `DRAMA_FIXED_TAIL`, `assertDramaObject`, `requireDramaProjectId`, `requireDramaPlanId`, `requireDramaRevision`, `normalizeDramaScript`, `countDramaDialogue`, `validateDramaPlan`, `assertDramaPlanReviewable`, `parseGeneratedDramaPlan`, `createFightAssetPlanningPrompt`, `createDramaPlanningPrompt`, `compileDramaSegment` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/server/agent/drama/dramaPlanRouter.js](../../modules/agent/server/agent/drama/dramaPlanRouter.js) | HTTP 转换与校验 | `createDramaPlanRouter` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/server/agent/drama/dramaScriptImport.js](../../modules/agent/server/agent/drama/dramaScriptImport.js) | 服务端领域实现 | `DramaScriptImportError`, `importDramaScript`, `createDramaScriptImportRouter` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/agent/server/agent/drama/dramaTurn.js](../../modules/agent/server/agent/drama/dramaTurn.js) | 服务端领域实现 | `prepareDramaTurn` | 未检出平台调用；不等于纯函数证明 |
@@ -154,10 +168,11 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/agent/canvasCreationControl.ts](../../modules/agent/ui/agent/canvasCreationControl.ts) | 浏览器交互与状态辅助 | `GenerationBatch`, `createCanvasCreationControl`, `CanvasCreationControl` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/canvasMediaControl.ts](../../modules/agent/ui/agent/canvasMediaControl.ts) | 浏览器交互与状态辅助 | `canvasImagePreview`, `createCanvasMediaControl` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/agent/canvasModelControl.ts](../../modules/agent/ui/agent/canvasModelControl.ts) | 浏览器交互与状态辅助 | `modeKey`, `modelKey`, `canvasModels`, `modelParameters`, `configureCanvasModel` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/ui/agent/canvasProductControl.ts](../../modules/agent/ui/agent/canvasProductControl.ts) | 浏览器交互与状态辅助 | `productOperations`, `ProductOperation`, `createCanvasProductControl`, `CanvasProductControl` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/agent/canvasProductControl.ts](../../modules/agent/ui/agent/canvasProductControl.ts) | 浏览器交互与状态辅助 | `ProductOperation`, `productOperations`, `createCanvasProductControl`, `CanvasProductControl` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/canvasProjectControl.ts](../../modules/agent/ui/agent/canvasProjectControl.ts) | 浏览器交互与状态辅助 | `ProjectRequest`, `createCanvasProjectControl`, `CanvasProjectControl` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/agent/canvasTaskControl.ts](../../modules/agent/ui/agent/canvasTaskControl.ts) | 浏览器交互与状态辅助 | `createCanvasTaskControl` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/agent/canvasWorkflowControl.ts](../../modules/agent/ui/agent/canvasWorkflowControl.ts) | 浏览器交互与状态辅助 | `createCanvasWorkflowControl` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/agent/canvasWorkspaceService.ts](../../modules/agent/ui/agent/canvasWorkspaceService.ts) | 运行、调度或服务 | `agentCanvasService` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/chatToolEvents.ts](../../modules/agent/ui/agent/chatToolEvents.ts) | 浏览器交互与状态辅助 | `applyChatToolEvent` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/dramaCanvas.ts](../../modules/agent/ui/agent/dramaCanvas.ts) | 浏览器交互与状态辅助 | `DramaAssetOutput`, `DramaAssetExecution`, `DramaExecutionSnapshot`, `DramaCanvasComposition`, `DramaCanvasNode`, `dramaAssetNodeId`, `buildDramaAssetNodes`, `buildDramaCanvasNodes`, `mergeDramaCanvasNodes` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/agent/dramaCanvasBridge.ts](../../modules/agent/ui/agent/dramaCanvasBridge.ts) | 浏览器交互与状态辅助 | `DramaCanvasRecord`, `DramaCanvasBridge`, `createDramaCanvasBridge`, `installDramaCanvasBridge` | 含 DOM/事件 调用；时机见实现 |
@@ -185,13 +200,13 @@ v2 会话含 id/projectId/revision、树 entries/branches/activeBranch、runs/re
 | [modules/agent/ui/prompt/canvasPromptTags.tsx](../../modules/agent/ui/prompt/canvasPromptTags.tsx) | 浏览器交互与状态辅助 | `CanvasPromptTag`, `CanvasMentionTag` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/prompt/creativeCatalog.json](../../modules/agent/ui/prompt/creativeCatalog.json) | 类型或数据定义 | 声明式配置 | 无业务运行副作用 |
 | [modules/agent/ui/prompt/creativePresets.ts](../../modules/agent/ui/prompt/creativePresets.ts) | 浏览器交互与状态辅助 | `CreativeKind`, `CreativePreset`, `CreativeSelection`, `validCreativePreset`, `creativeSelection`, `composeCreativePrompt` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/ui/prompt/imageAngle.ts](../../modules/agent/ui/prompt/imageAngle.ts) | 浏览器交互与状态辅助 | `ImageAngle`, `defaultImageAngle`, `angleDirections`, `normalizeImageAngle`, `imageAngleDescription`, `imageAnglePrompt` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/prompt/imageAngle.ts](../../modules/agent/ui/prompt/imageAngle.ts) | 浏览器交互与状态辅助 | `重导出 ../../../contracts/imageAngle` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/prompt/mjStyleCatalog.json](../../modules/agent/ui/prompt/mjStyleCatalog.json) | 类型或数据定义 | 声明式配置 | 无业务运行副作用 |
 | [modules/agent/ui/prompt/mjStyles.ts](../../modules/agent/ui/prompt/mjStyles.ts) | 浏览器交互与状态辅助 | `mjCategoryGroups`, `MjStyle`, `MjInsertMode`, `mjStyleText`, `mjStylePreset`, `filterMjStyles` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/prompt/nodeSidePanel.ts](../../modules/agent/ui/prompt/nodeSidePanel.ts) | 界面呈现与交互 | `nodeSidePanelPosition`, `activateSidePanel`, `useNodeSidePanel` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/prompt/promptAssistant.ts](../../modules/agent/ui/prompt/promptAssistant.ts) | 浏览器交互与状态辅助 | `DescribeImageInput`, `PromptAssistantClientError`, `createPromptAssistantClient`, `PromptAssistantClient`, `installPromptAssistant` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/prompt/promptComponents.ts](../../modules/agent/ui/prompt/promptComponents.ts) | 浏览器交互与状态辅助 | `PromptRuntime`, `PromptIcon`, `PromptIcons`, `PromptKeyHandle`, `PromptPresetItem`, `PresetListProps`, `PresetFormProps`, `PresetCardProps`, `presetText`, `promptPreviewIsVideo`, `isolatePromptMenuKeyboard` | 未检出平台调用；不等于纯函数证明 |
-| [modules/agent/ui/prompt/promptDocument.ts](../../modules/agent/ui/prompt/promptDocument.ts) | 浏览器交互与状态辅助 | `PromptAsset`, `PromptDocumentNode`, `promptAssetType`, `promptAssetIndex`, `promptAssetLabel`, `promptToDocument`, `documentToPrompt` | 未检出平台调用；不等于纯函数证明 |
+| [modules/agent/ui/prompt/promptDocument.ts](../../modules/agent/ui/prompt/promptDocument.ts) | 浏览器交互与状态辅助 | `重导出 ../../../contracts/promptAssets`, `promptToDocument`, `documentToPrompt` | 未检出平台调用；不等于纯函数证明 |
 | [modules/agent/ui/prompt/promptExpand.ts](../../modules/agent/ui/prompt/promptExpand.ts) | 浏览器交互与状态辅助 | `PROMPT_CONTAINER_SELECTOR`, `PROMPT_EXPAND_TARGET_SELECTOR`, `PROMPT_EXPAND_CSS`, `closePromptExpand`, `installPromptExpand` | 含 DOM/事件 调用；时机见实现 |
 | [modules/agent/ui/prompt/promptPresets.ts](../../modules/agent/ui/prompt/promptPresets.ts) | 浏览器交互与状态辅助 | `PromptPresetType`, `PromptPreset`, `PromptPresetCategory`, `PromptPresetConfig`, `CreatePromptPresetInput`, `ParsedPromptTag`, `serializePromptTag`, `parsePromptTags`, `displayPromptTags`, `expandPromptTags`, `serializedTagsToHtml`, `createPromptPresetClient`, `PromptPresetClient`, `installPromptPresets` | 含 HTTP/网络 调用；时机见实现 |
 | [modules/agent/ui/prompt/promptSuggestions.ts](../../modules/agent/ui/prompt/promptSuggestions.ts) | 浏览器交互与状态辅助 | `SuggestionProps`, `SuggestionUI`, `createPromptSuggestions` | 含 DOM/事件 调用；时机见实现 |

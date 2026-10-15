@@ -1,6 +1,6 @@
 import { LocalComfyExecutorError } from '../../../modules/contracts/workflowProtocols.js';
 
-import { workflowAssetKey } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowAssetIdentity.js';
+import { workflowAssetKey } from '../../../modules/contracts/workflowSupport.js';
 
 export const MAX_STAGE_ASSETS = 20;
 

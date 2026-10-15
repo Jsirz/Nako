@@ -1,11 +1,11 @@
 import express from 'express';
 import { defineApplicationPlugin } from '../kernel/application.js';
-import { getWorkspacePaths } from '../project/api/server/workspace/workspacePaths.js';
 import { createDramaPlanRouter } from './server/agent/drama/dramaPlanRouter.js';
 import { createDramaExecutionService } from './server/agent/drama/dramaExecutionService.js';
 import { createDramaModelGenerator } from './server/agent/drama/dramaModelGenerator.js';
 import { createDramaConversationService } from './server/agent/drama/dramaConversation.js';
-import { compileDramaSegment } from './server/agent/drama/dramaPlan.js';
+import { compileDramaSegment, assertDramaObject, assertDramaPlanReviewable, requireDramaPlanId,
+  requireDramaProjectId, requireDramaRevision, validateDramaPlan } from './server/agent/drama/dramaPlan.js';
 import { createDramaScriptImportRouter } from './server/agent/drama/dramaScriptImport.js';
 export default defineApplicationPlugin({
   id: 'module.agent.drama',
@@ -21,18 +21,20 @@ export default defineApplicationPlugin({
   ],
   provides: ['agent.drama'],
   activate(context) {
-    const { applicationContext } = context.services.get('host.runtime');
+    const { paths: RUNTIME_PATHS, applicationContext } = context.services.get('host.runtime');
     const { createDramaPlanStore } = context.services.get('agent.persistence');
     const generationRuntime = context.services.get('generation.runtime');
     const executionWorkflowRuntime = context.services.get('workflow.execution');
     const dramaPlanStore = createDramaPlanStore({
-      libraryDirectory: getWorkspacePaths().LIBRARY_DIR,
+      libraryDirectory: RUNTIME_PATHS.LIBRARY_DIR,
+      validation: { assertDramaObject, assertDramaPlanReviewable, requireDramaPlanId,
+        requireDramaProjectId, requireDramaRevision, validateDramaPlan },
     });
 
     const dramaExecutionService = createDramaExecutionService({
       saveMedia: context.services.get('media.generation').saveBuffer,
       planStore: dramaPlanStore,
-      libraryDirectory: getWorkspacePaths().LIBRARY_DIR,
+      libraryDirectory: RUNTIME_PATHS.LIBRARY_DIR,
       executionStore: context.services.get('agent.persistence').createExecutionStore(),
       ...executionWorkflowRuntime.services,
       generationCoordinator: generationRuntime.coordinator,
@@ -58,7 +60,7 @@ export default defineApplicationPlugin({
       createDramaPlanRouter({
         defaultModels: context.services.get('generation.defaults'),
         readInstructions: context.services.get('agent.persistence').readOfficialInstructions,
-        libraryDirectory: getWorkspacePaths().LIBRARY_DIR,
+        libraryDirectory: RUNTIME_PATHS.LIBRARY_DIR,
         store: dramaPlanStore,
         generatePlan: createDramaModelGenerator({
           readImages: context.services.get('media.agent').imageContent,

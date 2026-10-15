@@ -2,7 +2,7 @@ import { canvasError } from '../../../contracts/canvasErrors.js';
 import { createPortal } from 'react-dom';
 import type { CanvasComponent } from '../app/canvasComponentType';
 import type * as ReactTypes from 'react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { renderAnnotationBrushSettings, renderAnnotationTools } from './renderAnnotationTools';
 import { resizeLimit } from './imageResizeGeometry';
 import {

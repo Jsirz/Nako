@@ -1,4 +1,4 @@
-import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { accountPreferences as preferenceStorage } from '../../../kernel/browser';
 import type { CanvasNode } from './workflowNodeTypes';
 
 export const WORKFLOW_EXAMPLE_STORAGE_KEY = 'nako-workflow-example-bundles-v1';

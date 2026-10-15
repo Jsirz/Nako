@@ -15,6 +15,7 @@
     "requires": [
       "host.runtime",
       "http.routes",
+      "platform.paths",
       "local.runtime",
       "generation.taskStore",
       "media.generation",
@@ -23,7 +24,8 @@
     ],
     "provides": [
       "generation.runtime",
-      "generation.defaults"
+      "generation.defaults",
+      "generation.catalog"
     ]
   },
   "capabilities": [

@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { approveNodeRun, cancelNodeRun, getNodeRun, waitNodeRun } from '../../../canvas-ui/api/ui/nodes/nodeGraphClient';
+import { nodeRuns } from '../../../kernel/browser';
 import type { NodeRunReceipt } from '../../../contracts/nodeExecution.js';
 
 export function AgentNodeRunCard({ id }: { id: string }) {
   const [run, setRun] = useState<NodeRunReceipt>(), [error, setError] = useState('');
   useEffect(() => {
     const abort = new AbortController();
-    getNodeRun(id).then(value => waitNodeRun(value, setRun, abort.signal)).catch(cause => { if (!abort.signal.aborted) setError(cause.message); });
+    nodeRuns().get(id).then(value => nodeRuns().wait(value, setRun, abort.signal)).catch(cause => { if (!abort.signal.aborted) setError(cause.message); });
     return () => abort.abort();
   }, [id]);
   const act = (action: 'approve' | 'cancel') => {
     if (!run) return;
-    (action === 'approve' ? approveNodeRun(run) : cancelNodeRun(id)).then(setRun).catch(cause => setError(cause.message));
+    (action === 'approve' ? nodeRuns().approve(run) : nodeRuns().cancel(id)).then(setRun).catch(cause => setError(cause.message));
   };
   return <div className="rounded-lg border border-[var(--nk-border)] bg-[var(--nk-surface)] p-3 text-xs space-y-2" data-node-run={id}>
     <p className="font-semibold">节点运行 · {run?.status || '读取状态'}</p>

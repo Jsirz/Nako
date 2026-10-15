@@ -12,7 +12,20 @@
   ],
   "services": {
     "provides": [
-      "ui.agent.surfaces"
+      "ui.agent.surfaces",
+      "ui.agent.canvas",
+      "ui.agent.documents"
+    ],
+    "requires": [
+      "ui.generation",
+      "ui.generation.catalog",
+      "ui.generation.preparation",
+      "ui.nodes.runs",
+      "ui.canvas.editing",
+      "ui.canvas.presentation",
+      "ui.project.catalog",
+      "ui.media.canvas",
+      "ui.local-runtime"
     ]
   }
 }

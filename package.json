@@ -26,9 +26,10 @@
     "check:architecture": "node scripts/runtime/run.mjs scripts/check-architecture.mjs",
     "check:docs": "node scripts/runtime/run.mjs scripts/architecture/documentation.mjs",
     "audit:conventions": "node scripts/runtime/run.mjs scripts/architecture/conventions.mjs",
+    "check:conventions": "node scripts/runtime/run.mjs scripts/architecture/conventions.mjs --strict --details",
     "smoke:server": "node scripts/runtime/run.mjs scripts/smoke-server.mjs",
     "check:local-only": "node scripts/runtime/run.mjs scripts/check-local-only.mjs",
-    "check": "npm run check:architecture && npm run check:docs && npm run check:local-only && npm run typecheck && npm run unit && npm run build:stable && npm run build:launcher && npm run smoke:server && npm run smoke:plugins",
+    "check": "npm run check:architecture && npm run check:docs && npm run check:conventions && npm run check:local-only && npm run typecheck && npm run unit && npm run build:stable && npm run build:launcher && npm run smoke:server && npm run smoke:plugins",
     "smoke:plugins": "node scripts/runtime/run.mjs scripts/smoke-server.mjs --without-agent"
   },
   "dependencies": {

@@ -1,13 +1,7 @@
 [
-  "modules/asset-media/api/server/media/mediaArtifact.js",
-  "modules/asset-media/api/server/media/mediaAssetListing.js",
   "modules/asset-media/api/server/media/mediaAssetRouter.js",
   "modules/asset-media/api/server/media/mediaEditingRouter.js",
-  "modules/asset-media/api/server/media/mediaMetadataProbe.js",
-  "modules/asset-media/api/server/media/recoveredVideo.js",
-  "modules/asset-media/api/server/utils/imageHelpers.js",
   "modules/asset-media/api/server/utils/resolutionMapper.js",
-  "modules/asset-media/api/server/utils/tosSigner.js",
   "modules/asset-media/api/ui/media/assetOrganization.ts",
   "modules/asset-media/api/ui/media/canvasAudioPlayer.ts",
   "modules/asset-media/api/ui/media/canvasImagePreview.ts",

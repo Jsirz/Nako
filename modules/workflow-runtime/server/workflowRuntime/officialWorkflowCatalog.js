@@ -1,7 +1,7 @@
 import {
   OFFICIAL_DRAMA_BUNDLE,
   officialProductionBundle,
-} from '../../../agent/api/server/agent/drama/officialDramaBundle.js';
+} from '../../../contracts/officialDramaBundle.js';
 import { OFFICIAL_PRODUCTION_PROFILES } from '../../../contracts/officialProductionProfiles.js';
 
 // The recommended workflows and official skills share the same trusted routes.
@@ -27,6 +27,7 @@ export const OFFICIAL_WORKFLOWS = Object.freeze([
           : '打斗武戏',
       categoryId: 'video',
       skillSlug: profile.slug,
+      coverUrl: `/api/agent-skills/${encodeURIComponent(profile.slug)}/cover`,
       version: profile.version,
       description:
         profile.mode === 'assets'

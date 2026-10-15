@@ -1,5 +1,6 @@
 import { createDramaConversationService } from '../modules/agent/server/agent/drama/dramaConversation.js';
 import { describe, it, expect, vi } from 'vitest';
+import './helpers/modelCatalog.js';
 import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';

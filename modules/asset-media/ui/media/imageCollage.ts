@@ -1,5 +1,5 @@
 import { mediaError } from '../../../contracts/mediaDelivery.js';
-import { resizeLimit } from '../../../canvas-ui/api/ui/dialogs/imageResizeGeometry';
+import { resizeLimit } from '../../../contracts/imageResizeGeometry';
 export interface CollageItem {
   naturalWidth: number;
   naturalHeight: number;

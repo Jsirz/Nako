@@ -12,7 +12,9 @@
     "requires": [
       "host.runtime",
       "http.routes",
-      "media.projectFiles"
+      "media.projectFiles",
+      "media.runtime",
+      "platform.paths"
     ],
     "provides": [
       "local.runtime"

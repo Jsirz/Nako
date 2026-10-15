@@ -1,11 +1,10 @@
+import { workflowSupport } from '../../../modules/kernel/server.js';
 import { LocalComfyExecutorError } from '../../../modules/contracts/workflowProtocols.js';
 
-import {
-  compileWorkflowBindings,
-  resolvePublicBindingValues,
-} from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowBindingCompiler.js';
+const compileWorkflowBindings = (...args) => workflowSupport().compileBindings(...args);
+const resolvePublicBindingValues = (...args) => workflowSupport().resolveBindingValues(...args);
 
-import { workflowAssetKey } from '../../../modules/workflow-runtime/api/server/workflowRuntime/workflowAssetIdentity.js';
+import { workflowAssetKey } from '../../../modules/contracts/workflowSupport.js';
 
 export async function prepareExecution(ports, input, state) {
   const { coordinator, definitionStore, configurationStore, deploymentService } = ports;

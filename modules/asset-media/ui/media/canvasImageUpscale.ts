@@ -1,21 +1,13 @@
 import { mediaError } from '../../../contracts/mediaDelivery.js';
 import type * as React from 'react';
-import { IMAGE_MODELS } from '../../../generation-core/api/models/catalog';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
-import { generateImage } from '../../../generation-core/api/ui/generation/generationClient';
-import { interruptedGenerationPatch } from '../../../generation-core/api/ui/generation/generationRecovery';
+import { generationInteraction, modelCatalog } from '../../../kernel/browser';
+import type { CanvasImageUpscaleBinding as Binding } from '../../../contracts/mediaCanvas';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
+
 import { inspectImage } from './generationMediaMetadata';
 
-const model = IMAGE_MODELS.find((entry) => entry.provider === 'SeedVr2ImageProvider')!;
-interface Binding {
-  projectId: string;
-  getNodes(): CanvasNode[];
-  isActive(): boolean;
-  setNodes: React.Dispatch<React.SetStateAction<CanvasNode[]>>;
-  select(ids: string[]): void;
-}
 const runtime = {
-  generate: generateImage,
+  generate: (request: Record<string, unknown>) => generationInteraction().generateImage(request),
   inspect: inspectImage,
   id: (): string => crypto.randomUUID(),
   now: Date.now,
@@ -52,6 +44,8 @@ export function createCanvasImageUpscale(binding: Binding, api = runtime) {
       ) {
         throw mediaError('此图片已有放大任务正在处理或核对，请先查看原结果卡。', { operation: 'upscale', sourceId });
       }
+      const model = modelCatalog().list('image').find((entry) => entry.provider === 'SeedVr2ImageProvider');
+      if (!model) throw mediaError('没有可用的高清放大模型。', { operation: 'upscale', sourceId });
       activeSources.add(sourceId);
       const id = api.id(),
         attempt = api.id();
@@ -120,7 +114,7 @@ export function createCanvasImageUpscale(binding: Binding, api = runtime) {
           generationDiagnosticCode: undefined,
         });
       } catch (error) {
-        const interrupted = interruptedGenerationPatch(
+        const interrupted = generationInteraction().interruptedPatch(
           error as { code?: string; name?: string },
           attempt,
         );

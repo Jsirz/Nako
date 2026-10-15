@@ -1,9 +1,10 @@
 /** Portable display history. Contains no model SDK objects, credentials or execution grants. */
+import { ERRORS, PluginError } from './errors.js';
 export const AGENT_ARCHIVE_FORMAT = 'nako-agent-history';
 export const agentArchiveError = (message) =>
-  Object.assign(new Error(message), {
-    code: 'INVALID_PROJECT_ARCHIVE',
+  new PluginError(ERRORS.invalidProjectArchive, message, {
     status: 400,
+    context: { moduleId: 'contracts', protocol: 'agentArchive', operation: 'validate' },
   });
 const object = (value) => value && typeof value === 'object' && !Array.isArray(value);
 const id = (value) => typeof value === 'string' && /^[\w-]{1,128}$/.test(value);

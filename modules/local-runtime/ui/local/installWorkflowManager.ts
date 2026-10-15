@@ -1,7 +1,7 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { createStableElement as element } from '../../../kernel/ui/dom';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { UI_FEATURES } from '../../../contracts/uiFeatures';
-import { observeStableEnhancement } from '../../../canvas-ui/api/ui/lifecycle/enhancementLifecycle';
+import { observeStableEnhancement } from '../../../kernel/ui/enhancementLifecycle';
 import {
 RUNNINGHUB_WEBAPP_TEST_EVENT,
 createRunningHubWebAppManager,

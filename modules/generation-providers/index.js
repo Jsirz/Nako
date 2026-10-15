@@ -20,7 +20,7 @@ export function defineProviderPlugin(manifest, descriptors, loadHandlers) {
     manifest: structuredClone(manifest),
     canDeactivate: () => inFlight === 0,
     async activate(context) {
-      const handlers = await loadHandlers();
+      const handlers = await loadHandlers(context);
       const registry = context.services.get('generation.providers');
       active = true;
       context.onDispose(() => { active = false; });

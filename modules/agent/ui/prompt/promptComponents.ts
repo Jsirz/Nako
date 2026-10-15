@@ -27,9 +27,7 @@ export interface PromptIcons {
   UploadIcon: PromptIcon;
   Spinner: PromptIcon;
 }
-export interface PromptKeyHandle {
-  onKeyDown(props: { event: KeyboardEvent }): boolean;
-}
+export type { PromptKeyHandle } from '../../../contracts/promptEditing';
 export interface PromptPresetItem extends PromptPreset {
   category: string;
 }

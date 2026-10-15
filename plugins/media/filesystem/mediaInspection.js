@@ -4,8 +4,9 @@ import { promisify } from 'node:util';
 import { mkdtemp, realpath, readFile, rm, mkdir, open } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { RUNTIME_PATHS } from '../../../modules/project/api/server/workspace/runtimePaths.js';
-import { resolveMediaArtifact } from '../../../modules/asset-media/api/server/media/mediaArtifact.js';
+import { platformPaths } from '../../../modules/kernel/server.js';
+import { mediaFiles } from '../../../modules/kernel/server.js';
+const resolveMediaArtifact = (...args) => mediaFiles().resolveArtifact(...args);
 
 const execute = promisify(execFile);
 const suffix = process.platform === 'win32' ? '.exe' : '';
@@ -25,7 +26,7 @@ export async function resolveInspectionSource(libraryDirectory, projectId, url, 
 }
 
 /** Only typed local inspection operations; model text is never a shell command. */
-export function createMediaInspector({ libraryDirectory, run = execute, binDirectory = RUNTIME_PATHS.BIN_DIR,
+export function createMediaInspector({ libraryDirectory, run = execute, binDirectory = platformPaths().runtime.BIN_DIR,
   python = process.env.NAKO_ASR_PYTHON || 'python', transcribe } = {}) {
   return async function inspect({ projectId, url, type, times, speech = true, signal }) {
     const file = await resolveInspectionSource(libraryDirectory, projectId, url, type);
@@ -54,10 +55,10 @@ export function createMediaInspector({ libraryDirectory, run = execute, binDirec
         const wav = path.join(temporary, 'speech.wav');
         await run(path.join(binDirectory, `ffmpeg${suffix}`), ['-v', 'error', '-nostdin', '-protocol_whitelist', 'file,pipe', '-i', file, '-vn', '-ac', '1', '-ar', '16000', wav], options);
         try {
-          const cache = path.join(RUNTIME_PATHS.DATA_DIR, 'speech-models');
+          const cache = path.join(platformPaths().runtime.DATA_DIR, 'speech-models');
           await mkdir(cache, { recursive: true });
           const result = transcribe ? await transcribe(wav, signal) : JSON.parse((await run(python,
-            [path.join(RUNTIME_PATHS.MODULES_DIR, 'agent', 'server', 'agent', 'tools', 'transcribe.py'), wav, cache], options)).stdout);
+            [path.join(platformPaths().runtime.MODULES_DIR, 'agent', 'server', 'agent', 'tools', 'transcribe.py'), wav, cache], options)).stdout);
           transcript = String(result.text || '');
           speechStatus = 'complete';
         } catch (error) {

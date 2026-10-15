@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import './helpers/modelCatalog.js';
+import './helpers/promptComposition.js';
 import React from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { render, fireEvent, cleanup } from '@testing-library/react';
@@ -10,8 +12,11 @@ import { installModelCatalog } from '../modules/generation-core/models/catalog';
 import { modelContributions } from '../apps/canvas/modelContributions';
 import { TEXT_MODELS as ECLOUD_MODELS } from '../plugins/providers/ecloud/models';
 import { TEXT_MODELS as DOUBAO_MODELS } from '../plugins/providers/doubao/models';
+import { browserHost } from '../modules/kernel/browser.ts';
+import { prepareCanvasGenerationRequest } from '../modules/generation-core/ui/generation/canvasGenerationPreparation.ts';
 
-afterEach(cleanup);
+const releases = [];
+afterEach(() => { cleanup(); releases.splice(0).reverse().forEach(release => release()); });
 const glm = ECLOUD_MODELS.find((m) => m.name.startsWith('GLM-'));
 const qwen = ECLOUD_MODELS.find((m) => m.name.startsWith('qwen3-max'));
 it('lets the user choose execution mode and model-supported thinking options', () => {
@@ -36,14 +41,7 @@ it('lets the user choose execution mode and model-supported thinking options', (
   fireEvent.click(view.getByRole('menuitemradio', { name: /自动生成/ }));
   expect(view.queryByRole('menu')).toBeNull();
   expect(mode.title).toBe('自动生成');
-  fireEvent.click(view.getByLabelText('思考设置'));
-  const toggle = view.getByRole('switch', { name: '会话思考' });
-  expect(toggle.disabled).toBe(true);
-  expect(toggle.getAttribute('aria-checked')).toBe('true');
-  const effort = view.getByLabelText('会话思考强度');
-  expect(effort.value).toBe('max');
-  fireEvent.change(effort, { target: { value: 'low' } });
-  expect(effort.value).toBe('low');
+  expect(view.queryByLabelText('思考设置')).toBeNull();
 });
 it('supports keyboard navigation, dismissal and focus restoration without changing approval', () => {
   const patch = vi.fn();
@@ -78,21 +76,15 @@ it('closes options and blocks edits when a run starts', () => {
   expect(props.patch).not.toHaveBeenCalled();
 });
 
-it('keeps unsupported thinking unavailable and allows a supported toggle', () => {
+it('hides the thinking settings button', () => {
   const patch = vi.fn();
   const props = { value: {}, patch, generation: false, disabled: false };
   const view = render(React.createElement(AgentConversationOptions, {
     ...props, thinking: agentThinking([], {}),
   }));
   expect(view.queryByLabelText('生成执行方式')).toBeNull();
-  fireEvent.click(view.getByLabelText('思考设置'));
-  expect(view.getByRole('switch').disabled).toBe(true);
-  expect(view.getByLabelText('会话思考强度').disabled).toBe(true);
-  view.rerender(React.createElement(AgentConversationOptions, {
-    ...props, thinking: agentThinking(qwen.advancedParams, { thinkingEnabled: false }),
-  }));
-  fireEvent.click(view.getByRole('switch'));
-  expect(patch).toHaveBeenCalledWith({ thinkingEnabled: true });
+  expect(view.queryByLabelText('思考设置')).toBeNull();
+  expect(patch).not.toHaveBeenCalled();
 });
 
 it('maps thinking preferences without inventing unsupported parameters across models', () => {
@@ -127,6 +119,7 @@ it('maps thinking preferences without inventing unsupported parameters across mo
 });
 
 function generationFixture({ direct = false, beforeResult } = {}) {
+  const releaseIndex = releases.length;
   installModelCatalog(modelContributions);
   let nodes = [
     {
@@ -165,18 +158,17 @@ function generationFixture({ direct = false, beforeResult } = {}) {
       n.id === nodeId ? { ...n, status: 'success', resultUrl: '/mock.png' } : n,
     );
   });
+  releases.push(browserHost.services.register('ui.generation.preparation', {
+    prepare: prepareCanvasGenerationRequest,
+    sources: async () => [{ label: '移动云',
+      media: [{ kind: 'image', models: [{ name: nodes[0].imageModel, configured: true }] }] }],
+  }));
+  releases.push(browserHost.services.register('ui.generation', {
+    concurrency: async () => ({ blocked: false, inFlight: 0, maxConcurrent: 4 }),
+  }));
   const creation = createCanvasCreationControl(
     async () => ({ ok: true, revision: 'rev1' }),
     () => ({ projectId: 'p1', nodes: () => nodes, generate }),
-    async () =>
-      Response.json({
-        blocks: [
-          {
-            label: '移动云',
-            media: [{ kind: 'image', models: [{ name: nodes[0].imageModel, configured: true }] }],
-          },
-        ],
-      }),
     journal,
   );
   const execute = withGenerationApproval(
@@ -206,7 +198,8 @@ function generationFixture({ direct = false, beforeResult } = {}) {
     expiresAt: Date.now() + 60000,
     command: { action: 'prepareGeneration', revision: 'rev1', nodeIds: ['image-1'] },
   };
-  return { creation, execute, generate, journal, request };
+  return { creation, execute, generate, journal, request,
+    dispose: () => releases.splice(releaseIndex).reverse().forEach(release => release()) };
 }
 it('defaults to confirmation and uses the existing claimed journal for manual execution', async () => {
   const f = generationFixture();
@@ -244,6 +237,7 @@ it('does not auto-submit after configuration changes or authorization withdrawal
   });
   await changed.execute(changed.request);
   expect(changed.generate).not.toHaveBeenCalled();
+  changed.dispose();
   const revoked = generationFixture({ direct: true, beforeResult: ({ revoke }) => revoke() });
   expect(await revoked.execute(revoked.request)).toMatchObject({
     generationState: 'awaiting-approval',

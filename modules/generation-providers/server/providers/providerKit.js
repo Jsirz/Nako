@@ -1,4 +1,4 @@
-import { annotateProviderError } from '../../../desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
+import { annotateProviderError } from '../../../contracts/providerDiagnostics.js';
 import { BaseProvider } from './baseProvider.js';
 import { chatPayloads } from '../../../contracts/chatStream.js';
 import { providerError, wrapProviderError, PROVIDER_ERRORS } from '../../../contracts/providerErrors.js';

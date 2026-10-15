@@ -1,0 +1,10 @@
+{
+  "id": "media.ffmpeg-probe",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "type": "media",
+  "dependencies": { "host.runtime": "^1.0.0" },
+  "services": { "requires": ["platform.paths"], "provides": ["media.probe"] },
+  "capabilities": ["media.probe"],
+  "reloadRequired": true
+}

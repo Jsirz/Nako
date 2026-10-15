@@ -4,8 +4,9 @@
  * 合并了原 services/jimeng.js 的核心逻辑，减少文件层级
  */
 import crypto from 'crypto';
-import { resolveImageToBase64 } from '../../../modules/asset-media/api/server/utils/imageHelpers.js';
-import { getModelDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
+import { mediaRuntime } from '../../../modules/kernel/server.js';
+const resolveImageToBase64 = (...args) => mediaRuntime().imageBase64(...args);
+const getModelDimensions = (...args) => mediaRuntime().dimensions(...args);
 import { BaseProvider } from '../../../modules/generation-providers/api/server/providers/baseProvider.js';
 import { providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
 import { createModuleLogger } from '../../../modules/kernel/logger.js';

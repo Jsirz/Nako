@@ -1,7 +1,8 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { validCanvasControl, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
+import type { PendingControl, ProductOperation, ProductRequest } from '../../../contracts/agentCanvasWorkspace';
+export type { ProductOperation } from '../../../contracts/agentCanvasWorkspace';
 export const productOperations = { upload: '选择并上传素材', replace: '选择文件替换素材', download: '保存媒体到本机', saveAsset: '保存到素材库', resize: '调整图片尺寸', workflowManager: '导入或管理执行工作流', runWorkflow: '运行工作流' };
-export type ProductOperation = keyof typeof productOperations;
 export function createCanvasProductControl(execute: CanvasActionHandler, getRuntime: () => { projectId: string; invoke(operation: ProductOperation, nodeId?: string): Promise<void> | void } | null) {
   const items = new Map<string, { id: string; sessionId: string; label: string; state: 'pending' | 'opened' | 'cancelled' | 'unconfirmed'; request: CanvasActionRequest }>(), listeners = new Set<() => void>();
   let snapshot: Array<Omit<ReturnType<typeof items.get> & object, 'request'>> = [];
@@ -46,4 +47,4 @@ export function createCanvasProductControl(execute: CanvasActionHandler, getRunt
     },
   };
 }
-export type CanvasProductControl = ReturnType<typeof createCanvasProductControl>;
+export type CanvasProductControl = PendingControl<ProductRequest>;

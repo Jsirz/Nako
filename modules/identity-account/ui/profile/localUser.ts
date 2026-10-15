@@ -1,5 +1,5 @@
 import type * as React from 'react';
-import { preferenceStorage } from '../../../project/api/ui/persistence/preferenceStore';
+import { accountPreferences as preferenceStorage } from '../../../kernel/browser';
 
 // The same-device sync profile used this key; keeping it carries names and avatar colours over.
 const LOCAL_USER_KEY = 'nako-collab-user';

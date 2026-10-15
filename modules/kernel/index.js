@@ -2,7 +2,8 @@ import { PLUGIN_API_VERSION, ERRORS, PluginError, validatePluginManifest } from 
 import { createModuleLogger } from './logger.js';
 import { definePlugin } from './plugin.js';
 
-const fail = (code, message) => { throw new PluginError(code, message); };
+const fail = (code, message, context) => { throw new PluginError(code, message,
+  { context: { moduleId: 'kernel', ...context } }); };
 const versionParts = value => /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value) ? value.split('.').map(Number) : null;
 export function satisfiesVersion(version, range) {
   if (typeof version !== 'string' || typeof range !== 'string') return false;
@@ -20,13 +21,18 @@ export function satisfiesVersion(version, range) {
 export class ServiceRegistry {
   #entries = new Map();
   register(id, value, owner = 'host') {
-    if (this.#entries.has(id)) fail(ERRORS.serviceDuplicate, `Service already registered: ${id}`);
-    if (value === undefined) fail(ERRORS.serviceMissing, `Undefined service: ${id}`);
+    const context = { operation: 'service.register', serviceId: id, owner };
+    if (this.#entries.has(id)) fail(ERRORS.serviceDuplicate, `Service already registered: ${id}`, context);
+    if (value === undefined) fail(ERRORS.serviceMissing, `Undefined service: ${id}`, context);
     const entry = { value, owner };
     this.#entries.set(id, entry);
     return () => { if (this.#entries.get(id) === entry) this.#entries.delete(id); };
   }
-  get(id) { if (!this.#entries.has(id)) fail(ERRORS.serviceMissing, `Service not found: ${id}`); return this.#entries.get(id).value; }
+  get(id) {
+    if (!this.#entries.has(id)) fail(ERRORS.serviceMissing, `Service not found: ${id}`,
+      { operation: 'service.get', serviceId: id });
+    return this.#entries.get(id).value;
+  }
   optional(id) { return this.#entries.get(id)?.value; }
   has(id) { return this.#entries.has(id); }
   list() { return [...this.#entries].map(([id, { owner }]) => ({ id, owner })); }
@@ -53,18 +59,24 @@ export class EventBus {
 export class PluginHost {
   #plugins = new Map();
   #queue = Promise.resolve();
-  constructor({ config = {}, readConfig, credentialStore, credentialGrants = {}, logger = console } = {}) {
-    this.services = new ServiceRegistry();
-    this.events = new EventBus(() => logger.error('[plugins] Event listener failed'));
+  #logger;
+  constructor({ config = {}, readConfig, credentialStore, credentialGrants = {}, logger = console, services = new ServiceRegistry() } = {}) {
+    this.services = services;
+    this.#logger = createModuleLogger('kernel', logger);
+    this.events = new EventBus(error => this.#logger.error('Event listener failed', {
+      operation: 'event.dispatch', error,
+    }));
     this.options = { config, readConfig, credentialStore, credentialGrants, logger };
   }
   register(plugin) {
     const m = validatePluginManifest(plugin?.manifest);
     if (typeof plugin.activate !== 'function' ||
       ['deactivate', 'canDeactivate'].some(key => plugin[key] !== undefined && typeof plugin[key] !== 'function'))
-      fail(ERRORS.invalidManifest, 'Invalid plugin lifecycle');
-    if (!satisfiesVersion(PLUGIN_API_VERSION, m.apiVersion)) fail(ERRORS.incompatible, `Incompatible API: ${m.id}`);
-    if (this.#plugins.has(m.id)) fail(ERRORS.duplicate, `Duplicate plugin: ${m.id}`);
+      fail(ERRORS.invalidManifest, 'Invalid plugin lifecycle', { operation: 'plugin.register', pluginId: m.id });
+    if (!satisfiesVersion(PLUGIN_API_VERSION, m.apiVersion))
+      fail(ERRORS.incompatible, `Incompatible API: ${m.id}`, { operation: 'plugin.register', pluginId: m.id });
+    if (this.#plugins.has(m.id)) fail(ERRORS.duplicate, `Duplicate plugin: ${m.id}`,
+      { operation: 'plugin.register', pluginId: m.id });
     plugin = definePlugin(plugin);
     const manifest = JSON.parse(JSON.stringify(m));
     this.#plugins.set(m.id, { plugin, manifest, state: 'registered', dispose: [] });
@@ -77,27 +89,31 @@ export class PluginHost {
   }
   load(id) { return this.#serial(() => this.#load(id, [])); }
   async #load(id, chain) {
+    const errorContext = { operation: 'plugin.activate', pluginId: id };
     const record = this.#plugins.get(id);
-    if (!record) fail(ERRORS.missing, `Plugin not found: ${id}`);
-    if (chain.includes(id)) fail(ERRORS.dependency, `Plugin dependency cycle: ${[...chain, id].join(' -> ')}`);
+    if (!record) fail(ERRORS.missing, `Plugin not found: ${id}`, errorContext);
+    if (chain.includes(id)) fail(ERRORS.dependency, `Plugin dependency cycle: ${[...chain, id].join(' -> ')}`, errorContext);
     if (record.state === 'active') return;
     for (const [dependency, range] of Object.entries(record.manifest.dependencies || {})) {
       const target = this.#plugins.get(dependency);
-      if (!target || !satisfiesVersion(target.manifest.version, range)) fail(ERRORS.dependency, `Unsatisfied dependency: ${id} -> ${dependency}`);
+      if (!target || !satisfiesVersion(target.manifest.version, range))
+        fail(ERRORS.dependency, `Unsatisfied dependency: ${id} -> ${dependency}`, { ...errorContext, dependency });
       await this.#load(dependency, [...chain, id]);
     }
     record.state = 'activating'; record.abort = new AbortController(); record.dispose = [];
     const { manifest: m } = record;
     const allowedRead = new Set([...(m.services?.requires || []), ...(m.services?.optional || []), ...(m.services?.provides || [])]);
-    const assertRead = service => { if (!allowedRead.has(service)) fail(ERRORS.permission, `Undeclared service: ${id} -> ${service}`); };
+    const assertRead = service => { if (!allowedRead.has(service))
+      fail(ERRORS.permission, `Undeclared service: ${id} -> ${service}`, { ...errorContext, operation: 'service.read', serviceId: service }); };
     const activation = record.abort;
-    const assertActive = () => { if (activation.signal.aborted) fail(ERRORS.inactive, `Inactive plugin: ${id}`); };
+    const assertActive = () => { if (activation.signal.aborted) fail(ERRORS.inactive, `Inactive plugin: ${id}`, errorContext); };
     const context = Object.freeze({
       pluginId: id, signal: record.abort.signal,
       services: Object.freeze({
         register: (service, value) => {
           assertActive();
-          if (!m.services?.provides?.includes(service)) fail(ERRORS.permission, `Undeclared service export: ${service}`);
+          if (!m.services?.provides?.includes(service)) fail(ERRORS.permission, `Undeclared service export: ${service}`,
+            { ...errorContext, operation: 'service.register', serviceId: service });
           const dispose = this.services.register(service, value, id); record.dispose.push(dispose); return dispose;
         },
         get: service => { assertActive(); assertRead(service); return this.services.get(service); },
@@ -113,7 +129,8 @@ export class PluginHost {
       credentials: Object.freeze({ get: providerId => {
         assertActive();
         if (!m.credentials?.includes(providerId) || !this.options.credentialGrants[id]?.includes(providerId))
-          fail(ERRORS.permission, `Credential access denied: ${id} -> ${providerId}`);
+          fail(ERRORS.permission, `Credential access denied: ${id} -> ${providerId}`,
+            { ...errorContext, operation: 'credential.get', providerId });
         return this.options.credentialStore?.get(providerId);
       } }),
       logger: createModuleLogger(id, this.options.logger),
@@ -131,7 +148,8 @@ export class PluginHost {
       }
       for (const service of m.services?.provides || []) {
         if (!this.services.list().some(entry => entry.id === service && entry.owner === id))
-          fail(ERRORS.serviceMissing, `Plugin did not provide declared service: ${id} -> ${service}`);
+          fail(ERRORS.serviceMissing, `Plugin did not provide declared service: ${id} -> ${service}`,
+            { ...errorContext, serviceId: service });
       }
       record.state = 'active'; this.events.emit('plugin.activated', { id });
     } catch (error) {
@@ -142,18 +160,22 @@ export class PluginHost {
   async #cleanup(record) {
     record.abort?.abort();
     for (const dispose of record.dispose.splice(0).reverse()) {
-      try { await dispose(); } catch { this.options.logger.error('[plugins] Resource cleanup failed'); }
+      try { await dispose(); } catch (error) { this.#logger.error('Resource cleanup failed', {
+        operation: 'plugin.cleanup', pluginId: record.manifest.id, error,
+      }); }
     }
     this.services.removeOwner(record.manifest.id);
   }
   unload(id, { shutdown = false } = {}) { return this.#serial(() => this.#unload(id, shutdown)); }
   async #unload(id, shutdown) {
+    const context = { operation: 'plugin.deactivate', pluginId: id };
     const record = this.#plugins.get(id);
-    if (!record) fail(ERRORS.missing, `Plugin not found: ${id}`);
+    if (!record) fail(ERRORS.missing, `Plugin not found: ${id}`, context);
     if (record.state !== 'active') return;
     const dependents = this.list().filter(p => p.state === 'active' && p.dependencies?.[id]);
-    if (dependents.length) fail(ERRORS.dependency, `Active dependents: ${dependents.map(p => p.id).join(', ')}`);
-    if (!shutdown && (record.manifest.reloadRequired || record.plugin.canDeactivate?.() === false)) fail(ERRORS.busy, `Plugin is in use or requires restart: ${id}`);
+    if (dependents.length) fail(ERRORS.dependency, `Active dependents: ${dependents.map(p => p.id).join(', ')}`, context);
+    if (!shutdown && (record.manifest.reloadRequired || record.plugin.canDeactivate?.() === false))
+      fail(ERRORS.busy, `Plugin is in use or requires restart: ${id}`, context);
     await record.plugin.deactivate?.();
     await this.#cleanup(record); record.state = 'registered';
     this.events.emit('plugin.deactivated', { id });
@@ -169,7 +191,7 @@ export class PluginHost {
       const active = this.list().filter(p => p.state === 'active' && !keep.has(p.id));
       if (!active.length) return;
       const leaf = active.find(p => !active.some(other => other.dependencies?.[p.id]));
-      if (!leaf) fail(ERRORS.dependency, 'Cannot order plugin shutdown');
+      if (!leaf) fail(ERRORS.dependency, 'Cannot order plugin shutdown', { operation: 'plugin.stop' });
       await this.unload(leaf.id, { shutdown: true });
     }
   }

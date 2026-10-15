@@ -1,1 +1,1 @@
-export { bind, bindRef } from '../../../ui/app/presentation';
+export * from '../../../ui/app/presentation';

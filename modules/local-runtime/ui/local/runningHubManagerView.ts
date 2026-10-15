@@ -1,4 +1,4 @@
-import { createStableElement as element } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableElement as element } from '../../../kernel/ui/dom';
 import { configureApiTokenInput, control, externalControl, RUNNINGHUB_CN_KEY_URL, RUNNINGHUB_GLOBAL_KEY_URL } from './runningHubControls';
 
 export function createRunningHubManagerView(onReset: () => void) {

@@ -1,8 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
-import {
-  matchesRemoteTask,
-  remoteTaskReference,
-} from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
 import { failure } from './client.js';
 import { connection as resolveConnection } from './connection.js';
 import { readTaskResults } from './taskResults.js';

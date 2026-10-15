@@ -1,5 +1,5 @@
-import { IMAGE_MODELS, VIDEO_MODELS, AUDIO_MODELS, TEXT_MODELS } from '../../../generation-core/api/models/catalog';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import { modelCatalog } from '../../../kernel/browser';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 
 type Scalar = string | number | boolean;
 type Parameter = {
@@ -23,12 +23,6 @@ type Model = {
   audioModes?: { value: string }[];
   languageModes?: { value: string }[];
 };
-const catalogs: Record<string, Model[]> = {
-  Image: IMAGE_MODELS,
-  Video: VIDEO_MODELS,
-  Audio: AUDIO_MODELS,
-  Text: TEXT_MODELS,
-};
 export const modeKey = (type: string) =>
   type === 'Text' ? 'languageMode' : `${type.toLowerCase()}Mode`;
 export const modelKey = (type: string) => `${type.toLowerCase()}Model`;
@@ -36,7 +30,7 @@ export function canvasModels(type: string) {
   // Keep retired descriptors available to the execution path so old projects
   // can still resolve their saved model metadata; new choices are filtered by
   // the source/Agent catalogs before reaching this helper.
-  return catalogs[type] || [];
+  return ['Image', 'Video', 'Audio', 'Text'].includes(type) ? modelCatalog().list(type.toLowerCase() as 'image' | 'video' | 'audio' | 'text') as Model[] : [];
 }
 export function modelParameters(type: string, name: string) {
   const model = canvasModels(type).find((item) => item.name === name);

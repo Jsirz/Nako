@@ -93,6 +93,8 @@ SSE 统一使用 `event: agent`，数据格式：
 
 模型工具 Schema 仅保留所属工具的字段，编辑操作同时展示公共字段和每种操作的精确约束。`tools.js` 使用 pi 的 `prepareArguments` 在 Schema 校验前检查操作协议，失败时返回 `canvasApiTool.js` 定义的静态字段纠错提示，不交付操作。参考图通过 `connect(sourceId,targetId)` 连接，可在同批次使用新节点 ref；已有画布生成节点使用 `generation_control.prepareGeneration(revision,nodeIds)`，`runNode` 仅按类型和实际输入运行独立实例。本轮累计 6 次工具失败后，`runtime.js` 在轮次结束时停止继续调用模型，记录 `AGENT_TOOL_FAILURE_LIMIT`，保留已完成操作与回执；成功读取或修改不会清空失败计数。
 
+工具调用保持顺序执行；`prepareGeneration` 应包含本次需要运行的全部目标节点。批准后由 [canvasCreationControl.ts](../../modules/agent/ui/agent/canvasCreationControl.ts) 在批次内并行执行独立节点，最多 4 个且受模型并发额度约束；下游等待全部上游成功并持久化后使用新结果，失败分支不阻止无关分支。批次 journal 写入串行化以保持 revision 一致，取消立即阻止后续提交、已启动分支收尾后才结束记录。具体排队、异常及恢复语义见 [Agent](agent.md)。
+
 工具执行前先持久化意图，再交付操作；变更按规范化命令指纹去重。已确认命令返回原回执，待确认/未知命令拒绝重放。若磁盘提交失败则不交付操作；若操作完成后回执写入失败，后续按未确认处理。没有跨文件系统、浏览器和模型供应商的分布式事务，因此未知状态需要先核对原任务；实现不承诺远端的 exactly-once。
 
 ## Skill 与 Drama

@@ -52,8 +52,8 @@ it('starts the canvas and prompt plugins with Agent and feedback disabled', asyn
   const { browserHost, browserServices } = await import('../modules/kernel/browser.ts');
   try {
     await import('../apps/canvas/bootstrap.ts');
-    expect(browserHost.list()).toHaveLength(11);
-    expect(browserHost.list().filter((p) => p.state === 'active')).toHaveLength(9);
+    expect(browserHost.list()).toHaveLength(12);
+    expect(browserHost.list().filter((p) => p.state === 'active')).toHaveLength(10);
     expect(browserHost.services.has('ui.root')).toBe(true);
     expect(browserHost.list().find((p) => p.id === 'ui.prompt').state).toBe('active');
     expect(browserServices.__NAKO_CANVAS_SELECTION__.clearSelection()).toEqual([]);

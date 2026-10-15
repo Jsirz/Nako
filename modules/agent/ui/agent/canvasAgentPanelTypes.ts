@@ -1,5 +1,12 @@
 import type * as ReactTypes from 'react';
-import type { CanvasComponent } from '../../../canvas-ui/api/ui/app/canvasComponentType';
+import type * as React from 'react';
+
+/** UI slots accept React components and DOM tags, not a renderer's private intrinsic tags. */
+type CanvasComponent =
+  | Exclude<React.ElementType, string>
+  | (keyof React.JSX.IntrinsicElements &
+      (keyof HTMLElementTagNameMap | keyof SVGElementTagNameMap));
+
 import type { CanvasActionHandler } from '../../../contracts/canvasControlProtocol.js';
 import type { AgentVision } from './agentVision';
 import type { AgentNode } from './agentClient';

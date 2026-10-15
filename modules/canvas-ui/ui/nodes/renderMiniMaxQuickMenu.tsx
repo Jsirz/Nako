@@ -1,4 +1,6 @@
-import { MINIMAX_H3_DURATION, describeMiniMaxH3Duration } from '../../../asset-media/api/ui/media/minimaxH3';
+import { MINIMAX_H3_DURATION } from '../../../contracts/minimaxCanvas';
+import { mediaCanvas } from '../../../kernel/browser';
+const describeMiniMaxH3Duration = (seconds: number) => mediaCanvas().miniMax().describeDuration(seconds);
 import type { Runtime } from './canvasMiniMaxNodeTypes';
 import type { MiniMaxNodeState } from './useCanvasMiniMaxNodeState';
 

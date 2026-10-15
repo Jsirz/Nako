@@ -1,5 +1,5 @@
 import { mediaError } from '../../../contracts/mediaDelivery.js';
-import { fileUploadBody, localFilePath } from '../../../desktop-shell-observability/api/ui/desktop/localFileUpload';
+import { desktopBrowser } from '../../../kernel/browser';
 import { ERRORS, PluginError } from '../../../contracts/index.js';
 
 export type MediaKind = 'image' | 'video' | 'audio';
@@ -42,7 +42,7 @@ export async function uploadMediaFile(
   signal?: AbortSignal,
 ) {
   const kind = classifyMedia(file);
-  const path = localFilePath(file);
+  const path = desktopBrowser().localFilePath(file);
   if (path) {
     const response = await fetch(`/api/assets/import/${kind}s`, {
       method: 'POST',
@@ -69,7 +69,7 @@ export async function uploadMediaFile(
       'x-project-id': projectId || '',
       'x-node-id': nodeId || '',
     },
-    ...fileUploadBody(file),
+    ...desktopBrowser().fileUploadBody(file),
   });
   return mediaResultUrl(await readMediaResponse(response));
 }
@@ -103,7 +103,7 @@ export async function uploadMediaData(
           'x-filename': encodeURIComponent(file.name),
           'x-media-prompt': encodeURIComponent(prompt.slice(0, 1000)),
         },
-        ...fileUploadBody(file),
+        ...desktopBrowser().fileUploadBody(file),
       }),
     ),
   );

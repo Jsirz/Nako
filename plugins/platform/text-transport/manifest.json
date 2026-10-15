@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "apiVersion": "^1.0.0",
   "type": "platform",
+  "dependencies": { "generation-core": "^1.0.0" },
   "services": {
+    "requires": ["generation.modelCatalog"],
     "provides": [
       "generation.textTransport"
     ]

@@ -1,7 +1,7 @@
 import { browserHost } from '../../../kernel/browser';
 import { modelDisplayName } from '../../models/modelDisplayName';
 import { isModelVisible } from './hiddenProviderPolicy';
-import type { DefaultModelsClient, ModelKind } from '../../../contracts/defaultModels';
+import type { DefaultModelsClient, ModelKind } from '../../../contracts/defaultModels.js';
 
 export function mountDefaultModelsSettings(host: HTMLElement) {
   const service = browserHost.services.optional<DefaultModelsClient>('generation.defaults');

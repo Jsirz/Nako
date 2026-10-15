@@ -1,4 +1,5 @@
-import { annotateProviderError } from '../../../desktop-shell-observability/api/server/telemetry/providerDiagnostics.js';
+import { mediaRuntime } from '../../../kernel/server.js';
+import { annotateProviderError } from '../../../contracts/providerDiagnostics.js';
 import { providerError, wrapProviderError, PROVIDER_ERRORS } from '../../../contracts/providerErrors.js';
 import { createModuleLogger } from '../../../kernel/logger.js';
 const logger = createModuleLogger('generation-providers');
@@ -8,8 +9,8 @@ const logger = createModuleLogger('generation-providers');
  */
 import fs from 'fs';
 import path from 'path';
-import { resolveImageToBase64 } from '../../../asset-media/api/server/utils/imageHelpers.js';
-import { signTOSV4 } from '../../../asset-media/api/server/utils/tosSigner.js';
+const resolveImageToBase64 = (input) => mediaRuntime().imageBase64(input);
+const signTOSV4 = (...args) => mediaRuntime().signStorage(...args);
 
 // Node 18+ already ships a maintained undici-backed fetch.  Prefer it so the
 // packaged app does not depend on an optional undici copy being present.  Keep

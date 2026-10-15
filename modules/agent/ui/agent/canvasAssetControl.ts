@@ -1,6 +1,6 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasActionRequest, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
-import { assetNode } from '../../../canvas-ui/api/ui/canvas/canvasAssetInsertion';
+import { canvasEditing } from '../../../kernel/browser';
 import type { createCanvasControlExecutor } from './canvasControlExecutor';
 
 /** Asset lookup is scoped by the existing authenticated library API. Models see opaque handles only. */
@@ -69,7 +69,7 @@ export function createCanvasAssetControl(execute: ReturnType<typeof createCanvas
       const url = new URL(asset.url, window.location.origin);
       const segment = `/media/${encodeURIComponent(request.projectId)}/${asset.type}/`;
       if (url.origin !== window.location.origin || !url.pathname.includes(segment) || url.search || url.hash) return { ok: false, code: 'INVALID' };
-      const node = assetNode(asset, {}, request.projectId, { x: command.x, y: command.y }, crypto.randomUUID());
+      const node = canvasEditing().assetNode(asset, {}, request.projectId, { x: command.x, y: command.y }, crypto.randomUUID());
       return execute(request, node); // Rechecks document, revision and expiry after the asynchronous copy.
     } catch {
       return { ok: false, code: command.action === 'importAsset' ? 'UNCONFIRMED' : 'UNAVAILABLE' };

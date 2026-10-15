@@ -1,6 +1,6 @@
 import { canvasError } from '../../../contracts/canvasErrors.js';
 import type * as ReactTypes from 'react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { CanvasLibraryGrid } from './canvasLibraryGrid';
 export { CanvasLibraryGrid } from './canvasLibraryGrid';
 import './canvasLibrary.css';

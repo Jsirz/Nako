@@ -1,5 +1,7 @@
+import type { AgentDocument } from '../../../contracts/agentDocuments';
+export type { AgentDocument } from '../../../contracts/agentDocuments';
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
-export interface AgentDocument { id: string; name: string; text: string }
+
 export async function readAgentDocument(file: File, signal: AbortSignal, options: { preserveWhitespace?: boolean } = {}): Promise<AgentDocument> {
   const contentBase64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();

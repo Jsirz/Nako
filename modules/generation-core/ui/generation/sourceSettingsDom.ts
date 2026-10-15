@@ -1,4 +1,4 @@
-import { createStableTextElement as textElement } from '../../../canvas-ui/api/ui/design/dom';
+import { createStableTextElement as textElement } from '../../../kernel/ui/dom';
 
 export function vendorLink(href: string) {
   const link = document.createElement('a');

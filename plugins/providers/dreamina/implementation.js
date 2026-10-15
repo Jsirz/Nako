@@ -1,6 +1,8 @@
 import { mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { remoteTaskReference, matchesRemoteTask } from '../../../modules/generation-core/api/server/generation/generationTaskRecovery.js';
+import { generationReceipts } from '../../../modules/kernel/server.js';
+const remoteTaskReference = (...args) => generationReceipts().remoteTaskReference(...args);
+const matchesRemoteTask = (...args) => generationReceipts().matchesRemoteTask(...args);
 import { materializeInputs } from '../../../modules/generation-providers/api/server/providers/cliMediaInputs.js';
 import { ProviderError, providerErrorsFor } from '../../../modules/contracts/providerErrors.js';
 const { cancelledError, submitError, unknownError, wrapError } = providerErrorsFor('dreamina');

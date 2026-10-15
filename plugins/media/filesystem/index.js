@@ -10,7 +10,9 @@ import { fitVisualReferences } from './visualContactSheets.js';
 import { createMediaInspector } from './mediaInspection.js';
 import path from 'node:path';
 import { findLatestMediaResult } from './generationRecovery.js';
-import { generateAssetId, saveMediaBufferToFile } from '../../../modules/asset-media/api/server/utils/imageHelpers.js';
+import { mediaFiles } from '../../../modules/kernel/server.js';
+const generateAssetId = (...args) => mediaFiles().createId(...args);
+const saveMediaBufferToFile = (...args) => mediaFiles().saveBuffer(...args);
 
 const kinds = { image: 'images', video: 'videos', audio: 'audios' };
 const mimeTypes = { image: 'image/png', video: 'video/mp4', audio: 'audio/mpeg' };
@@ -22,8 +24,8 @@ function unwrap(result) {
 export function createFilesystemMediaPlugin(options) {
   return {
     manifest: { id: 'media.filesystem', version: '1.0.0', apiVersion: '^1.0.0', type: 'media',
-      dependencies: { 'storage.sqlite': '^1.0.0', 'module.identity-account': '^1.0.0' },
-      services: { requires: ['project.repository', 'identity.externalUrlFetch'], provides: ['media.store', 'media.operations', 'media.agent', 'media.generation', 'media.delivery'] },
+      dependencies: { 'media.filesystem-runtime': '^1.0.0', 'module.platform-directories': '^1.0.0', 'storage.sqlite': '^1.0.0', 'module.identity-account': '^1.0.0' },
+      services: { requires: ['media.files', 'platform.paths', 'platform.directories', 'project.repository', 'identity.externalUrlFetch'], provides: ['media.store', 'media.operations', 'media.agent', 'media.generation', 'media.delivery'] },
       capabilities: ['media.storage'], reloadRequired: true },
     activate(context) {
       const externalUrlFetch = context.services.get('identity.externalUrlFetch');
@@ -43,7 +45,7 @@ export function createFilesystemMediaPlugin(options) {
         createId: generateAssetId,
         saveBuffer(buffer, projectId, type, extension, metadata, nodeId) {
           validate(projectId, type, extension);
-          const { id, url, filename } = saveMediaBufferToFile(buffer, projectId, type, extension, metadata, nodeId, options);
+          const { id, url, filename } = saveMediaBufferToFile(buffer, projectId, type, extension, metadata, nodeId);
           return { id, url, filename };
         },
         download(url, projectId, type) {

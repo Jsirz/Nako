@@ -1,5 +1,5 @@
 import type * as ReactTypes from 'react';
-import { activateModal } from '../design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { resizeLimit } from './imageResizeGeometry';
 import {
   cropMargin,

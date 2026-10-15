@@ -47,6 +47,8 @@ jobs:
         run: node ../prebuild-install/bin.js -r napi
         working-directory: node_modules/sqlite3
       - run: npm run check:architecture
+      - run: npm run check:docs
+      - run: npm run check:conventions
       - run: npm run check:local-only
       - run: npm run typecheck
       - run: npm run unit -- --testTimeout=30000

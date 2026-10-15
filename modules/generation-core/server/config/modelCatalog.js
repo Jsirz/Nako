@@ -9,18 +9,14 @@ import { createModuleLogger } from '../../../kernel/logger.js';
 const moduleLogger = createModuleLogger('generation-core');
 import fs from 'node:fs';
 import path from 'node:path';
-import { RUNTIME_PATHS } from '../../../project/api/server/workspace/runtimePaths.js';
+import { fileURLToPath } from 'node:url';
 import {
   isLikelyProviderApiKey,
   modelOverrideKey,
 } from '../../../contracts/shared/modelOverrideKey.js';
 
 export const DEFAULT_SNAPSHOT_PATH = path.join(
-  RUNTIME_PATHS.MODULES_DIR,
-  'generation-core',
-  'server',
-  'config',
-  'modelCatalog.generated.json',
+  fileURLToPath(new URL('./modelCatalog.generated.json', import.meta.url)),
 );
 
 function finiteNumber(value) {

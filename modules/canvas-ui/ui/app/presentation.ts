@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { PromptKeyHandle } from '../../../agent/api/ui/prompt/promptComponents';
+import type { PromptKeyHandle } from '../../../contracts/promptEditing';
 
 type Source = (...args: never[]) => React.ReactNode;
 type Dependencies<F extends Source> =

@@ -8,12 +8,14 @@
     "host.runtime": "^1.0.0",
     "media.filesystem": "^1.0.0",
     "media.ffmpeg-sharp": "^1.0.0",
-    "module.identity-account": "^1.0.0"
+    "module.identity-account": "^1.0.0",
+    "module.media-capabilities": "^1.0.0"
   },
   "services": {
     "requires": [
       "host.runtime",
       "http.routes",
+      "platform.paths",
       "media.operations",
       "media.editing",
       "media.processor",

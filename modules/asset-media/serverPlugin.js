@@ -9,8 +9,8 @@ import { sendMediaDelivery } from './server/media/mediaDeliveryResponse.js';
 
 export default defineApplicationPlugin({
   id: 'module.asset-media',
-  dependencies: ['media.filesystem', 'media.ffmpeg-sharp', 'module.identity-account'],
-  requires: ['media.operations', 'media.editing', 'media.processor', 'media.delivery', 'identity.externalUrlFetch', 'identity.httpSecurity'],
+  dependencies: ['module.media-capabilities', 'media.filesystem', 'media.ffmpeg-sharp', 'module.identity-account'],
+  requires: ['platform.paths', 'media.operations', 'media.editing', 'media.processor', 'media.delivery', 'identity.externalUrlFetch', 'identity.httpSecurity'],
   provides: ['media.projectFiles'],
   activate(context) {
     const store = context.services.get('media.delivery');

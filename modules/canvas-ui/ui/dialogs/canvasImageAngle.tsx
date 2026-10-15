@@ -1,15 +1,15 @@
 import { ImageToolGenerateButton } from './imageToolGenerateButton';
 import * as React from 'react';
 import { Box, RotateCcw, X } from 'lucide-react';
-import { activateModal } from '../design/modalFocus';
-import { activateSidePanel } from '../../../agent/api/ui/prompt/nodeSidePanel';
+import { activateModal } from '../../../kernel/ui/modalFocus';
+import { activateSidePanel } from '../../../kernel/ui/sidePanel';
 import {
   angleDirections,
   defaultImageAngle,
   imageAngleDescription,
   normalizeImageAngle,
   type ImageAngle,
-} from '../../../agent/api/ui/prompt/imageAngle';
+} from '../../../contracts/imageAngle';
 import './imageAngle.css';
 interface Props {
   node: { id: string; resultUrl?: string; imageAngle?: unknown; aspectRatio?: string };

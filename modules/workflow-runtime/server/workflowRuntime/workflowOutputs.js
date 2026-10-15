@@ -1,4 +1,5 @@
-import { resolveMediaArtifact } from '../../../asset-media/api/server/media/mediaArtifact.js';
+import { mediaRuntime } from '../../../kernel/server.js';
+const resolveMediaArtifact = (options) => mediaRuntime().resolveArtifact(options);
 import { isComfyPreviewNode, isSavedComfyFile } from './comfySavedOutputs.js';
 
 const MAX_OUTPUT_CANDIDATES = 1_000;

@@ -1,12 +1,11 @@
-import { createWorkflowManagerClient } from '../../../local-runtime/api/ui/local/workflowManagerClient';
-import { createWorkflowCanvasNodes, normalizeNumericParameterValues } from '../../../local-runtime/api/ui/local/workflowCanvasNodes';
-import type { WorkflowCanvasBlueprint } from '../../../local-runtime/api/ui/local/workflowManagerClient';
-import type { CanvasNode } from '../../../canvas-ui/api/ui/nodes/canvasNodeOperations';
+import { localRuntimeUi } from '../../../kernel/browser';
+import type { WorkflowCanvasBlueprint } from '../../../contracts/workflowClient';
+import type { CanvasNode } from '../../../contracts/canvasDocument';
 import type { createCanvasControlExecutor } from './canvasControlExecutor';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';
 
 export function createCanvasWorkflowControl(execute: CanvasActionHandler, insert: ReturnType<typeof createCanvasControlExecutor>, getRuntime: () => { projectId: string; nodes(): CanvasNode[] } | null, fetcher: typeof fetch = fetch): CanvasActionHandler {
-  const client = createWorkflowManagerClient(fetcher), adapter = createWorkflowCanvasNodes(client), receipts = new Map<string, { signature: string; promise: Promise<CanvasResult> }>();
+  const workflows = localRuntimeUi(), client = workflows.createWorkflowClient(fetcher), adapter = workflows.createWorkflowNodes(client), receipts = new Map<string, { signature: string; promise: Promise<CanvasResult> }>();
   const handle: CanvasActionHandler = async (request, signal) => {
     const active = () => !signal?.aborted && Date.now() < request.expiresAt && getRuntime()?.projectId === request.projectId;
     if (!active()) return { ok: false, code: 'UNAVAILABLE' };
@@ -35,7 +34,7 @@ export function createCanvasWorkflowControl(execute: CanvasActionHandler, insert
             : kind === 'seed' ? !(typeof value === 'number' ? Number.isSafeInteger(value) : value && typeof value === 'object')
             : typeof value !== 'string') return { ok: false, code: 'INVALID' };
         }
-        try { normalizeNumericParameterValues(schema.filter(parameter => Object.hasOwn(values, parameter.key)), values); }
+        try { workflows.normalizeParameters(schema.filter(parameter => Object.hasOwn(values, parameter.key)), values); }
         catch { return { ok: false, code: 'INVALID' }; }
         if (!active()) return { ok: false, code: 'UNAVAILABLE' };
         return insert(request, { ...node, projectId: request.projectId, parameterValues: { ...(node.parameterValues as object || {}), ...values } });

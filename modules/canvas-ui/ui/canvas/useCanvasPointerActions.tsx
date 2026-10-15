@@ -215,7 +215,7 @@ function useCanvasImageEditActions(context: ReturnType<typeof useCanvasAssetActi
     React, media, nodes, getNodes, view, readOnly, workflowId, setNodes,
     setSelectedNodeIds, getNodeWidth, getNodeHeight, handleOpenComposite,
   } = context;
-  const saveAnnotation = media.useCanvasImageEditSave(React, {
+  const saveAnnotation = media.useCanvasImageEditSave({
       nodes,
       getNodes,
       enabled: view === 'canvas' && !readOnly,
@@ -225,7 +225,7 @@ function useCanvasImageEditActions(context: ReturnType<typeof useCanvasAssetActi
       title: '标注',
       getNodeWidth: () => 300,
     }),
-    saveCrop = media.useCanvasCropSave(React, {
+    saveCrop = media.useCanvasCropSave({
       nodes,
       getNodes,
       enabled: view === 'canvas' && !readOnly,
@@ -235,7 +235,7 @@ function useCanvasImageEditActions(context: ReturnType<typeof useCanvasAssetActi
       getNodeWidth,
       getNodeHeight,
     }),
-    saveResize = media.useCanvasImageEditSave(React, {
+    saveResize = media.useCanvasImageEditSave({
       nodes,
       getNodes,
       enabled: view === 'canvas' && !readOnly,
@@ -245,7 +245,7 @@ function useCanvasImageEditActions(context: ReturnType<typeof useCanvasAssetActi
       title: '尺寸',
       getNodeWidth,
     }),
-    saveComposite = media.useCanvasCompositeSave(React, {
+    saveComposite = media.useCanvasCompositeSave({
       nodes,
       getNodes,
       enabled: view === 'canvas' && !readOnly,

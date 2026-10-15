@@ -13,7 +13,9 @@
 节点运行的 `readProject` 与 `project.read` 能力均通过 contracts 的 `ProjectRepository.get(id)` 读取项目；不调用 SQLite 内部方法 `getWorkflowById`。运行准备阶段要求项目已保存并检查 revision；`project.read` 在项目不存在或已删除时返回 `NODE_ERROR.NOT_FOUND`。
 
 桌面更新桥使用 contracts/desktopUpdates.ts，Windows 交接给独立更新程序，macOS 使用 Sparkle 签名 appcast 与原生更新器；更新状态有明确检查、发现、下载和安装阶段。服务注册与跨平台入口来自 desktopPlugin/browser。
-异常构造集中到 contracts/desktopErrors，节点仍保留 NODE_ERROR、HTTP status 和 details；隔离进程 IPC 返回结构化 code/status/context。关闭多个资源失败以 DesktopShutdownError 保留 errors 列表。桌面诊断经 kernel Logger，更新下载、交接和退出错误不直接输出 console 或底层敏感内容。
+异常构造集中到 contracts/desktopErrors，节点仍保留 NODE_ERROR、HTTP status 和 details；隔离进程 IPC 返回结构化 code/status/context。关闭多个资源失败以 DesktopShutdownError 保留 errors 列表。apps/backend 与 apps/desktop 的启动、退出和更新初始化以及 Sparkle 原生日志均经 kernel Logger，附操作上下文并对输出脱敏、有界化；错误对象不直出原始 message/stack/cause。serverHost 的节点加载汇总也通过 Logger 输出数量和操作。
+
+Electron 主题 IPC 的来源与参数由 apps/desktop/src/windowManager.mjs 校验，预加载只转发；沙箱继续启用，不向 preload 注入 Node 或业务依赖。apps/canvas/bootstrap.ts 的插件入口缺失、清单身份不一致和禁用依赖使用 contracts 的既有错误码，挂载 root 缺失携带 canvas-ui/mount 上下文。监护启动拒绝使用 desktopError，保留安全凭据失败码，不返回底层敏感消息；Electron 原生 invoke 异常传输的字段限制见 contracts 文档。
 
 ## 数据模型
 
@@ -40,8 +42,10 @@ macOS 从 1.5.8 发布单段 Sparkle 差分，客户端仍使用原有检查/确
 
 | 源码 | 职责 | 主要导出 | 副作用 |
 | --- | --- | --- | --- |
+| [modules/desktop-shell-observability/browser.capabilities.manifest.json](../../modules/desktop-shell-observability/browser.capabilities.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
 | [modules/desktop-shell-observability/browser.manifest.json](../../modules/desktop-shell-observability/browser.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
 | [modules/desktop-shell-observability/browser.ts](../../modules/desktop-shell-observability/browser.ts) | 模块入口或装配 | `default` | 含 服务注册/生命周期 调用；时机见实现 |
+| [modules/desktop-shell-observability/browserCapabilitiesPlugin.ts](../../modules/desktop-shell-observability/browserCapabilitiesPlugin.ts) | 模块入口或装配 | `default` | 未检出平台调用；不等于纯函数证明 |
 | [modules/desktop-shell-observability/desktop.manifest.json](../../modules/desktop-shell-observability/desktop.manifest.json) | 插件声明 | 声明式配置 | 无业务运行副作用 |
 | [modules/desktop-shell-observability/desktop/sparkleAppcast.mjs](../../modules/desktop-shell-observability/desktop/sparkleAppcast.mjs) | 桌面平台适配 | `readSparkleAppcast` | 未检出平台调用；不等于纯函数证明 |
 | [modules/desktop-shell-observability/desktop/sparkleUpdater.mjs](../../modules/desktop-shell-observability/desktop/sparkleUpdater.mjs) | 桌面平台适配 | `createSparkleUpdater` | 未检出平台调用；不等于纯函数证明 |

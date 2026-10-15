@@ -1,4 +1,4 @@
-import { activateModal } from '../../../canvas-ui/api/ui/design/modalFocus';
+import { activateModal } from '../../../kernel/ui/modalFocus';
 import { SKILL_CATEGORIES } from '../../../contracts/skillCatalog.js';
 import type { AgentSkill, AgentSkillClient } from './skillClient';
 import { button, element, skillManagerCard } from './skillManagerCards';

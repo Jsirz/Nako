@@ -12,8 +12,20 @@
   ],
   "services": {
     "provides": [
-      "node.registry", "nodes.client", "ui.canvas.project"
+      "node.registry",
+      "nodes.client",
+      "ui.canvas.project",
+      "ui.nodes.runs",
+      "ui.canvas.editing",
+      "ui.canvas.presentation"
     ],
-    "requires": ["ui.media.recovery"]
+    "requires": [
+      "generation.defaults",
+      "ui.media.recovery",
+      "ui.media.canvas",
+      "ui.generation.catalog",
+      "ui.generation.interaction",
+      "ui.local-runtime"
+    ]
   }
 }

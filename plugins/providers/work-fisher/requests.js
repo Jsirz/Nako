@@ -1,4 +1,5 @@
-import { getSeedreamV5ProDimensions } from '../../../modules/asset-media/api/server/utils/resolutionMapper.js';
+import { mediaRuntime } from '../../../modules/kernel/server.js';
+const getSeedreamV5ProDimensions = (...args) => mediaRuntime().seedreamDimensions(...args);
 import { normalizeMidjourneyPrompt } from '../../../modules/contracts/shared/midjourneyPrompt.js';
 import { invalid } from './connection.js';
 import { prompt, parameters } from './validation.js';

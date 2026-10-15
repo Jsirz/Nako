@@ -20,7 +20,9 @@ function fixture() {
       activeBranch: 'main',
       branches: [],
       createdAt: new Date().toISOString(),
-      run: { id: 'r1', status },
+      run: { id: 'r1', status,
+        ...(status === 'failed' ? { error: '模型服务暂时不可用，请稍后再试。本次不会自动重试。',
+          code: 'PROVIDER_REQUEST_FAILED', httpStatus: 503, reason: 'PROVIDER_UNAVAILABLE' } : {}) },
       messages: [
         {
           id: 'a1',
@@ -52,6 +54,9 @@ function fixture() {
     chat,
     complete: () => {
       status = 'completed';
+    },
+    fail: () => {
+      status = 'failed';
     },
     signal: () => streamSignal,
   };
@@ -109,6 +114,33 @@ it('allows explicit stop after restoring an in-flight session and cancels furthe
     const reads = f.client.getSession.mock.calls.length;
     await vi.advanceTimersByTimeAsync(2000);
     expect(f.client.getSession).toHaveBeenCalledTimes(reads);
+  } finally {
+    f.chat.deactivate();
+    vi.useRealTimers();
+  }
+});
+
+it('restores the saved failure after reopening the panel and from history without resubmitting', async () => {
+  vi.useFakeTimers();
+  const f = fixture();
+  const error = '模型服务暂时不可用，请稍后再试。本次不会自动重试。';
+  try {
+    const sent = f.chat.sendMessage('修改图片', [], 'model');
+    f.chat.setConversationEnabled(false);
+    expect(await sent).toBe(false);
+    f.fail();
+    f.chat.setConversationEnabled(true);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f.chat.getSnapshot()).toMatchObject({ runStatus: 'failed', error, isLoading: false, isStreaming: false });
+    expect(f.client.streamMessage).toHaveBeenCalledOnce();
+    const reads = f.client.getSession.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(f.client.getSession).toHaveBeenCalledTimes(reads);
+    f.chat.startNewChat();
+    expect(f.chat.getSnapshot().error).toBeNull();
+    await f.chat.loadSession('s1');
+    expect(f.chat.getSnapshot()).toMatchObject({ runStatus: 'failed', error });
+    expect(f.client.streamMessage).toHaveBeenCalledOnce();
   } finally {
     f.chat.deactivate();
     vi.useRealTimers();
