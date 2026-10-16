@@ -67,6 +67,8 @@ export type MediaDownloadOperations = Readonly<Record<MediaDownloadOperation, (i
 export interface CropInput { assetId: string; left: number; top: number; width: number; height: number }
 export interface TrimInput { assetId: string; start: number; end: number }
 export interface MediaProcessor {
+  prepareAnalysis(input: import('./shotAnalysis.js').AnalysisPrepareInput): Promise<import('./shotAnalysis.js').PreparedAnalysis>;
+  extractAnalysis(input: import('./shotAnalysis.js').AnalysisExtractInput): Promise<import('./shotAnalysis.js').ShotAnalysisResult>;
   crop(input: CropInput): Promise<MediaAsset>;
   trimVideo(input: TrimInput): Promise<MediaAsset>;
   compose(input: { projectId: string; images: Array<{ url: string }>; columns?: number; cellWidth?: number; signal?: AbortSignal }): Promise<MediaAsset>;
@@ -162,3 +164,4 @@ export * from './agentErrors.js';
 export * from './canvasErrors.js';
 export * from './projectErrors.js';
 export * from './storageErrors.js';
+export * from './shotAnalysis.js';

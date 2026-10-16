@@ -1,5 +1,20 @@
 [
   {
+    "name": "Qwen 3.8 Max · Work-Fisher",
+    "canonicalModel": "Qwen 3.8 Max",
+    "brand": "Qwen",
+    "timeEstimate": "2min",
+    "maxInputs": 2,
+    "supportedReferenceTypes": ["text", "video"],
+    "resolutions": [],
+    "aspectRatios": [],
+    "languageModes": [{ "label": "视频拉片", "value": "multimodal-chat", "allowedInputs": { "text": 1, "video": 1 } }],
+    "advancedParams": [],
+    "kind": "text",
+    "provider": "WorkFisherTextProvider",
+    "endpoint": { "multimodal-chat": { "path": "/v1/chat/completions", "model": "qwen/qwen3.8-max" } }
+  },
+  {
     "name": "GM 3.8 Flash · Work-Fisher",
     "canonicalModel": "GM 3.8 Flash",
     "brand": "GM",

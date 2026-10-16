@@ -8,6 +8,8 @@
 
 ## 接口契约
 
+内置 `shot-analysis` 节点由 [canvasShotAnalysisNode.tsx](../../modules/canvas-ui/ui/nodes/canvasShotAnalysisNode.tsx) 渲染；视频上传经 kernel 的 `ui.media.canvas`，运行经既有 node-runs HTTP 客户端。节点只使用 contracts 的拉片数据，不导入 Provider 或本地运行时。[shotAnalysisCanvas.ts](../../modules/canvas-ui/ui/canvas/shotAnalysisCanvas.ts) 先构造并校验完整插入结果，再由 `useCanvasAgentControls` 检查项目、epoch、节点和 resultId，统一提交节点/分组/历史，不连接 JSON 输出到媒体输入。
+
 `ui.root.mount(element)` 挂载 React 根并登记卸载；根 manifest 显式依赖 `ui.local-runtime`。`node.registry` 提供节点定义，`nodes.client` 处理节点生成与观察。公开纯函数/组件出口列在 [exports.json](../../modules/canvas-ui/exports.json)。
 
 应用组合根 [canvasRuntime.tsx](../../apps/canvas/canvasRuntime.tsx) 装配 React、项目、生成及媒体 hooks；[canvasComponents.ts](../../apps/canvas/canvasComponents.ts)、[canvasPresentations.ts](../../apps/canvas/canvasPresentations.ts) 装配各模块公开组件。[rootPlugin.tsx](../../apps/canvas/rootPlugin.tsx) 挂载与卸载根视图，[promptVendor.ts](../../apps/canvas/promptVendor.ts) 绑定编辑器依赖，[useRecovery.ts](../../apps/canvas/useRecovery.ts) 绑定恢复观察。上述文件归 apps/canvas，不由画布业务模块横向导入。
@@ -17,6 +19,8 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 
 ## 数据模型
 
+`parameters.video` 保存上传后本地 URL；也可从 video 端口获取上游结果。`pluginResult.analysis` 保留最后成功的 `ShotAnalysisResult`，包括结果 id、源、模型 JSON 和逐镜头素材。`nodeRunId/nodeRequestId` 跟踪当前任务，`nodeAnalysisRunId` 指向最后成功分析缓存，失败/取消不覆盖成功结果。`nodeDirectRunRequestId` 记录用户本次点击开始的 requestId，仅匹配该任务时自动批准并在成功后自动入画布，终态消费该标识；可在节点离开可见区后恢复观察。复制、预设和导入清除该标识。插入节点使用 `shotAnalysisResultId/ShotId/NodeId` 去重；每镜头创建说明和选中的媒体节点并成组，导入结果也可手动插入。
+
 画布文档包含 nodes、groups、连线、viewport、标题、项目 id/revision；持久化由 project 模块承担。节点执行状态与错误提示、结果 URL、参数及端口来自注册表和公共运行协议。编辑交互的悬浮、选择、拖动、菜单、弹窗等状态只属于浏览器视图。
 
 新建画布默认标题由 `canvasEditorHooks.defaultCanvasTitle` 按设备本地日期生成，例如“10月10日”；`useCanvasTitle` 初始化与 `clearCanvas` 重置标题复用该规则。`clearCanvas` 将默认标题传给项目身份重置方法，项目模块首次保存时为同名默认标题追加 `-1`、`-2` 等可用后缀，并同步画布标题。标题可由用户修改，加载已有画布时读取其保存的标题。
@@ -24,6 +28,14 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 持久化节点类型与端口身份不同于数组位置；插件缺席保留缺失节点占位，不悄悄改成其他节点。运行中节点的复制限制、只读画布导航及媒体工具栏沿用当前工作区已有实现，本次不回滚用户修改。
 
 ## 功能结构
+
+逐帧拉片卡片使用 [shotAnalysisNode.css](../../modules/canvas-ui/ui/nodes/shotAnalysisNode.css)，默认 440×560，展示图标标题、视频时长/尺寸、16:9 预览、青色拆解维度胶囊及整行开始按钮，不展示模型名称。结果详情默认折叠。仅在播放器、按钮、表单和折叠开关等交互元素上阻止 pointerdown 冒泡；标题、说明及空白区域沿用节点 Frame 的拖拽处理。滚轮事件留在卡片内用于滚动详情，不触发画布缩放。
+
+逐帧拉片复用普通节点的左右居中加号连接点及悬停/选中交互，不使用通用插件从顶部排列的端口按钮。`canvasNodeRules.nodePortY` 与 `canvasEdges` 的拖拽预览均定位到卡片垂直中点；连接仍使用声明的 video 输入和 analysis 输出及既有媒体类型校验。
+
+逐帧拉片点击开始先通过画布现有保存回调保存当前文档；保存失败、保存期间文档继续变化或保存时切换项目时，不准备运行请求。保存确认后准备任务并自动批准本次任务，不显示二次授权卡；内核能力授权、预算和快照校验仍保留。成功回执先通过画布同步节点更新保存结果并消费执行意图，随后自动创建分镜节点及分组，一次写入历史并聚焦；无需再次确认。已有完成结果不会因重新打开而自动插入；未插入的导入结果或插入失败可在折叠详情中手动添加。仅重新提取使用 0 模型预算并复用本地缓存，可编辑 JSON 校准时间戳，新结果同样自动进入画布。
+
+`useShotAnalysisRun` 用同步锁防重复操作，用会话及操作序号过滤切项目/新任务后的旧响应，同一成功回执只处理一次；取消后继续查询原任务。明确 4xx 准备失败可重新开始，传输结果未知则保留 requestId 查询；批准请求失败保留已准备任务，重新查询时恢复同一任务，避免重复调用模型。读取/上传失败显示可重试提示。上传切换项目、节点或只读状态时中止；预览模式可查看和播放结果，隐藏写操作且不观察运行。新任务期间保留上次成功结果，失败/取消后仍可插入；复制或导入清除分析缓存及直接执行标识，不借旧任务授权提取。前端只渲染本地 URL，视频/音频不预加载完整文件，图片延迟加载。
 
 全景图与角度图的 [imageToolGenerateButton.tsx](../../modules/canvas-ui/ui/dialogs/imageToolGenerateButton.tsx) 订阅 `generation.defaults`，通过 `ui.media.canvas.imageToolModel` 读取当前可用的默认图像模型，保持按钮提示与创建节点的选择一致；没有支持图生图的默认模型时禁用生成并提示设置。已有节点的角度参数编辑仍可保存，不依赖默认模型可用性。浏览器插件显式声明默认模型服务依赖。
 
@@ -102,6 +114,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/canvas/renderCanvasSidePanels.tsx](../../modules/canvas-ui/ui/canvas/renderCanvasSidePanels.tsx) | 界面呈现与交互 | `renderCanvasSidePanels` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/renderCanvasSidebar.tsx](../../modules/canvas-ui/ui/canvas/renderCanvasSidebar.tsx) | 界面呈现与交互 | `renderCanvasSidebar` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/renderCanvasWorkspace.tsx](../../modules/canvas-ui/ui/canvas/renderCanvasWorkspace.tsx) | 界面呈现与交互 | `renderCanvasWorkspace` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/canvas/shotAnalysisCanvas.ts](../../modules/canvas-ui/ui/canvas/shotAnalysisCanvas.ts) | 浏览器交互与状态辅助 | `shotAnalysisCanvas` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/useCanvasAgentControls.tsx](../../modules/canvas-ui/ui/canvas/useCanvasAgentControls.tsx) | 浏览器交互与状态辅助 | `useCanvasAgentControls` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasAgentRuntime.tsx](../../modules/canvas-ui/ui/canvas/useCanvasAgentRuntime.tsx) | 运行、调度或服务 | `useCanvasAgentRuntime` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasAssetActions.tsx](../../modules/canvas-ui/ui/canvas/useCanvasAssetActions.tsx) | 浏览器交互与状态辅助 | `useCanvasAssetActions` | 未检出平台调用；不等于纯函数证明 |
@@ -186,6 +199,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/nodes/canvasNodeRules.ts](../../modules/canvas-ui/ui/nodes/canvasNodeRules.ts) | 浏览器交互与状态辅助 | `nodeTypes`, `nodeStatuses`, `portHeight`, `portGap`, `legacyWorkflowWidth`, `legacyWorkflowPortTop`, `WorkflowTemplate`, `workflowTemplates`, `nodeAspectRatio`, `workflowParameterHeight`, `legacyWorkflowHeight`, `nodeWidth`, `nodeHeight`, `legacyPortY`, `nodePortX`, `nodePortY`, `MediaKind`, `nodeMediaKind`, `ModelCatalog`, `validateConnection`, `chooseConnectionMode` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/canvasNodeState.ts](../../modules/canvas-ui/ui/nodes/canvasNodeState.ts) | 浏览器交互与状态辅助 | `createNodeOperations`, `createNodeMenuOperations`, `useCanvasContextMenu`, `createCanvasTextActions`, `attachWorkflowNodeEvents`, `useCanvasNodes` | 含 HTTP/网络、DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/canvasPluginNode.ts](../../modules/canvas-ui/ui/nodes/canvasPluginNode.ts) | 浏览器交互与状态辅助 | `CanvasPluginNode` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/nodes/canvasShotAnalysisNode.tsx](../../modules/canvas-ui/ui/nodes/canvasShotAnalysisNode.tsx) | 浏览器交互与状态辅助 | `CanvasShotAnalysisNode` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/canvasTextComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasTextComposer.tsx) | 界面呈现与交互 | `CanvasTextComposer` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx) | 界面呈现与交互 | `CanvasVideoComposer` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/mediaComposer.ts](../../modules/canvas-ui/ui/nodes/mediaComposer.ts) | 界面呈现与交互 | `ComposerNode`, `ComposerAsset`, `ComposerModel`, `MediaComposerProps`, `ComposerRuntime`, `MediaComposerComponents`, `useComposerBusy`, `changeComposerModel` | 未检出平台调用；不等于纯函数证明 |
@@ -205,8 +219,11 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/nodes/renderMiniMaxNodeBody.tsx](../../modules/canvas-ui/ui/nodes/renderMiniMaxNodeBody.tsx) | 界面呈现与交互 | `renderMiniMaxPreview`, `renderMiniMaxDeck` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/renderMiniMaxQuickMenu.tsx](../../modules/canvas-ui/ui/nodes/renderMiniMaxQuickMenu.tsx) | 界面呈现与交互 | `renderMiniMaxQuickMenu` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/renderMiniMaxToolbar.tsx](../../modules/canvas-ui/ui/nodes/renderMiniMaxToolbar.tsx) | 界面呈现与交互 | `renderMiniMaxToolbar` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/nodes/shotAnalysisNode.css](../../modules/canvas-ui/ui/nodes/shotAnalysisNode.css) | 界面样式 | 样式 | 无业务运行副作用 |
+| [modules/canvas-ui/ui/nodes/shotAnalysisResults.tsx](../../modules/canvas-ui/ui/nodes/shotAnalysisResults.tsx) | 浏览器交互与状态辅助 | `ShotAnalysisResults` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/useCanvasMiniMaxNodeState.ts](../../modules/canvas-ui/ui/nodes/useCanvasMiniMaxNodeState.ts) | 浏览器交互与状态辅助 | `useCanvasMiniMaxNodeState`, `MiniMaxNodeState` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/useGenerationAvailability.ts](../../modules/canvas-ui/ui/nodes/useGenerationAvailability.ts) | 浏览器交互与状态辅助 | `useGenerationAvailability` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/nodes/useShotAnalysisRun.ts](../../modules/canvas-ui/ui/nodes/useShotAnalysisRun.ts) | 浏览器交互与状态辅助 | `useShotAnalysisRun` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/settings/canvasSettings.tsx](../../modules/canvas-ui/ui/settings/canvasSettings.tsx) | 浏览器交互与状态辅助 | `CanvasSettingsProps`, `CanvasSettings` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/settings/settingsOperation.ts](../../modules/canvas-ui/ui/settings/settingsOperation.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/settingsOperation` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/text/CanvasTextEditor.tsx](../../modules/canvas-ui/ui/text/CanvasTextEditor.tsx) | 浏览器交互与状态辅助 | `CanvasTextEditorHandle`, `CanvasTextEditorProps`, `CanvasTextEditor` | 含 DOM/事件 调用；时机见实现 |

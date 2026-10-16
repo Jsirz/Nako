@@ -58,6 +58,8 @@ interface Components {
 const emptyConnections: unknown[] = [];
 const idleZoomIndependentTypes = new Set(['Text', 'Image', 'Upload Image', 'Video', 'Upload Video']);
 const forwardedCallbacks = [
+  'onInsertShotAnalysis',
+  'onSaveBeforeShotAnalysis',
   'onGenerate',
   'onAddNext',
   'onSelect',
@@ -405,6 +407,7 @@ function renderCanvasSceneSurface(
                 isDragging: Boolean(props.isDragging && selected.has(node.id)),
                 isResizing: props.isResizing && selected.has(node.id),
                 projectId: props.projectId,
+                documentEpoch: props.documentEpoch,
               },
             });
           })}

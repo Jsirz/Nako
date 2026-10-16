@@ -7,7 +7,7 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   });
   const result = await response.json();
-  if (!response.ok) throw Object.assign(canvasError(result.error || '节点请求失败', 'node-graph.request'), { code: result.code });
+  if (!response.ok) throw Object.assign(canvasError(result.error || '节点请求失败', 'node-graph.request'), { ...(result.code ? { code: result.code } : {}), status: response.status });
   return result;
 }
 export const prepareNodeGraph = (input: NodeRunRequest) => request<NodeRunReceipt>('/api/node-runs', input);

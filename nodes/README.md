@@ -4,4 +4,4 @@
 
 开发环境或需要使用用户目录时，可用 `NAKO_NODE_DIR` 覆盖默认目录。覆盖目录后调用 `POST /api/node-packages/reload`，或重启应用使变更生效。
 
-默认仅安装 `canvas-core/` 基础节点包。开发示例位于仓库 `examples/nodes/`，不会自动加载；需要时再复制到本目录。详细格式见 `docs/节点目录开发说明.md`。
+默认安装 `canvas-core/`，包含基础节点和“逐帧拉片”。逐帧拉片使用宿主能力调用 Work-Fisher 文本模型并在本地通过 FFmpeg 提取素材；用户明确授权后才执行。测试夹具位于 `tests/fixtures/nodes/`，不随应用安装。详细格式见 `docs/节点目录开发说明.md`。

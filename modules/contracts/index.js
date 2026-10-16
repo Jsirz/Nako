@@ -24,3 +24,4 @@ export * from './agentErrors.js';
 export * from './canvasErrors.js';
 export * from './projectErrors.js';
 export * from './storageErrors.js';
+export * from './shotAnalysis.js';

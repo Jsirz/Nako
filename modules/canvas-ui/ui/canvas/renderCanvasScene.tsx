@@ -180,6 +180,11 @@ function canvasSceneActionProps(context: SceneContext) {
     onResizeStart: handleResizeStart,
     onUpdateNode: updateNode,
     onGenerate: handleGenerate,
+    onInsertShotAnalysis: context.insertShotAnalysis,
+    onSaveBeforeShotAnalysis: async () => {
+      const receipt = await context.save({ reportFailure: true });
+      return !!receipt && receipt.unchanged !== false;
+    },
     onAddNext: handleAddNext,
     getCommonGroup,
     onSaveAsset: handleOpenCreateAsset,

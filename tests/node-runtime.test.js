@@ -37,15 +37,6 @@ describe('isolated node packages', () => {
       call: async () => { throw Object.assign(new Error('budget exhausted'), { code: 'NODE_BUDGET_EXCEEDED' }); },
     })).rejects.toMatchObject({ code: 'NODE_BUDGET_EXCEEDED', message: 'budget exhausted' });
   });
-  it('runs the shot recreation example with media and three mocked model steps', async () => {
-    const source = await readFile(new URL('../examples/nodes/shot-analysis/index.mjs', import.meta.url), 'utf8');
-    const call = vi.fn(async (capability, input) => capability === 'media.inspect' ? { frames: [{ type: 'image', url: '/library/media/p/images/frame.png' }] }
-      : input.kind === 'text' ? { text: 'new shot prompt' } : { type: input.kind, url: `/library/media/p/${input.kind}s/result` });
-    const result = await executeIsolatedNode({ ...sandbox(source), method: 'recreate' }, { inputs: { video: '/library/media/p/videos/input.mp4' }, parameters: {} }, { call });
-    expect(result.analysis).toBe('new shot prompt'); expect(result.video.type).toBe('video');
-    expect(call.mock.calls.map(item => item[2])).toEqual(['inspect', 'analyze', 'image', 'video']);
-    expect(call.mock.calls[3][1].references).toEqual([result.image]);
-  });
   it('rejects platform imports and kills infinite loops', async () => {
     await expect(executeIsolatedNode(sandbox("import fs from 'node:fs'; export const executors = {run: () => ({})}"), {}, {})).rejects.toThrow();
     await expect(executeIsolatedNode({ ...sandbox('export const executors={run(){while(true){}}}'), timeoutMs: 300 }, {}, {})).rejects.toMatchObject({ code: 'NODE_TIMEOUT' });

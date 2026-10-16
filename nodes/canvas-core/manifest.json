@@ -7,7 +7,12 @@
   "capabilities": [
     "models.generate",
     "media.compose",
-    "workflow.execute"
+    "workflow.execute",
+    "media.prepareAnalysis",
+    "media.validateAnalysis",
+    "media.extractAnalysis",
+    "storage.get",
+    "storage.set"
   ],
   "nodes": [
     {
@@ -499,6 +504,78 @@
         "type": "object",
         "additionalProperties": true,
         "properties": {}
+      }
+    },
+    {
+      "type": "shot-analysis",
+      "version": "1.0.0",
+      "title": "逐帧拉片",
+      "category": "tool",
+      "description": "分析视频，提取分镜、动态与原声参考并加入画布",
+      "inputs": [
+        {
+          "id": "video",
+          "media": [
+            "video"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "analysis",
+          "media": [
+            "json"
+          ],
+          "required": true
+        }
+      ],
+      "render": {
+        "kind": "generic"
+      },
+      "capabilities": [
+        "models.generate",
+        "media.prepareAnalysis",
+        "media.validateAnalysis",
+        "media.extractAnalysis",
+        "storage.get",
+        "storage.set"
+      ],
+      "executor": {
+        "method": "shotAnalysis",
+        "transport": "rpc",
+        "timeoutMs": 1800000
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "storyboard": {
+            "type": "boolean",
+            "default": true
+          },
+          "motion": {
+            "type": "boolean",
+            "default": true
+          },
+          "sound": {
+            "type": "boolean",
+            "default": true
+          },
+          "reuseRunId": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "analysis": {
+            "type": "string",
+            "maxLength": 1048576
+          }
+        }
+      },
+      "agent": {
+        "exposed": false
       }
     }
   ]

@@ -1,6 +1,7 @@
 import { createLocalMediaProcessor } from './processor.js';
 import { createImageComposer } from './compose.js';
 import { createThumbnailCache } from './thumbnailCache.js';
+import { createShotAnalysisProcessor } from './shotAnalysis.js';
 import { ERRORS, PluginError } from '../../../modules/contracts/index.js';
 export function createMediaProcessorPlugin(options) {
   return {
@@ -22,6 +23,7 @@ export function createMediaProcessorPlugin(options) {
       }
       context.services.register('media.editing', operations);
       context.services.register('media.processor', Object.freeze({
+        ...createShotAnalysisProcessor({ libraryDirectory: options.libraryDirectory, logger: context.logger }),
         thumbnail: (url, maxSize) => thumbnails.get(url, maxSize),
         compose: createImageComposer({ libraryDirectory: options.libraryDirectory, store }),
         async crop(input) {

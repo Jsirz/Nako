@@ -1,0 +1,52 @@
+.shot-analysis-card {
+  border-radius: 20px;
+  background: var(--nk-surface-raised);
+}
+.shot-analysis-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 16px 18px;
+  border-radius: inherit;
+  color: var(--nk-text-secondary);
+  font-size: 13px;
+  scrollbar-width: thin;
+}
+.shot-analysis-heading { display: flex; align-items: center; gap: 10px; padding: 0 6px; color: var(--nk-text); cursor: grab; }
+.shot-analysis-heading:active { cursor: grabbing; }
+.shot-analysis-heading > svg { width: 24px; height: 24px; }
+.shot-analysis-heading strong { font-size: 18px; font-weight: 600; letter-spacing: -.3px; }
+.shot-analysis-source { display: flex; flex-direction: column; gap: 10px; }
+.shot-analysis-source-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 6px; color: var(--nk-text-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.shot-analysis-source-label > span:last-child { font-size: 12px; }
+.shot-analysis-video { width: 100%; aspect-ratio: 16 / 9; flex-shrink: 0; border-radius: 14px; background: #000; object-fit: contain; }
+.shot-analysis-empty { display: flex; aspect-ratio: 16 / 9; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border: 1px dashed var(--nk-border); border-radius: 14px; background: var(--nk-input); color: var(--nk-text-muted); }
+.shot-analysis-empty > svg { width: 30px; height: 30px; opacity: .65; }
+.shot-analysis-empty > small { font-size: 11px; opacity: .75; }
+.shot-analysis-upload { align-self: flex-end; padding: 1px 6px; color: var(--nk-text-secondary); font-size: 12px; cursor: pointer; }
+.shot-analysis-upload:hover { color: #55d9ef; }
+.shot-analysis-upload[aria-disabled="true"] { opacity: .45; cursor: default; }
+.shot-analysis-source-hint { padding: 0 6px; color: var(--nk-text-muted); font-size: 11px; }
+.shot-analysis-dimensions { display: flex; flex-direction: column; gap: 10px; }
+.shot-analysis-label { padding: 0 6px; color: var(--nk-text-muted); }
+.shot-analysis-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.shot-analysis-options button { display: flex; height: 42px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--nk-border); border-radius: 24px; color: var(--nk-text-muted); background: transparent; font-size: 14px; transition: background 150ms, color 150ms, border-color 150ms; }
+.shot-analysis-options button[aria-pressed="true"] { border-color: rgb(70 206 230 / 22%); background: rgb(53 191 219 / 13%); color: #55d9ef; }
+.shot-analysis-options button:hover:not(:disabled) { border-color: rgb(70 206 230 / 55%); }
+.shot-analysis-options button:disabled { cursor: default; }
+.shot-analysis-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+.shot-analysis-start { height: 46px; width: 100%; border: 0; border-radius: 12px; background: #fff; color: #151515; font-size: 16px; font-weight: 600; transition: background 150ms, opacity 150ms; }
+.shot-analysis-start:hover:not(:disabled) { background: #e8faff; }
+.shot-analysis-start:disabled { opacity: .4; cursor: not-allowed; }
+.shot-analysis-secondary { padding: 8px 12px; border: 1px solid var(--nk-border); border-radius: 10px; color: var(--nk-text-secondary); }
+.shot-analysis-progress { display: flex; align-items: center; gap: 8px; margin-top: -8px; color: #55d9ef; font-size: 12px; }
+.shot-analysis-error { padding: 10px 12px; border: 1px solid rgb(248 113 113 / 20%); border-radius: 10px; background: rgb(248 113 113 / 5%); color: #f87171; font-size: 12px; overflow-wrap: anywhere; }
+.shot-analysis-error button { margin-top: 6px; text-decoration: underline; text-underline-offset: 3px; }
+.shot-analysis-details { border-top: 1px solid var(--nk-border); padding-top: 12px; font-size: 12px; }
+.shot-analysis-details > summary { cursor: pointer; color: var(--nk-text-secondary); }
+.shot-analysis-details > div { margin-top: 12px; }
+.shot-analysis-content button:focus-visible, .shot-analysis-content summary:focus-visible { outline: 2px solid #55d9ef; outline-offset: 3px; }

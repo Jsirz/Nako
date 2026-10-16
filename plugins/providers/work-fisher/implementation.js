@@ -81,7 +81,8 @@ export function createWorkFisherHandlers({
         return submitChat({
           url: ctx.submitUrl,
           headers: { Authorization: 'Bearer ' + ctx.apiKey },
-          body: { model: ctx.modelId, stream: true, messages: [{ role: 'user', content }] },
+          body: { model: ctx.modelId, stream: true, messages: [{ role: 'user', content }],
+            ...(Number.isInteger(params.maxTokens) && params.maxTokens > 0 && params.maxTokens <= 32768 ? { max_tokens: params.maxTokens } : {}) },
           signal: params.signal,
           onToken: params.onToken,
           nodeId: params.nodeId,

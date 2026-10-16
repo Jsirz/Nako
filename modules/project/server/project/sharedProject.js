@@ -45,7 +45,7 @@ export function resetSharedProject(workflow, projectId) {
   for (const key of ['createdAt', 'updatedAt', 'lastSavedAt', 'lastSavedBy', 'createBackup']) delete result[key];
   result.nodes = result.nodes.map(node => {
     node.projectId = projectId;
-    for (const key of ['nodeRunId', 'nodeRequestId', 'generationAttemptId', 'generationStartedAt', 'generationStartTime',
+    for (const key of ['nodeRunId', 'nodeRequestId', 'nodeAnalysisRunId', 'nodeDirectRunRequestId', 'generationAttemptId', 'generationStartedAt', 'generationStartTime',
       'generationDiagnosticCode', 'localWorkflowOperationId', 'mediaOperationId', 'uploadPending', 'errorMessage']) delete node[key];
     if (node.executionState) node.executionState = { status: 'idle' };
     if (typeof node.resultUrl === 'string' && node.resultUrl.startsWith('blob:')) delete node.resultUrl;

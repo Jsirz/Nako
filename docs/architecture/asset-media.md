@@ -6,6 +6,8 @@
 
 ## 接口契约
 
+`media.processor` 的逐帧拉片方法由 [shotAnalysis.js](../../plugins/media/ffmpeg-sharp/shotAnalysis.js) 实现，协议在 contracts/shotAnalysis；宿主能力桥注入调用，业务 Router 和画布不接触 FFmpeg 或本地文件系统。`prepareAnalysis` 探测源视频并按需生成可上传代理；`extractAnalysis` 只接受当前项目本地视频、已校验时间及可选源指纹，返回图片/片段/原声音轨，支持取消信号。
+
 contracts 的 MediaStore 提供 save/read/remove；MediaProcessor 提供 crop/trimVideo/compose/thumbnail，二者分别注入。`media.operations` 的 upload/importFile/list/favorite/deleteAsset/trash/cleanupProject 等返回 `{status, body}`，library/downloads 是受限子服务。`media.agent` 读取、检视及转换项目参考；`media.generation` 保存或下载模型结果。
 
 `media.operations.projectFiles` 实现 contracts/ProjectMediaStore，并由业务模块注册 `media.projectFiles` 供项目及 ComfyUI 消费。saveMediaToFile 同步保存 data URL 并返回 id/url，sanitizeWorkflowNodes 处理四类内联媒体字段；不向调用方暴露目录创建函数。
@@ -23,11 +25,15 @@ HTTP 鉴权能力通过 identity.httpSecurity 注入：代理、公开库 Guard�
 
 ## 数据模型
 
+逐帧拉片代理使用 H.264/AAC、最大 768 像素边长/12 fps、45 MiB 上限，保留原视频时间轴。代理与镜头片段均使用打包组件提供的 libx264 编码，按偶数宽高缩放以满足 yuv420p；代理不放大原视频，缩放表达式避免依赖旧版 macOS FFmpeg 缺少的 force_divisible_by 参数。源指纹由文件名/大小/mtime 构成；输出名按源指纹及抽取参数哈希确定，二进制和同名 JSON 存于当前项目 images/videos/audios，元数据保存 filename、来源指纹和时间等，完整缓存可复用。结果有独立 UUID，不等同后端运行授权。路径校验使用真实路径并拒绝目录越界，FFmpeg 只允许 file/pipe 输入，参数用 execFile 数组传递；Windows 隐藏进程窗口。
+
 媒体二进制存于当前用户 `library/media/<projectId>/<images|videos|audios>/`，同 id JSON 记录 filename/nodeId/prompt/model/createdAt 等。素材库位于 library/assets，工作流预设位于 library/workflows；可恢复清理批次与记录由 filesystem 适配器管理。
 
 内联媒体保存使用唯一 UUID、真实媒体扩展名及项目归属校验。同步生成保存见 [mediaWrites.js](../../plugins/media/filesystem/mediaWrites.js)：校验用户目录真实路径、媒体类型与大小，独占创建二进制，元数据写临时文件后原子改名；任一步失败都抛出 `MEDIA_STORAGE_FAILED`（500，含 moduleId/operation/项目或素材标识），已有结构化错误原样保留。元数据失败会清理本次二进制与临时文件；单独更新元数据失败保留原记录。素材库/组合导入对本次元数据失败也清理相应复制文件；清理失败由注入 Logger 记录 warn，原失败仍向上传递。这是单文件发布与失败清理，不保证进程崩溃时二进制和 JSON 的跨文件事务，也不保证整个组合批次原子提交。视频尾帧按 nodeId + prompt 查询最新已存在文件，复用结果。缩略图按原图路径、尺寸、mtime 与最大边长计算指纹，写临时文件后重命名，重复请求共享任务。
 
 ## 功能结构
+
+逐帧拉片校验视频不超过 20 分钟、分辨率不超过 8192；临时输出编码完成并检查大小后改名，失败或取消清理本次临时文件，清理失败用注入 Logger 的固定 warn 事件记录。关键帧为 PNG，动态片段为 H.264/AAC MP4，音轨为 MP3；未选择的素材不提取，无音轨不提取音频。声音资产保留原混合音轨，不做说话人或音乐分离。仅重新提取不生成代理、不上传和调用模型；更换来源或源文件指纹变化时拒绝复用分析。两文件改名不构成跨文件崩溃事务，不完整缓存下次重建。独立回归 `tests/shot-analysis-media.test.js` 使用 bin 下真实 FFmpeg/FFprobe 生成奇数尺寸竖屏测试源，验证代理、截图、镜头片段、音轨及代理缓存；缺少二进制时跳过。Windows 本地真实编解码回归通过，macOS 成品与真实上游仍待验证。
 
 上传或本地导入先校验类型、扩展名、内容与大小，探测媒体元数据后保存记录。跨项目复制校验当前用户边界；素材“删除记录”与真正二进制清理区分，避免破坏已有画布引用。恢复遇到同名目标明确拒绝，不覆盖。
 

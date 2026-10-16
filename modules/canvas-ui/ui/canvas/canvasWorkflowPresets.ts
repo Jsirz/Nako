@@ -83,7 +83,7 @@ export function instantiateWorkflowPreset(
         : undefined,
       ...remapCanvasNodeReferences(node, id => idMap.get(id)),
       generationAttemptId: undefined,
-      nodeRunId: undefined, nodeRequestId: undefined,
+      nodeRunId: undefined, nodeRequestId: undefined, nodeAnalysisRunId: undefined, nodeDirectRunRequestId: undefined,
       localWorkflowOperationId: undefined,
       generationStartedAt: undefined,
       generationStartTime: undefined,

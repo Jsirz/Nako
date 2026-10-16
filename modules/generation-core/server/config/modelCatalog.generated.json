@@ -1980,6 +1980,57 @@
       }
     }
   },
+  "Qwen 3.8 Max · Work-Fisher": {
+    "name": "Qwen 3.8 Max · Work-Fisher",
+    "timeEstimate": "2min",
+    "provider": "WorkFisherTextProvider",
+    "useProxy": false,
+    "maxConcurrent": 0,
+    "source": "work_fisher",
+    "canonicalModel": "Qwen 3.8 Max",
+    "tier": "standard",
+    "variantLabel": null,
+    "brand": "Qwen",
+    "premium": false,
+    "cost": 0,
+    "costByMode": null,
+    "rhPriceRules": null,
+    "estimatedCostByMode": null,
+    "priceNoteByMode": null,
+    "priceTextByMode": null,
+    "priceFormula": null,
+    "tokenPricePerMillion": null,
+    "tokenVideoPricePerMillion": null,
+    "resolutionSurcharge": null,
+    "modelIdOverride": false,
+    "languageModes": [
+      {
+        "label": "视频拉片",
+        "value": "multimodal-chat",
+        "allowedInputs": {
+          "text": 1,
+          "video": 1
+        }
+      }
+    ],
+    "supportedReferenceTypes": [
+      "text",
+      "video"
+    ],
+    "supportedImageFormats": [
+      "jpeg",
+      "png",
+      "webp"
+    ],
+    "maxImageSizeMb": 20,
+    "advancedParams": [],
+    "endpoint": {
+      "multimodal-chat": {
+        "url": "https://api.work-fisher.com/v1/chat/completions",
+        "model": "qwen/qwen3.8-max"
+      }
+    }
+  },
   "GM 3.8 Flash · Work-Fisher": {
     "name": "GM 3.8 Flash · Work-Fisher",
     "timeEstimate": "1min",

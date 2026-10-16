@@ -21,6 +21,13 @@ export interface CanvasNode extends CanvasConnectionNode {
   comfyMode?: string;
   videoModel?: string;
   videoMode?: string;
+  /** Local cached analysis run; cleared when copying or importing a graph. */
+  nodeAnalysisRunId?: string;
+  /** Explicit start intent, consumed on completion; never carried into copied/imported graphs. */
+  nodeDirectRunRequestId?: string;
+  shotAnalysisResultId?: string;
+  shotAnalysisShotId?: string;
+  shotAnalysisNodeId?: string;
 }
 export interface CanvasGroup {
   id: string;

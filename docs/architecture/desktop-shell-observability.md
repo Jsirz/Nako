@@ -6,6 +6,8 @@
 
 ## 接口契约
 
+`nodeCapabilities.js` 新增 `media.prepareAnalysis`、`media.validateAnalysis`、`media.extractAnalysis`，先限制素材到当前项目，再调用注入的 `MediaProcessor` 或 contracts 解析器；`includeProxy=false` 透传到适配器，仅重新提取不上传代理。能力和模型预算仍由 kernel 的运行授权控制，取消合并运行/隔离进程信号。拉片节点的 `models.generate` 仍通过统一 GenerationService 调用，不在桌面宿主拼接供应商 HTTP。
+
 [serverHost.js](../../modules/desktop-shell-observability/serverHost.js) 创建 PluginHost，装配后端与业务目录、宿主路径、安全凭据和节点注册表。`host.runtime`、`http.routes`、`node.registry`、`node.packages` 由平台宿主注入；业务通过声明服务访问。
 
 [nodeServerPlugin.js](../../modules/desktop-shell-observability/nodeServerPlugin.js) 提供 nodes.runtime；nodeRunRouter 将提交/批准/取消/观察转换到 kernel.NodeRunService。Node SDK 2 的 capability/progress 请求经宿主有限白名单，包代码不接触密钥、任意文件或网络。
@@ -24,6 +26,8 @@ Electron 主题 IPC 的来源与参数由 apps/desktop/src/windowManager.mjs 校
 更新信息包含版本、HTTPS 源、下载进度、状态和失败码；下载清单/签名与用户项目数据分离。日志包含模块、运行/节点/执行器身份以及有限子进程错误信息，不把原始错误尾部直接显示前端。应用状态/数据目录见桌面打包说明。
 
 ## 功能结构
+
+`nodes/canvas-core/shotAnalysis.mjs` 首次分析使用一次文本模型调用，先校验模型 JSON，再按镜头写入 `private/node-runs/value-<hash>.json` 的宿主存储，避免单条超过 64 KiB。缓存按用户作用域/项目/插件隔离，复用时核对节点和源视频 URL/指纹；通过校验后调用本地抽取，重提取预算为 0。源改变或缓存不存在时拒绝复用，不自动回退付费模型。成功返回的素材结果与运行回执分离，前端不会因后续取消删除上次成功结果。
 
 桌面应用显示名称统一为“NAKO Agent 纳科画布智能体”：窗口和托盘由 apps/desktop/src 设置，安装器、快捷方式及 macOS 应用包名称由 electron-builder.config.cjs 与 apps/desktop/package.json 配置。Windows 执行文件仍为 `Nako 画布.exe`，使已有更新交接记录能安装后重启相同路径；打包验证脚本使用新 macOS 应用路径。安装包文件名与应用 id 沿用发布协议。
 

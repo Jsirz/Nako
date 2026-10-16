@@ -19,7 +19,7 @@ export function remapCanvasNodeReferences(
       }),
     );
   }
-  for (const key of ['linkedVideoNodeId', 'sourceWorkflowNodeId'])
+  for (const key of ['linkedVideoNodeId', 'sourceWorkflowNodeId', 'shotAnalysisNodeId'])
     if (node[key] !== undefined) patch[key] = value(node[key]);
   if (Array.isArray(node.frameInputs)) patch.frameInputs = node.frameInputs.flatMap(input => {
     const frame = record(input), mapped = value(frame.nodeId);

@@ -343,13 +343,13 @@ function renderTemporaryEdges(
           const curve: Curve = {
             start: {
               x: getPortX(node, start.handle, size.width),
-              y: packageDefinition({ ...node, type: node.type || '' }) ? node.y + packagePortY(start.portIndex ?? 0) : getPortY(node, start.handle, start.portIndex ?? 0, size.height),
+              y: node.type !== 'shot-analysis' && packageDefinition({ ...node, type: node.type || '' }) ? node.y + packagePortY(start.portIndex ?? 0) : getPortY(node, start.handle, start.portIndex ?? 0, size.height),
             },
             end:
               target && side
                 ? {
                     x: getPortX(target, side, geometryCache.size(target).width),
-                    y: packageDefinition({ ...target, type: target.type || '' }) ? target.y + packagePortY(index) : getPortY(
+                    y: target.type !== 'shot-analysis' && packageDefinition({ ...target, type: target.type || '' }) ? target.y + packagePortY(index) : getPortY(
                       target,
                       side,
                       index,

@@ -3,6 +3,7 @@ import type * as ReactTypes from 'react';
 import { mediaCanvas } from '../../../kernel/browser';
 import { installNodeFramework } from './nodeFramework';
 import { CanvasPluginNode } from './canvasPluginNode';
+import { CanvasShotAnalysisNode } from './canvasShotAnalysisNode';
 import type { NodeDefinition } from './nodeFramework';
 import { PackageNodeConnectors } from './packageNodeConnectors';
 type Runtime = Pick<typeof ReactTypes, 'createElement' | 'useState' | 'useRef' | 'useEffect'>;
@@ -98,6 +99,7 @@ interface FrameProps {
   children?: ReactTypes.ReactNode;
   controls?: ReactTypes.ReactNode;
   className?: string;
+  cardClassName?: string;
   onNodePointerDown(event: ReactTypes.PointerEvent, id: string): void;
   onContextMenu(event: ReactTypes.MouseEvent, id: string): void;
   onConnectorDown: ConnectorProps['onConnectorDown'];
@@ -152,7 +154,7 @@ export function CanvasNodeFrame(
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
     >
-      {!props.readOnly && (props.data.pluginId && !['native', undefined].includes(installNodeFramework().getDefinition(data.type, String(data.pluginId))?.render?.kind) ? React.createElement(PackageNodeConnectors, { data, onConnectorDown: props.onConnectorDown }) : React.createElement(dependencies.Connectors, {
+      {!props.readOnly && (data.type !== 'shot-analysis' && props.data.pluginId && !['native', undefined].includes(installNodeFramework().getDefinition(data.type, String(data.pluginId))?.render?.kind) ? React.createElement(PackageNodeConnectors, { data, onConnectorDown: props.onConnectorDown }) : React.createElement(dependencies.Connectors, {
         nodeId: data.id,
         onConnectorDown: props.onConnectorDown,
         nodeType: data.type,
@@ -164,7 +166,7 @@ export function CanvasNodeFrame(
           className={
             isBareCard
               ? 'relative flex flex-col bg-transparent'
-              : `relative rounded-lg border flex flex-col bg-[var(--nk-surface)] ${isResizing ? '' : 'transition-[border-color,box-shadow,ring] duration-200'} ${hovered ? (invalid ? 'border-red-500 ring-4 ring-red-500/50 scale-[1.02]' : 'border-blue-500 ring-4 ring-blue-500/30 scale-[1.02]') : selected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-[var(--nk-border)] shadow-2xl'}`
+              : `relative rounded-lg border flex flex-col bg-[var(--nk-surface)] ${props.cardClassName || ''} ${isResizing ? '' : 'transition-[border-color,box-shadow,ring] duration-200'} ${hovered ? (invalid ? 'border-red-500 ring-4 ring-red-500/50 scale-[1.02]' : 'border-blue-500 ring-4 ring-blue-500/30 scale-[1.02]') : selected ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-[var(--nk-border)] shadow-2xl'}`
           }
           style={{
             width: `${width}px`,
@@ -254,6 +256,7 @@ const titles: Record<string, string> = {
   'Image Composite': '图片拼合',
   Text: '文本输入',
   ComfyUI: 'ComfyUI',
+  'shot-analysis': '逐帧拉片',
 };
 interface HeaderProps {
   data: NodeData;
@@ -454,6 +457,8 @@ export function CanvasGenericNode(
   dependencies: { Frame: CanvasComponent; Header: CanvasComponent },
 ) {
   const node = props.data;
+  if ((props.definition as NodeDefinition | undefined)?.type === 'shot-analysis' && (props.definition as NodeDefinition).pluginId === 'nako.canvas-core')
+    return React.createElement(CanvasShotAnalysisNode, { ...props, dependencies });
   // A persisted missing flag can be stale when the node directory loads after
   // the project. A live registry definition always wins over that old marker.
   if (props.definition) return React.createElement(CanvasPluginNode, { ...props, definition: props.definition as NodeDefinition, dependencies });

@@ -3,6 +3,9 @@ import { agentCanvas } from '../../../kernel/browser';
 import type { CanvasWorkspaceBindings } from '../../../contracts/agentCanvasWorkspace';
 import type { CanvasNode } from '../nodes/canvasNodeOperations';
 import type { CanvasGroup } from './canvasGroups';
+import { canvasError } from '../../../contracts/canvasErrors.js';
+import type { ShotAnalysisInsertion, ShotAnalysisResult } from '../../../contracts/shotAnalysis.js';
+import { shotAnalysisCanvas } from './shotAnalysisCanvas';
 import './canvasWorkspace.css';
 import type { useCanvasSceneBridge } from './useCanvasSceneBridge';
 
@@ -50,6 +53,25 @@ export function useCanvasAgentControls(context: ReturnType<typeof useCanvasScene
   const redo = () => restoreHistory(redoHistory());
   const controlRuntime = React.useRef<CanvasWorkspaceBindings['control']>(() => null);
   const documentEpoch = getWorkflowEpoch();
+  const insertShotAnalysis = (input: ShotAnalysisInsertion) => {
+    if (readOnly || view !== 'canvas' || !mountedRef.current || input.projectId !== workflowId || input.documentEpoch !== getWorkflowEpoch())
+      throw canvasError('画布已经切换，无法写入此次拉片结果。', 'shotAnalysis.insert');
+    const before = { nodes: getNodes(), groups: getGroups() };
+    const source = before.nodes.find(node => node.id === input.nodeId);
+    const result = (source?.pluginResult as { analysis?: ShotAnalysisResult } | undefined)?.analysis;
+    if (!source || source.type !== 'shot-analysis' || source.pluginId !== 'nako.canvas-core' || !result?.id || result.id !== input.resultId)
+      throw canvasError('拉片结果已变化，请等待当前任务完成。', 'shotAnalysis.insert');
+    const after = shotAnalysisCanvas(source, result, input.resultId, before, { create: createAgentNode, width: getNodeWidth, height: getNodeHeight });
+    if (!after.created.length) return;
+    flushSync(() => {
+      pushHistory(before);
+      applyingDocumentRef.current = true;
+      setNodes(after.nodes); setGroups(after.groups);
+      pushHistory({ nodes: after.nodes, groups: after.groups }); setDirty(true);
+      setSelectedNodeIds(after.created);
+    });
+    focusOnNodes(after.nodes, after.created);
+  };
   controlRuntime.current = () =>
     view === 'canvas' &&
     !readOnly &&
@@ -119,5 +141,6 @@ export function useCanvasAgentControls(context: ReturnType<typeof useCanvasScene
     productRuntime,
     canvasProducts,
     canvasControl,
+    insertShotAnalysis,
   };
 }

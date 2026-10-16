@@ -165,6 +165,7 @@ export function legacyWorkflowHeight(node: CanvasNode) {
   );
 }
 export function nodeWidth(node: CanvasNode, parent?: CanvasNode): number {
+  if (node.type === 'shot-analysis') return 440;
   const media = adaptiveMediaNodeSize(node);
   if (media) return media.width;
   const stored = positive(node.width);
@@ -180,6 +181,7 @@ export function nodeWidth(node: CanvasNode, parent?: CanvasNode): number {
   return 252 * Math.max(1, nodeAspectRatio(node, parent));
 }
 export function nodeHeight(node: CanvasNode, parent?: CanvasNode): number {
+  if (node.type === 'shot-analysis') return 560;
   const registered = packageDefinition(node);
   if (registered) return Math.max(Number(node.height) || 420, 200 + Object.keys(registered.parameters?.properties || {}).length * 58, registered.render?.kind === 'iframe' ? 620 : 0);
   // Dynamic workflow measurement must supersede a height saved before its parameters changed.
@@ -208,6 +210,7 @@ export function nodePortX(node: CanvasNode, side: 'left' | 'right', width: numbe
     : node.x + (side === 'right' ? width : 0);
 }
 export function nodePortY(node: CanvasNode, side: 'left' | 'right', index: number, height: number) {
+  if (node.type === 'shot-analysis') return node.y + height / 2;
   const registered = packageDefinition(node);
   if (registered) {
     const links = (node.inputLinks || []) as Array<{ targetPortId: string }>;

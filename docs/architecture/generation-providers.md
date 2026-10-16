@@ -23,6 +23,8 @@ manifest 包含插件 id/version/apiVersion、services、providers、credentials
 
 ## 功能结构
 
+Work-Fisher 的 [text-2.json](../../plugins/providers/work-fisher/catalog/text-2.json) 声明 `Qwen 3.8 Max · Work-Fisher`，固定模型 ID `qwen/qwen3.8-max`、模式 `multimodal-chat`、最多一个视频，提交到 `/v1/chat/completions`。文本 handler 先通过 `/v1/files/upload` 上传本地素材，再将返回地址放到 user content 的 `video_url.video_url.url`，`maxTokens` 在 1～32768 时映射到 `max_tokens`。本地上传使用文件 Blob 流式读取，保留 50 MiB 上传限制，不整文件 readFile；代理视频由媒体适配器限制到 45 MiB。模型实际支持视频/声音、请求耗时和稳定性尚需真实上游验证；mock 只证明请求构造及上传顺序。
+
 新增来源按 [插件开发说明](../插件开发说明.md) 登记入口与 manifest、配置凭据授权、声明模型，再使用数据构建入口生成目录。Provider 处理协议解析、请求校验、提交/轮询/取消信号和结果下载语义；generation-core 负责统一调度。
 
 RunningHub 大型实现及模型目录按职责拆分；Work-Fisher 数据目录按 config 显式 data 清单加载。第三方服务的现用协议分支与本项目旧数据兼容不同，不能按 legacy 关键词批量删除。移动云、Work-Fisher 和 Seedance 的用户接入说明独立保留。

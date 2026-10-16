@@ -213,6 +213,8 @@ export function cloneCanvasNodes<TNode extends CanvasClipboardNode>(
   const newNodes = nodes.map((node) => {
     const clonedNode = {
       ...node,
+      nodeAnalysisRunId: undefined,
+      nodeDirectRunRequestId: undefined,
       ...(node.localWorkflowOperationId || node.generationAttemptId || node.nodeRunId || node.nodeRequestId ||
       ['loading', 'queued'].includes(String(node.status))
         ? {

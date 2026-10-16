@@ -1,4 +1,5 @@
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { realpath, stat } from 'node:fs/promises';
+import { openAsBlob } from 'node:fs';
 import path from 'node:path';
 import { boundedBytes, boundedSignal, failure } from './client.js';
 import { ROOT } from './protocol.js';
@@ -125,7 +126,7 @@ export async function uploadInput(value, kind, params, config, client, durationR
       );
   }
   const form = new FormData();
-  form.append('file', new Blob([await readFile(resolved)], { type: mime }), filename);
+  form.append('file', await openAsBlob(resolved, { type: mime }), filename);
   const payload = await client(ROOT + '/v1/files/upload', {
     apiKey: config.WORK_FISHER_API_KEY,
     signal: params.signal,

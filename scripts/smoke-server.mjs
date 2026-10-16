@@ -124,7 +124,7 @@ try {
   assert.ok(!nodeCatalog.packages.some(item => ['shot-analysis', 'text-replace'].includes(item.manifest.id)));
   assert.equal(nodeCatalog.errors.length, 0);
   // Install the execution fixture only into this test's isolated directory.
-  await cp(path.resolve('examples/nodes/text-replace'), path.join(temporaryRoot, 'nodes', 'text-replace'), { recursive: true });
+  await cp(path.resolve('tests/fixtures/nodes/text-replace'), path.join(temporaryRoot, 'nodes', 'text-replace'), { recursive: true });
   await json('/api/node-packages/reload', { method: 'POST' });
   const runInput = { requestId: 'smoke-node', projectId: saved.id,
     nodes: [{ id: 'replace', type: 'text-replace.replace', pluginId: 'text-replace', parameters: { from: 'old', to: 'new' } }],

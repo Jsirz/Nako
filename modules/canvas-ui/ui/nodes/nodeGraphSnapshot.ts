@@ -38,6 +38,7 @@ export function buildNodeGraph(node: NodeValue, all: NodeValue[], projectId: str
       : item.parameters || {};
     if (definition.category === 'asset' && definition.pluginId === 'nako.canvas-core') parameters = { value: nodeOutput(item, definition.outputs[0]?.id || '') };
     if (definition.type === 'image-composite') parameters = { columns: Number(item.gridColumns || 2) };
+    if (definition.type === 'shot-analysis') parameters = item.parameters || {};
     request.nodes.push({ id: item.id, type: definition.type, pluginId: definition.pluginId, nodeVersion: item.nodeVersion || definition.version, parameters });
     request.initialInputs![item.id] = [];
     for (const link of nodeLinks(item, all)) {

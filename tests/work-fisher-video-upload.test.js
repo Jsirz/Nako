@@ -23,6 +23,15 @@ const params = mode => ({ projectId: 'p', prompt: 'change the sky', videoMode: m
   url: root + '/v1/videos', videos: ['/library/media/p/videos/input.mp4'], duration: 5 });
 
 describe('Work-Fisher local video references', () => {
+  it('uploads a local analysis video and sends video_url with the requested text output budget', async () => {
+    const fetcher = vi.fn(async () => Response.json({ url: remote }));
+    const submitChat = vi.fn(async () => ({ text: '{}' }));
+    await createWorkFisherHandlers({ fetcher, submitChat }).WorkFisherTextProvider.generateText({ projectId: 'p', prompt: 'analyze shots',
+      textModel: 'qwen/qwen3.8-max', languageMode: 'multimodal-chat', url: root + '/v1/chat/completions', videos: ['/library/media/p/videos/input.mp4'], maxTokens: 32768 }, config);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(submitChat).toHaveBeenCalledWith(expect.objectContaining({ body: { model: 'qwen/qwen3.8-max', stream: true, max_tokens: 32768,
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'analyze shots' }, { type: 'video_url', video_url: { url: remote } }] }] } }));
+  });
   it.each(['video-edit', 'multimodal'])('uploads once before submitting %s using the temporary URL', async mode => {
     const fetcher = vi.fn(async (url, options) => {
       if (url.endsWith('/files/upload')) {

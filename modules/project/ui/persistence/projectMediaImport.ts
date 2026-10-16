@@ -92,6 +92,23 @@ export async function prepareProjectMedia(
     const owner = String(node.projectId || document.id || '');
     await mediaRecord(node, owner, kinds[node.type.replace(/^Upload /, '').toLowerCase()]);
     await parameters(node.parameterValues, owner);
+    if (node.type === 'shot-analysis' && node.pluginId === 'nako.canvas-core') {
+      delete node.nodeAnalysisRunId;
+      const input = node.parameters as RecordValue | undefined;
+      const video = await localUrl(input?.video);
+      if (input && video) input.video = video.url;
+      const analysis = (node.pluginResult as RecordValue | undefined)?.analysis as RecordValue | undefined;
+      if (analysis?.source && typeof analysis.source === 'object') await mediaRecord(analysis.source as RecordValue, owner, 'videos');
+      if (Array.isArray(analysis?.shots)) for (const shot of analysis.shots) {
+        if (!shot || typeof shot !== 'object') continue;
+        const item = shot as RecordValue;
+        const assets = [...(Array.isArray(item.frames) ? item.frames : []), item.clip, item.audio];
+        for (const asset of assets) if (asset && typeof asset === 'object') {
+          const record = asset as RecordValue;
+          await mediaRecord(record, owner, kinds[String(record.type)]);
+        }
+      }
+    }
   }
   const cover = await localUrl(result.coverUrl);
   if (cover) result.coverUrl = cover.url;
