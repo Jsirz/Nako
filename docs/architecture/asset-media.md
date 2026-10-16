@@ -18,6 +18,8 @@ contracts 的 MediaStore 提供 save/read/remove；MediaProcessor 提供 crop/tr
 
 媒体路径和程序目录来自 platform.paths；模块加载阶段不读取未注册服务，Work-Fisher 的 probe 在用户请求阶段创建。下载目录选择经 platform.directories，不依赖完整本地运行时；下载设置、取消和错误处理保持原协议。浏览器 ui.media.canvas 提供下载、MiniMax、几何/播放及编辑能力，下载与 MiniMax 适配器每次激活创建一次。
 
+本地 library URL 解码后统一拒绝反斜杠、冒号和空字符，再校验相对路径及真实路径边界，保持 Windows/macOS 的路径拒绝行为一致。
+
 [imageAngleDraft.ts](../../modules/asset-media/ui/media/imageAngleDraft.ts) 为全景图与角度图创建新图像节点：经 kernel 注册表读取 `generation.defaults.get('image')`，在 `ui.generation.catalog` 中核对图生图端点与图片输入能力，记录当前默认模型并连接原图。不按 Provider 优先级或目录顺序回退；默认值未配置、已失效或能力不符时不创建节点，抛出 contracts 的 `INVALID_MODEL_CONFIGURATION`（400，含操作、项目与节点上下文）。浏览器插件显式声明 `generation.defaults` 依赖。
 
 [mediaAssetRouter.js](../../modules/asset-media/server/media/mediaAssetRouter.js) 转换 HTTP 到操作服务；editing/library/download Router 分别转发处理、素材库和下载配置。缩略图处理返回无路径 reference，Router 通过 media.delivery.open 取得流；[mediaDeliveryResponse.js](../../modules/asset-media/server/media/mediaDeliveryResponse.js) 处理 HEAD、Range、ETag/Last-Modified 条件响应，并在所有结束路径 close。library 文件不再由 Router 挂载本地目录。

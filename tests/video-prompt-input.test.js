@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
 import './helpers/promptComposition.js';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import React from 'react';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { CanvasVideoComposer } from '../modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx';
 import { prepareCanvasGenerationRequest } from '../modules/generation-core/ui/generation/canvasGeneration.ts';
+import { browserHost } from '../modules/kernel/browser';
+import { externalReferenceMedia } from '../modules/generation-core/ui/generation/canvasGenerationRequests';
+import { installVideoModeAdapter } from '../modules/generation-core/ui/generation/videoMode';
 
 vi.mock('../modules/canvas-ui/ui/nodes/useGenerationAvailability.ts', () => ({
   useGenerationAvailability: () => ({ checking: false, blocked: false, warning: '' }),
 }));
-vi.mock('../modules/agent/api/ui/prompt/CreativeLibrary', () => ({
-  CreativeLibraryTools: () => null, CreativePromptTokens: () => null,
-}));
-afterEach(cleanup);
+let dispose;
+beforeEach(() => { dispose = browserHost.services.register('ui.generation.interaction', {
+  externalReferences: externalReferenceMedia, videoModes: () => installVideoModeAdapter(),
+}); });
+afterEach(() => { cleanup(); dispose(); });
 const empty = () => null;
 const models = { videoModels: [{ name: 'video-test', videoModes: [{ value: 'text-to-video', label: 'Video' }] }] };
 const components = {
@@ -21,6 +25,7 @@ const components = {
     'aria-label': 'Prompt', value, onChange: event => onChange(event.target.value),
   }),
   ConnectedAssets: empty, ModelSelector: empty, Dimensions: empty, AdvancedSettings: empty,
+  CreativeLibraryTools: empty, CreativePromptTokens: empty,
   Tooltip: ({ children }) => children, CollapseIcon: empty, SettingsIcon: empty,
   GenerateIcon: () => React.createElement('span', null, 'Generate'),
 };

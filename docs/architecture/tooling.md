@@ -33,6 +33,8 @@
 
 服务化后的独立调用测试在 tests/helpers/serverCapabilities.js、modelCatalog.js、mediaCanvas.js 中显式装配公共能力并在结束时释放；真实宿主测试先释放独立测试的服务，保持后端单宿主约束。客户端边界测试使用最小声明服务，浏览器启动断言同步新增的能力插件数量。原有参考视频时长 mock 改为注入 media.runtime 探测器，不再模拟已移除的横向 import；这些用例尚未执行。
 
+项目媒体、画布传输和视频提示词测试显式装配 media.files、ui.desktop.capabilities、ui.generation.interaction；预览测试通过组件参数注入 Wallpaper，使用当前媒体编辑参数协议。执行器列表按集合核对，不依赖插件启动顺序。
+
 错误与日志回归集中在 tests/module-logging.test.js（诊断上下文、脱敏与容量限制、事件/清理失败）、tests/node-sdk.test.js（注册失败状态）、tests/desktop-startup-errors.test.js（安全启动拒绝）。本轮只补充用例，未执行测试、类型检查或构建。
 
 媒体适配器回归见 [media-adapter-boundaries.test.js](../../tests/media-adapter-boundaries.test.js)：独立基础插件启动、写入与列表、元数据失败传播和残留清理、原记录保留、Windows junction/macOS symlink 目录拒绝。media-runtime 的缺失 FFprobe 用例直接测试处理适配器，独立服务 helper 显式装配 media.probe → media.files → media.runtime；用例未执行。

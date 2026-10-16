@@ -7,7 +7,6 @@ import { useCanvasDrag } from '../modules/canvas-ui/ui/canvas/canvasEditorHooks'
 import { useCanvasViewport } from '../modules/canvas-ui/ui/canvas/canvasViewport';
 import { CanvasScene } from '../modules/canvas-ui/ui/canvas/canvasScene';
 
-vi.mock('../modules/identity-account/api/ui/appearance/CanvasWallpaper', () => ({ CanvasWallpaper: () => null }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function contextOptions() {
@@ -58,7 +57,7 @@ it.each([0, 1])('pans read-only previews with button %i and zooms without editin
     'endNodeResize', 'updateConnectionDrag', 'completeConnectionDrag', 'setNodes', 'pushHistory']) {
     expect(options[key]).not.toHaveBeenCalled();
   }
-  expect(options.media.useCanvasCropSave.mock.lastCall[1].enabled).toBe(false);
+  expect(options.media.useCanvasCropSave.mock.lastCall[0].enabled).toBe(false);
 });
 
 it('keeps normal canvas left-drag selection and ignores right-drag in previews', () => {
@@ -93,6 +92,7 @@ it('leaves scene navigation active while disabling node actions, drop, menus and
   };
   let edgeProps;
   const components = {
+    Wallpaper: () => null,
     Edges: (value) => { edgeProps = value; return null; }, Selection: () => null,
     Node: (value) => React.createElement('button', { onClick: () => value.onGenerate('one') }, '生成'),
   };

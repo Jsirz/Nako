@@ -6,6 +6,9 @@ import sharp from 'sharp';
 import { createProjectMediaStore } from '../plugins/media/filesystem/projectMediaStore.js';
 import { createThumbnailCache } from '../plugins/media/ffmpeg-sharp/thumbnailCache.js';
 import { ERRORS, PluginError } from '../modules/contracts/index.js';
+import { useServerCapabilities } from './helpers/serverCapabilities.js';
+
+useServerCapabilities({ media: true });
 
 const directories = [];
 afterEach(() => {

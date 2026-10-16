@@ -146,7 +146,7 @@ describe('built-in plugins with isolated local storage', () => {
         configuration: { disabled: [], options: {} },
       });
       expect(host.services.get('generation.providers').list()).toHaveLength(30);
-      expect(host.services.get('workflow.executors').list()).toEqual([
+      expect(host.services.get('workflow.executors').list().sort()).toEqual([
         'local-comfyui',
         'runninghub-workflow',
         'runninghub-webapp',

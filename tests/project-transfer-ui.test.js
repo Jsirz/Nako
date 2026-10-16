@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { renderHook, act, cleanup, render, fireEvent } from '@testing-library/react';
 import { useCanvasProjectTransfer } from '../modules/project/ui/persistence/canvasProjectTransfer';
 import { CanvasTransferMenu } from '../modules/canvas-ui/ui/dialogs/CanvasTransferMenu';
+import { browserHost } from '../modules/kernel/browser';
+import { projectArchiveRestoreRequest } from '../modules/desktop-shell-observability/ui/desktop/localFileUpload';
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+let dispose;
+beforeEach(() => { dispose = browserHost.services.register('ui.desktop.capabilities', { projectArchiveRestoreRequest }); });
+afterEach(() => { cleanup(); dispose(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const options = () => ({ enabled: true, getWorkflowEpoch: () => 1,
   save: vi.fn(async () => ({ id: 'current', unchanged: true })), openProject: vi.fn(), openJson: vi.fn() });
 it('does not export when edits remain unsaved or saving fails', async () => {

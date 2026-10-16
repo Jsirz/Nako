@@ -120,13 +120,13 @@ it('ignores stale official environment settings while retaining third-party cred
 
 it('publishes only remaining model contributions and rejects old relay models', () => {
   const models = Object.values(loadModelCatalog());
-  expect(models).toHaveLength(142);
+  expect(models).toHaveLength(143);
   expect(models.some((model) => model.provider === 'DoubaoImageProvider')).toBe(true);
   expect(
     models.some((model) => model.provider.startsWith('Relay') || model.source === 'relay'),
   ).toBe(false);
   const workFisher = models.filter(model => model.source === 'work_fisher');
-  expect(workFisher).toHaveLength(55);
+  expect(workFisher).toHaveLength(56);
   expect(workFisher.every(model => model.provider.startsWith('WorkFisher'))).toBe(true);
   expect(JSON.stringify(models.filter(model => model.source !== 'work_fisher'))).not.toMatch(/work-fisher\.com/);
 });

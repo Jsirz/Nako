@@ -18,7 +18,9 @@ export function resolveLocalPath(input, libraryDirectory) {
     const pathname = new URL(input, 'http://localhost').pathname;
     if (!pathname.startsWith('/library/')) return null;
     const root = path.resolve(libraryDirectory);
-    const target = assertInside(root, path.resolve(root, decodeURIComponent(pathname.slice(9))), 'resolveLocalPath');
+    const relative = decodeURIComponent(pathname.slice(9));
+    if (/[\\:\0]/.test(relative)) return null;
+    const target = assertInside(root, path.resolve(root, relative), 'resolveLocalPath');
     if (fs.existsSync(target)) assertInside(fs.realpathSync(root), fs.realpathSync(target), 'resolveLocalPath');
     return target;
   } catch {
