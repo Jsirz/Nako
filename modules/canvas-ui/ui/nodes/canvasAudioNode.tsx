@@ -30,6 +30,7 @@ interface Props extends Omit<MediaComposerProps, 'data'>, Record<string, unknown
 interface Components extends Omit<
   MediaComposerComponents,
   'models' | 'ratios' | 'resolutions' | 'Dimensions'
+  | 'CreativeLibraryTools' | 'CreativePromptTokens' | 'MjStyleStatus' | 'ImageAngleControl'
 > {
   models: AudioModel[];
   Frame: CanvasComponent;

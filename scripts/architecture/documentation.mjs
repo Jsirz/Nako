@@ -9,7 +9,7 @@ const failures = [];
 for (const module of modules) {
   const file = `${architecture}/${module}.md`;
   if (!fs.existsSync(file)) { failures.push(`Missing module document: ${file}`); continue; }
-  const text = fs.readFileSync(file, 'utf8');
+  const text = fs.readFileSync(file, 'utf8').replaceAll('\r\n', '\n');
   const start = text.indexOf(INVENTORY_START), end = text.indexOf(INVENTORY_END);
   if (start < 0 || end < start) { failures.push(`Missing source inventory markers: ${file}`); continue; }
   const next = text.slice(0, start) + sourceInventory(module) + text.slice(end + INVENTORY_END.length);

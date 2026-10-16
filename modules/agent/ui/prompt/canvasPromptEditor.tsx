@@ -6,13 +6,11 @@ import {
   documentToPrompt,
   promptAssetIndex,
   promptAssetLabel,
-  type PromptAsset,
   type PromptDocumentNode,
 } from './promptDocument';
 import {
   createPromptPresetClient,
   type PromptPresetConfig,
-  type PromptPresetType,
 } from './promptPresets';
 import {
   createPromptSuggestions,

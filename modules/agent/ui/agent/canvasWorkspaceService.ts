@@ -11,7 +11,7 @@ import { createCanvasBudgetControl } from './canvasBudgetControl';
 import { createCanvasProductControl } from './canvasProductControl';
 
 /** One controller chain per document epoch; the canvas supplies only document capabilities. */
-export const agentCanvasService: AgentCanvasService = Object.freeze({
+export const agentCanvasService: AgentCanvasService = Object.freeze<AgentCanvasService>({
   createWorkspace(bindings) {
     const executor = createCanvasControlExecutor(bindings.control);
     const media = createCanvasMediaControl(createCanvasAssetControl(executor), executor, bindings.creation);

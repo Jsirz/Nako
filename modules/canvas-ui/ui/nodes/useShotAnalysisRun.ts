@@ -88,9 +88,8 @@ export function useShotAnalysisRun(options: {
       if (requestId && status >= 400 && status < 500 && status !== 408)
         patch({ nodeRequestId: undefined, nodeDirectRunRequestId: undefined, nodeRunId: undefined, status: node.pluginResult ? 'success' : 'idle' });
       // Unknown transport results keep the request ID; query it instead of resubmitting.
-      if (cause && typeof cause === 'object' && 'code' in cause) {
-        const failure = cause as { message: string };
-        setError(failure.message);
+      if (cause && typeof cause === 'object' && 'code' in cause && 'message' in cause && typeof cause.message === 'string') {
+        setError(cause.message);
       } else setError(requestId ? '连接中断，请重新查询原任务，避免重复调用模型。' : '画布保存失败，请检查网络后重试拉片。');
       observe(value => value + 1);
     } finally { if (valid()) setSubmitting(false); }

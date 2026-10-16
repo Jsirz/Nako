@@ -1,4 +1,4 @@
-import type { DownloadableMediaNode, MediaDownloadFileNameAdapter, MediaDownloadOpenResult, MediaDownloadSettings, MediaDownloadResult } from '../../../contracts/mediaDownloads';
+import type { DownloadableMediaNode, MediaDownloadFileNameAdapter, MediaDownloadSettings } from '../../../contracts/mediaDownloads';
 export type { DownloadableMediaNode, MediaDownloadFileNameAdapter, MediaDownloadOpenResult, MediaDownloadSettings, MediaDownloadResult } from '../../../contracts/mediaDownloads';
 import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { getBrowserServices } from '../../../kernel/browser';

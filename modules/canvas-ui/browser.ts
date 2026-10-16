@@ -46,7 +46,7 @@ const plugin: PluginDefinition = {
   },
   async activate(context) {
     await activateBrowserModule(context, async () => {
-      context.services.register<CanvasPresentationService>('ui.canvas.presentation', Object.freeze({
+      context.services.register<CanvasPresentationService>('ui.canvas.presentation', Object.freeze<CanvasPresentationService>({
         tooltip: (props) => CanvasTooltip(React, { ...props, children: props.children as React.ReactNode }),
         imageAngle: (props) => React.createElement(CanvasImageAngle, props),
       }));

@@ -1,5 +1,5 @@
 import { localRuntimeUi } from '../../../kernel/browser';
-import type { WorkflowCanvasBlueprint } from '../../../contracts/workflowClient';
+import type { WorkflowCanvasBlueprint } from '../../../contracts/workflowCanvas';
 import type { CanvasNode } from '../../../contracts/canvasDocument';
 import type { createCanvasControlExecutor } from './canvasControlExecutor';
 import { validCanvasControl, projectCanvasResult, type CanvasActionHandler, type CanvasResult } from '../../../contracts/canvasControlProtocol.js';

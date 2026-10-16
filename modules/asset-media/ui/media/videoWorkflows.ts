@@ -1,4 +1,4 @@
-import type { VideoWorkflowType, MiniMaxH3Mode, VideoWorkflowRequest, VideoCapability, VideoWorkflowResult } from '../../../contracts/videoWorkflowUi';
+import type { VideoWorkflowType, VideoWorkflowRequest, VideoCapability, VideoWorkflowResult } from '../../../contracts/videoWorkflowUi';
 export type { VideoWorkflowType, MiniMaxH3Mode, VideoWorkflowRequest, VideoCapability, VideoWorkflowResult } from '../../../contracts/videoWorkflowUi';
 import { mediaError } from '../../../contracts/mediaDelivery.js';
 import { browserServices } from '../../../kernel/browser';

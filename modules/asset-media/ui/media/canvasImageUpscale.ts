@@ -1,5 +1,4 @@
 import { mediaError } from '../../../contracts/mediaDelivery.js';
-import type * as React from 'react';
 import { generationInteraction, modelCatalog } from '../../../kernel/browser';
 import type { CanvasImageUpscaleBinding as Binding } from '../../../contracts/mediaCanvas';
 import type { CanvasNode } from '../../../contracts/canvasDocument';

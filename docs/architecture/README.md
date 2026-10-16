@@ -42,6 +42,7 @@
 - 每个模块只维护一份职责及目录说明；复杂 [Agent Harness](agent-harness.md) 单独记录。
 - 文件目录由 `node scripts/architecture/documentation.mjs --write` 更新，不覆盖手写流程说明；新增公共出口同步 `exports.json`。
 - `npm run check:architecture` 核对依赖、目录、公开 API、源码环及 1000 行限制；`npm run check:docs` 核对模块文档、目录和本地链接。
+- 文档目录比对先统一 CRLF/LF，避免 Windows 检出后的换行差异被误判为目录过期。
 - `npm run audit:conventions` 输出裸错误、直接 console 日志、超过 200 行函数等静态差异，不把扫描结果当成行为验证。
 - 遵循 AGENTS.md，本次自动化整理不执行语法、类型检查、测试或构建。完整人工验证入口为 `npm run check`。
 - [开发与验证入口](tooling.md) 将脚本、测试和业务源码分开分类；历史记录位于 `docs/history/`，不作为当前验证结论。

@@ -1,5 +1,5 @@
 import { AgentOperationError } from '../../../contracts/agentErrors.js';
-import type { WorkflowCanvasBlueprint } from '../../../contracts/workflowClient';
+import type { WorkflowCanvasBlueprint } from '../../../contracts/workflowCanvas';
 import type { WorkflowCanvasNodesAdapter } from '../../../contracts/workflowCanvasNodeProtocol';
 
 export interface DramaAssetOutput {

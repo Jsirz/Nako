@@ -70,7 +70,7 @@ export function renderAnnotations(
   source: { width: number; height: number },
 ) {
   const context = canvas.getContext('2d');
-  if (!context) throw canvasError('无法创建标注画布', 'image-annotation.render');
+  if (!context) throw mediaError('无法创建标注画布', { operation: 'image-annotation.render' });
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.scale(canvas.width / source.width, canvas.height / source.height);

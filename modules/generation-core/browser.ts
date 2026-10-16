@@ -35,7 +35,7 @@ const plugin: PluginDefinition = {
   },
   async activate(context) {
     const catalogs = { image: IMAGE_MODELS, video: VIDEO_MODELS, text: TEXT_MODELS, audio: AUDIO_MODELS };
-    context.services.register<ModelCatalogService>('ui.generation.catalog', Object.freeze({
+    context.services.register<ModelCatalogService>('ui.generation.catalog', Object.freeze<ModelCatalogService>({
       list: (kind) => structuredClone(catalogs[kind]), displayName: modelDisplayName,
     }));
     await activateBrowserModule(context, async () => {
@@ -49,7 +49,7 @@ const plugin: PluginDefinition = {
       await defaults.read().catch(() => {});
       const sourceSettingsClient = createSourceSettingsClient();
       const availability = trackBrowserResource(context, installAgentModelAvailability(sourceSettingsClient));
-      context.services.register<GenerationPreparationService>('ui.generation.preparation', Object.freeze({
+      context.services.register<GenerationPreparationService>('ui.generation.preparation', Object.freeze<GenerationPreparationService>({
         prepare: prepareCanvasGenerationRequest,
         sources: (options) => sourceSettingsClient.getBlocks(options),
         availability: () => availability,
@@ -61,11 +61,11 @@ const plugin: PluginDefinition = {
       const imageModes = trackBrowserResource(context, installImageModeAdapter());
       const videoModes = trackBrowserResource(context, installVideoModeAdapter());
       const imageReferences = trackBrowserResource(context, installMidjourneyReferenceAdapter());
-      context.services.register<GenerationInteractionService>('ui.generation.interaction', Object.freeze({
+      context.services.register<GenerationInteractionService>('ui.generation.interaction', Object.freeze<GenerationInteractionService>({
         imageModes: () => imageModes,
         videoModes: () => videoModes,
         imageReferences: () => imageReferences,
-        mountModelPicker: (host, options) => mountModelPicker(host, sourceSettingsClient, options),
+        mountModelPicker: (host, options) => mountModelPicker(host, sourceSettingsClient, { ...options, currentName: options.currentName ?? '' }),
         externalReferences: externalReferenceMedia, generateImage,
         interruptedPatch: interruptedGenerationPatch, registerWorkflowRecoveryOwner,
       }));

@@ -16,7 +16,7 @@ export function CanvasShotAnalysisNode(props: Record<string, unknown> & {
   const update = useRef(props.onUpdate); update.current = props.onUpdate;
   const patch = (value: Record<string, unknown>) => (update.current as ((id: string, value: Record<string, unknown>) => void) | undefined)?.(node.id, value);
   const [uploading, setUploading] = useState(false), [videoMeta, setVideoMeta] = useState(''), [insertionError, setInsertionError] = useState(''),
-    upload = useRef<AbortController>();
+    upload = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
     upload.current = undefined; setUploading(false);
     return () => { upload.current?.abort(); upload.current = undefined; };
@@ -51,7 +51,7 @@ export function CanvasShotAnalysisNode(props: Record<string, unknown> & {
       if (controller.signal.aborted) return;
       patch({ parameters: { ...node.parameters, video }, nodeRunId: undefined, nodeRequestId: undefined, nodeDirectRunRequestId: undefined, nodeAnalysisRunId: undefined, pluginResult: undefined, status: 'idle', errorMessage: undefined });
     } catch (cause) {
-      if (!controller.signal.aborted) runner.setError(cause && typeof cause === 'object' && 'code' in cause ? String((cause as { message: string }).message) : '视频上传失败，请重试。');
+      if (!controller.signal.aborted) runner.setError(cause && typeof cause === 'object' && 'code' in cause && 'message' in cause && typeof cause.message === 'string' ? cause.message : '视频上传失败，请重试。');
     } finally { if (!controller.signal.aborted) { setUploading(false); upload.current = undefined; } }
   };
   const start = (reuse = false, analysis?: string) => {
