@@ -19,3 +19,4 @@ apps/desktop/launcher/dist/
 .verification/
 .packaging/
 /release/
+.pi/

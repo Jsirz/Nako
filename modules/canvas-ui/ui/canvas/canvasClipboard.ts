@@ -83,6 +83,15 @@ function preservesExternalUpstream(node: Pick<CanvasClipboardNode, 'type'>): boo
   return node.type === 'Image' || node.type === 'Video';
 }
 
+function clearVideoReplicaCopyState<TNode extends CanvasClipboardNode>(node: TNode): TNode {
+  if (node.type !== 'video-replica') return node;
+  const copy = { ...node };
+  delete copy.replicaPlan;
+  delete copy.replicaAssetResultId;
+  delete copy.replicaReplacements;
+  return copy;
+}
+
 function sourcePortIndexAt(node: CanvasClipboardNode, index: number): number {
   const sourcePortIndices = node.sourcePortIndices;
   if (!Array.isArray(sourcePortIndices)) return 0;
@@ -212,7 +221,7 @@ export function cloneCanvasNodes<TNode extends CanvasClipboardNode>(
       : { x: options.offset, y: options.offset };
   const newNodes = nodes.map((node) => {
     const clonedNode = {
-      ...node,
+      ...clearVideoReplicaCopyState(node),
       nodeAnalysisRunId: undefined,
       nodeDirectRunRequestId: undefined,
       ...(node.localWorkflowOperationId || node.generationAttemptId || node.nodeRunId || node.nodeRequestId ||

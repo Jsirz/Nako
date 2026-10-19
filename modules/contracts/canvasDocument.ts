@@ -28,6 +28,15 @@ export interface CanvasNode extends CanvasConnectionNode {
   shotAnalysisResultId?: string;
   shotAnalysisShotId?: string;
   shotAnalysisNodeId?: string;
+  replicaReplacements?: Record<string, import('./videoReplica.js').ReplicaReplacement>;
+  replicaAssetResultId?: string;
+  replicaRequirements?: string;
+  replicaAspectRatio?: string;
+  replicaResolution?: string;
+  replicaPlan?: import('./videoReplica.js').VideoReplicaPlan;
+  replicaSourceNodeId?: string;
+  replicaPlanId?: string;
+  replicaShotId?: string;
 }
 export interface CanvasGroup {
   id: string;

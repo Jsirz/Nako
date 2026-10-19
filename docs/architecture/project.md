@@ -25,6 +25,8 @@ ui.project.catalog 为 Agent/画布提供当前用户项目读取、创建与导
 
 逐帧拉片结果随项目保存。JSON 导入的 [projectMediaImport.ts](../../modules/project/ui/persistence/projectMediaImport.ts) 仅迁移指定媒体字段、既有参数素材引用及内置拉片 `parameters.video`、结果 source、frames/clip/audio；相同素材共用复制请求，所有复制完成后才提交文档，不改 prompt 或未知扩展数据。`.nako` 沿用归档的递归媒体地址重映射。`resetSharedProject` 清除 nodeRunId/nodeRequestId/nodeAnalysisRunId/nodeDirectRunRequestId，保留成功结果及独立结果 id，允许预览或手动插入本项目素材；不能观察、自动批准或恢复原项目任务，也不能继续使用其本地分析缓存，须重新分析。
 
+视频复刻复用上述 JSON 素材迁移，另迁移 `replicaReplacements` 的本地图片引用并清除 `replicaPlan`；保留分析资产列表及其分镜关联，替换项仍按分析结果 id 绑定。原项目的运行、请求及分析缓存标记同时清除，导入后的生成计划必须重新确认，不通过导入触发模型调用。
+
 `projectDashboardHeader.tsx` 的首页品牌显示“NAKO Agent 纳科画布智能体”，顶部只保留设置入口；创建画布使用最近项目区的新建画布卡片或全部项目中的创建入口。
 
 首页顶部由 [homeBannerCarousel.tsx](../../modules/project/ui/navigation/homeBannerCarousel.tsx) 展示 `public/homepage/` 直属目录中的 PNG、JPEG、WebP、GIF、AVIF、SVG 图片。Vite 的 `Object.keys(import.meta.glob(...))` 只枚举文件名，图片通过 `/homepage/<编码后的文件名>` 静态 URL 加载，不读取到 JavaScript 包中，也无需手写索引。文件按中文自然文件名排序；添加、删除或重命名图片后需重新构建前端，安装应用随新安装包更新图片列表。轮播中间突出当前图片，两侧预览，支持左右箭头、图片选择圆点及点击两侧图片，每 5 秒自动切换；悬停、键盘聚焦、页面隐藏或偏好减少动态时暂停自动切换，卸载清理计时器。窄窗口仅展示当前图片；只有一张时不显示切换按钮。目录不存在、没有支持的图片或图片全部加载失败时，保留 `projectDashboardHome.tsx` 原有欢迎区域；单张加载失败仅从本次展示中移除。资源枚举和展示位于 project UI，不增加后端文件系统调用或跨模块依赖。

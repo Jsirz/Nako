@@ -19,6 +19,8 @@
 
 ## 验证范围
 
+视频复刻节点本轮只进行源码审阅，以及 `check:architecture`、`check:docs`、`check:conventions` 只读门禁；未运行测试、语法/类型检查或构建，也未进行 Qwen 分镜分析、Seedance 参考生成或 Windows/macOS 成品验证。既有拉片用例覆盖共享协议和媒体抽取的部分行为，不能视为新增资产替换、计划确认及复刻生成流程已通过运行验证。
+
 逐帧拉片回归集中在 [shot-analysis.test.js](../../tests/shot-analysis.test.js) 和 [shot-analysis-ui.test.js](../../tests/shot-analysis-ui.test.js)：schema/时间范围/声音状态、FFmpeg 参数/缓存/临时文件清理/取消、一次模型分析与零模型重提取、显式授权/重复点击/迟到响应/只读、分组插入去重及项目素材迁移。`work-fisher-video-upload.test.js` 验证分析视频的上传、video_url 和 max_tokens；这些测试模拟上游/FFmpeg，不能证明供应商支持或真机编解码能力。未运行构建、类型或语法检查。
 
 架构门禁检查 import/export、动态 import 和类型引用：业务模块之间禁止横向依赖，必须消费 contracts/kernel 服务；插件只允许 contracts/kernel 与列明的 Provider SDK、WorkflowExecutor SDK 入口。apps 是组合层，可装配模块公开入口。唯一宿主装配例外精确限定为 serverHost → credentialStore；工作流插件只可复用同类 shared 目录，Provider 不得以 shared 为由导入工作流内部实现。声明式模型贡献聚合保留现有限定例外。api 转导出本身不构成跨模块调用豁免。媒体模块全目录禁止 fs/path/os/crypto/child_process/Sharp 导入，防止平台操作移回业务 helper；HTTP 响应流转换仍由业务边界完成。
@@ -41,6 +43,6 @@
 
 ## 版本与记录
 
-根 VERSION 记录当前版本，需与 package.json、apps/desktop/package.json 及相应 lockfile 一致。新变更写 CHANGELOG.md/Unreleased；本次规范化补齐缺失的 VERSION/CHANGELOG，没有提升版本、提交 Git、打 tag 或发布。
+根 VERSION 记录发行版本，需与根 package.json 和 package-lock.json 的根包版本一致；apps/desktop/package.json 及其 lockfile 管理 Electron 开发环境，保持独立版本。scripts/desktop/package.mjs 使用根包版本生成成品。新变更写 CHANGELOG.md/Unreleased，发行时整理为对应版本记录。
 
 发行按 AGENTS.md 整理 Unreleased、提升版本、提交当前代码并打 tag。桌面发布细节见 [GitHub 发布说明](../GitHub发布说明.md)、[桌面打包](../桌面应用打包说明.md) 与 [自动更新](../自动更新配置说明.md)。本次新增静态入口不改变发布脚本流程。

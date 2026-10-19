@@ -10,6 +10,8 @@
 
 内置 `shot-analysis` 节点由 [canvasShotAnalysisNode.tsx](../../modules/canvas-ui/ui/nodes/canvasShotAnalysisNode.tsx) 渲染；视频上传经 kernel 的 `ui.media.canvas`，运行经既有 node-runs HTTP 客户端。节点只使用 contracts 的拉片数据，不导入 Provider 或本地运行时。[shotAnalysisCanvas.ts](../../modules/canvas-ui/ui/canvas/shotAnalysisCanvas.ts) 先构造并校验完整插入结果，再由 `useCanvasAgentControls` 检查项目、epoch、节点和 resultId，统一提交节点/分组/历史，不连接 JSON 输出到媒体输入。
 
+内置 `video-replica` 由 [canvasVideoReplicaNode.tsx](../../modules/canvas-ui/ui/nodes/canvasVideoReplicaNode.tsx) 渲染，复用 `useShotAnalysisRun` 的保存、批准、观察和取消流程；成功后打开分析详情，不直接生成视频。[useReplicaUpload.ts](../../modules/canvas-ui/ui/nodes/useReplicaUpload.ts) 经 kernel 媒体服务上传源视频及替换图片，切换项目/节点/文档或只读状态中止上传并过滤旧结果。[videoReplicaCanvas.ts](../../modules/canvas-ui/ui/canvas/videoReplicaCanvas.ts) 校验公共计划后构造完整的参考节点、Video 节点和分组，`useCanvasAgentControls` 核对源视频、结果/计划 id、文档 epoch 以及模型视频引用能力，再一次提交历史。
+
 `ui.root.mount(element)` 挂载 React 根并登记卸载；根 manifest 显式依赖 `ui.local-runtime`。`node.registry` 提供节点定义，`nodes.client` 处理节点生成与观察。公开纯函数/组件出口列在 [exports.json](../../modules/canvas-ui/exports.json)。
 
 应用组合根 [canvasRuntime.tsx](../../apps/canvas/canvasRuntime.tsx) 装配 React、项目、生成及媒体 hooks；[canvasComponents.ts](../../apps/canvas/canvasComponents.ts)、[canvasPresentations.ts](../../apps/canvas/canvasPresentations.ts) 装配各模块公开组件。[rootPlugin.tsx](../../apps/canvas/rootPlugin.tsx) 挂载与卸载根视图，[promptVendor.ts](../../apps/canvas/promptVendor.ts) 绑定编辑器依赖，[useRecovery.ts](../../apps/canvas/useRecovery.ts) 绑定恢复观察。上述文件归 apps/canvas，不由画布业务模块横向导入。
@@ -18,6 +20,8 @@
 ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清理、模态、提示与增强观察能力；ui.media.recovery 由媒体插件提供，预设复制通过 kernel 获取，不静态调用媒体恢复实现。插件声明及磁盘 manifest 的 provides/requires 同步，kernel 负责撤销注册。
 
 ## 数据模型
+
+视频复刻的 `pluginResult.analysis` 为 `VideoReplicaResult`。`replicaAssetResultId/replicaReplacements` 将替换图片及描述绑定到分析结果，`replicaRequirements/AspectRatio/Resolution` 保存输出设置，`replicaPlan` 保存可编辑计划；更换源视频、替换资产或输出设置后清除计划，源 URL 变化时禁止使用旧结果生成。复制复刻节点保留成功分析和缓存媒体，清除计划、替换及运行授权；跨项目导入由 project 重定位源视频、分镜素材和替换图片并清除计划。生成节点使用 `replicaSourceNodeId/PlanId/ShotId` 去重，不作为运行授权。
 
 `parameters.video` 保存上传后本地 URL；也可从 video 端口获取上游结果。`pluginResult.analysis` 保留最后成功的 `ShotAnalysisResult`，包括结果 id、源、模型 JSON 和逐镜头素材。`nodeRunId/nodeRequestId` 跟踪当前任务，`nodeAnalysisRunId` 指向最后成功分析缓存，失败/取消不覆盖成功结果。`nodeDirectRunRequestId` 记录用户本次点击开始的 requestId，仅匹配该任务时自动批准并在成功后自动入画布，终态消费该标识；可在节点离开可见区后恢复观察。复制、预设和导入清除该标识。插入节点使用 `shotAnalysisResultId/ShotId/NodeId` 去重；每镜头创建说明和选中的媒体节点并成组，导入结果也可手动插入。
 
@@ -28,6 +32,10 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 持久化节点类型与端口身份不同于数组位置；插件缺席保留缺失节点占位，不悄悄改成其他节点。运行中节点的复制限制、只读画布导航及媒体工具栏沿用当前工作区已有实现，本次不回滚用户修改。
 
 ## 功能结构
+
+视频复刻卡片沿用拉片卡片尺寸、拖拽与左右居中连接点；[videoReplicaDialog.tsx](../../modules/canvas-ui/ui/nodes/videoReplicaDialog.tsx) 和 [videoReplicaNode.css](../../modules/canvas-ui/ui/nodes/videoReplicaNode.css) 提供分镜分析、资产替换、复刻计划三个页签。原资产缩略图使用其首个相关分镜的关键帧，不执行主体分割。用户可按角色/场景/元素筛选，上传替换图片或填写描述，并调整整体要求、比例、分辨率及各段提示词。分镜分析页仅展示摘要、素材、镜头详情及关联资产，不提供原始分析 JSON 编辑入口。只读预览允许查看详情与播放素材，禁止上传、编辑、分析和生成。
+
+确认计划可只创建节点供逐个生成，或创建后调用现有生成服务处理全部新视频节点。每段替换图片以 `image` 输出、分镜片段以 `video` 输出连接到 Video 的 `references` 输入，模型固定为 Work-Fisher Seedance 2.5 Standard，`videoMode=multimodal`；每段独立成组并保留现有生成并发限制和错误处理。短分镜按模型最短 4 秒输出，长镜头最多 30 秒一段；当前不自动拼接最终成片。
 
 逐帧拉片卡片使用 [shotAnalysisNode.css](../../modules/canvas-ui/ui/nodes/shotAnalysisNode.css)，默认 440×560，展示图标标题、视频时长/尺寸、16:9 预览、青色拆解维度胶囊及整行开始按钮，不展示模型名称。结果详情默认折叠。仅在播放器、按钮、表单和折叠开关等交互元素上阻止 pointerdown 冒泡；标题、说明及空白区域沿用节点 Frame 的拖拽处理。滚轮事件留在卡片内用于滚动详情，不触发画布缩放。
 
@@ -127,6 +135,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/canvas/useCanvasSaveAndReferences.tsx](../../modules/canvas-ui/ui/canvas/useCanvasSaveAndReferences.tsx) | 浏览器交互与状态辅助 | `useCanvasSaveAndReferences` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/canvas/useCanvasSceneBridge.tsx](../../modules/canvas-ui/ui/canvas/useCanvasSceneBridge.tsx) | 浏览器交互与状态辅助 | `useCanvasSceneBridge` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/canvas/useCanvasWorkspaceState.tsx](../../modules/canvas-ui/ui/canvas/useCanvasWorkspaceState.tsx) | 浏览器交互与状态辅助 | `useCanvasWorkspaceState` | 未检出平台调用；不等于纯函数证明 |
+| [modules/canvas-ui/ui/canvas/videoReplicaCanvas.ts](../../modules/canvas-ui/ui/canvas/videoReplicaCanvas.ts) | 浏览器交互与状态辅助 | `videoReplicaCanvas` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/design/designSystem.ts](../../modules/canvas-ui/ui/design/designSystem.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/designSystem` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/design/designSystemStyles.ts](../../modules/canvas-ui/ui/design/designSystemStyles.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/designSystemStyles` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/design/dom.ts](../../modules/canvas-ui/ui/design/dom.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/dom` | 未检出平台调用；不等于纯函数证明 |
@@ -202,6 +211,7 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/nodes/canvasShotAnalysisNode.tsx](../../modules/canvas-ui/ui/nodes/canvasShotAnalysisNode.tsx) | 浏览器交互与状态辅助 | `CanvasShotAnalysisNode` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/canvasTextComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasTextComposer.tsx) | 界面呈现与交互 | `CanvasTextComposer` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx](../../modules/canvas-ui/ui/nodes/canvasVideoComposer.tsx) | 界面呈现与交互 | `CanvasVideoComposer` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/nodes/canvasVideoReplicaNode.tsx](../../modules/canvas-ui/ui/nodes/canvasVideoReplicaNode.tsx) | 浏览器交互与状态辅助 | `CanvasVideoReplicaNode` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/mediaComposer.ts](../../modules/canvas-ui/ui/nodes/mediaComposer.ts) | 界面呈现与交互 | `ComposerNode`, `ComposerAsset`, `ComposerModel`, `MediaComposerProps`, `ComposerRuntime`, `MediaComposerComponents`, `useComposerBusy`, `changeComposerModel` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/migrateCanvasNodes.ts](../../modules/canvas-ui/ui/nodes/migrateCanvasNodes.ts) | 浏览器交互与状态辅助 | `migrateCanvasNodes` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/nodes/nodeApproval.ts](../../modules/canvas-ui/ui/nodes/nodeApproval.ts) | 浏览器交互与状态辅助 | `confirmNodeRun` | 含 DOM/事件 调用；时机见实现 |
@@ -223,7 +233,10 @@ ui.canvas.project 发布 contracts/projectWorkflow 的图重映射、分组清�
 | [modules/canvas-ui/ui/nodes/shotAnalysisResults.tsx](../../modules/canvas-ui/ui/nodes/shotAnalysisResults.tsx) | 浏览器交互与状态辅助 | `ShotAnalysisResults` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/useCanvasMiniMaxNodeState.ts](../../modules/canvas-ui/ui/nodes/useCanvasMiniMaxNodeState.ts) | 浏览器交互与状态辅助 | `useCanvasMiniMaxNodeState`, `MiniMaxNodeState` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/useGenerationAvailability.ts](../../modules/canvas-ui/ui/nodes/useGenerationAvailability.ts) | 浏览器交互与状态辅助 | `useGenerationAvailability` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/nodes/useReplicaUpload.ts](../../modules/canvas-ui/ui/nodes/useReplicaUpload.ts) | 浏览器交互与状态辅助 | `useReplicaUpload` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/nodes/useShotAnalysisRun.ts](../../modules/canvas-ui/ui/nodes/useShotAnalysisRun.ts) | 浏览器交互与状态辅助 | `useShotAnalysisRun` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/nodes/videoReplicaDialog.tsx](../../modules/canvas-ui/ui/nodes/videoReplicaDialog.tsx) | 界面呈现与交互 | `VideoReplicaDialog` | 含 DOM/事件 调用；时机见实现 |
+| [modules/canvas-ui/ui/nodes/videoReplicaNode.css](../../modules/canvas-ui/ui/nodes/videoReplicaNode.css) | 界面样式 | 样式 | 无业务运行副作用 |
 | [modules/canvas-ui/ui/settings/canvasSettings.tsx](../../modules/canvas-ui/ui/settings/canvasSettings.tsx) | 浏览器交互与状态辅助 | `CanvasSettingsProps`, `CanvasSettings` | 含 DOM/事件 调用；时机见实现 |
 | [modules/canvas-ui/ui/settings/settingsOperation.ts](../../modules/canvas-ui/ui/settings/settingsOperation.ts) | 浏览器交互与状态辅助 | `重导出 ../../../kernel/ui/settingsOperation` | 未检出平台调用；不等于纯函数证明 |
 | [modules/canvas-ui/ui/text/CanvasTextEditor.tsx](../../modules/canvas-ui/ui/text/CanvasTextEditor.tsx) | 浏览器交互与状态辅助 | `CanvasTextEditorHandle`, `CanvasTextEditorProps`, `CanvasTextEditor` | 含 DOM/事件 调用；时机见实现 |

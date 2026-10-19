@@ -58,6 +58,7 @@ interface Components {
 const emptyConnections: unknown[] = [];
 const idleZoomIndependentTypes = new Set(['Text', 'Image', 'Upload Image', 'Video', 'Upload Video']);
 const forwardedCallbacks = [
+  'onCreateVideoReplica',
   'onInsertShotAnalysis',
   'onSaveBeforeShotAnalysis',
   'onGenerate',

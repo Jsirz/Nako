@@ -10,6 +10,7 @@
     "workflow.execute",
     "media.prepareAnalysis",
     "media.validateAnalysis",
+    "media.validateReplica",
     "media.extractAnalysis",
     "storage.get",
     "storage.set"
@@ -505,6 +506,27 @@
         "additionalProperties": true,
         "properties": {}
       }
+    },
+    {
+      "type": "video-replica",
+      "version": "1.0.0",
+      "title": "视频复刻",
+      "category": "tool",
+      "description": "分析视频分镜与资产，替换角色、场景和元素后参考生成",
+      "inputs": [{ "id": "video", "media": ["video"] }],
+      "outputs": [{ "id": "analysis", "media": ["json"], "required": true }],
+      "render": { "kind": "generic" },
+      "capabilities": ["models.generate", "media.prepareAnalysis", "media.validateReplica", "media.extractAnalysis", "storage.get", "storage.set"],
+      "executor": { "method": "videoReplica", "transport": "rpc", "timeoutMs": 1800000 },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "video": { "type": "string", "maxLength": 1000 },
+          "reuseRunId": { "type": "string", "maxLength": 100 },
+          "analysis": { "type": "string", "maxLength": 1048576 }
+        }
+      },
+      "agent": { "exposed": false }
     },
     {
       "type": "shot-analysis",

@@ -8,6 +8,8 @@
 
 `nodeCapabilities.js` 新增 `media.prepareAnalysis`、`media.validateAnalysis`、`media.extractAnalysis`，先限制素材到当前项目，再调用注入的 `MediaProcessor` 或 contracts 解析器；`includeProxy=false` 透传到适配器，仅重新提取不上传代理。能力和模型预算仍由 kernel 的运行授权控制，取消合并运行/隔离进程信号。拉片节点的 `models.generate` 仍通过统一 GenerationService 调用，不在桌面宿主拼接供应商 HTTP。
 
+视频复刻增加白名单能力 `media.validateReplica`，调用 contracts 的 `parseVideoReplicaAnalysis`；`media.prepareAnalysis` 在 `purpose=video-replica` 时以公共复刻提示词替换默认拉片提示词，其余源视频校验、代理和信号保持一致。宿主不直接调用 Qwen 或 Seedance HTTP 接口。
+
 [serverHost.js](../../modules/desktop-shell-observability/serverHost.js) 创建 PluginHost，装配后端与业务目录、宿主路径、安全凭据和节点注册表。`host.runtime`、`http.routes`、`node.registry`、`node.packages` 由平台宿主注入；业务通过声明服务访问。
 
 [nodeServerPlugin.js](../../modules/desktop-shell-observability/nodeServerPlugin.js) 提供 nodes.runtime；nodeRunRouter 将提交/批准/取消/观察转换到 kernel.NodeRunService。Node SDK 2 的 capability/progress 请求经宿主有限白名单，包代码不接触密钥、任意文件或网络。
@@ -26,6 +28,8 @@ Electron 主题 IPC 的来源与参数由 apps/desktop/src/windowManager.mjs 校
 更新信息包含版本、HTTPS 源、下载进度、状态和失败码；下载清单/签名与用户项目数据分离。日志包含模块、运行/节点/执行器身份以及有限子进程错误信息，不把原始错误尾部直接显示前端。应用状态/数据目录见桌面打包说明。
 
 ## 功能结构
+
+[videoReplica.mjs](../../nodes/canvas-core/videoReplica.mjs) 作为内置节点包执行器先准备代理，再通过 `models.generate` 调用一次 Work-Fisher Qwen 3.8 Max，校验分镜和角色/场景/元素资产后提取素材。分镜与资产分别逐项写入 `replica.<runId>.shot.<index>` 和 `.asset.<index>`，索引记录数量、节点和源指纹，保留单条 64 KiB 存储限制。复用分析先核对项目隔离缓存、节点及源 URL/指纹，重新提取预算为 0；缓存不匹配时拒绝，不自动再次调用付费模型。结果返回带资产列表的分析；Seedance 生成由用户确认后创建的普通 Video 节点承担。
 
 `nodes/canvas-core/shotAnalysis.mjs` 首次分析使用一次文本模型调用，先校验模型 JSON，再按镜头写入 `private/node-runs/value-<hash>.json` 的宿主存储，避免单条超过 64 KiB。缓存按用户作用域/项目/插件隔离，复用时核对节点和源视频 URL/指纹；通过校验后调用本地抽取，重提取预算为 0。源改变或缓存不存在时拒绝复用，不自动回退付费模型。成功返回的素材结果与运行回执分离，前端不会因后续取消删除上次成功结果。
 

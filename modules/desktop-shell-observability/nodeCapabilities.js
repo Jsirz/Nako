@@ -1,6 +1,7 @@
 import { NODE_ERROR } from '../contracts/nodeExecution.js';
 import { desktopNodeError as nodeError } from '../contracts/desktopErrors.js';
 import { parseShotAnalysis, analysisChoices } from '../contracts/shotAnalysis.js';
+import { parseVideoReplicaAnalysis, videoReplicaPrompt } from '../contracts/videoReplica.js';
 
 function localUrl(value, projectId) {
   const url = typeof value === 'string' ? value : value?.url;
@@ -48,11 +49,13 @@ export function createNodeCapabilities({ generation, mediaStore, mediaAgent, med
     async 'media.prepareAnalysis'(input, ctx) {
       const asset = await scopedAsset(input.video, ctx);
       if (asset.type !== 'video') throw nodeError(NODE_ERROR.INVALID, '拉片需要视频素材');
-      return mediaProcessor.prepareAnalysis({ projectId: ctx.projectId, url: asset.url, choices: analysisChoices(input.choices),
+      const prepared = await mediaProcessor.prepareAnalysis({ projectId: ctx.projectId, url: asset.url, choices: analysisChoices(input.choices),
         includeProxy: input.includeProxy !== false,
         signal: ctx.childSignal ? AbortSignal.any([ctx.signal, ctx.childSignal]) : ctx.signal });
+      return input.purpose === 'video-replica' ? { ...prepared, prompt: videoReplicaPrompt(prepared.source) } : prepared;
     },
     'media.validateAnalysis': input => parseShotAnalysis(input.analysis, input.duration, input.hasAudio),
+    'media.validateReplica': input => parseVideoReplicaAnalysis(input.analysis, input.duration, input.hasAudio),
     async 'media.extractAnalysis'(input, ctx) {
       const asset = await scopedAsset(input.video, ctx);
       if (asset.type !== 'video') throw nodeError(NODE_ERROR.INVALID, '拉片需要视频素材');

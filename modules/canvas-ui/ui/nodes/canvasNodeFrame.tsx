@@ -4,6 +4,7 @@ import { mediaCanvas } from '../../../kernel/browser';
 import { installNodeFramework } from './nodeFramework';
 import { CanvasPluginNode } from './canvasPluginNode';
 import { CanvasShotAnalysisNode } from './canvasShotAnalysisNode';
+import { CanvasVideoReplicaNode } from './canvasVideoReplicaNode';
 import type { NodeDefinition } from './nodeFramework';
 import { PackageNodeConnectors } from './packageNodeConnectors';
 type Runtime = Pick<typeof ReactTypes, 'createElement' | 'useState' | 'useRef' | 'useEffect'>;
@@ -154,7 +155,7 @@ export function CanvasNodeFrame(
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
     >
-      {!props.readOnly && (data.type !== 'shot-analysis' && props.data.pluginId && !['native', undefined].includes(installNodeFramework().getDefinition(data.type, String(data.pluginId))?.render?.kind) ? React.createElement(PackageNodeConnectors, { data, onConnectorDown: props.onConnectorDown }) : React.createElement(dependencies.Connectors, {
+      {!props.readOnly && (!['shot-analysis', 'video-replica'].includes(data.type) && props.data.pluginId && !['native', undefined].includes(installNodeFramework().getDefinition(data.type, String(data.pluginId))?.render?.kind) ? React.createElement(PackageNodeConnectors, { data, onConnectorDown: props.onConnectorDown }) : React.createElement(dependencies.Connectors, {
         nodeId: data.id,
         onConnectorDown: props.onConnectorDown,
         nodeType: data.type,
@@ -257,6 +258,7 @@ const titles: Record<string, string> = {
   Text: '文本输入',
   ComfyUI: 'ComfyUI',
   'shot-analysis': '逐帧拉片',
+  'video-replica': '视频复刻',
 };
 interface HeaderProps {
   data: NodeData;
@@ -459,6 +461,8 @@ export function CanvasGenericNode(
   const node = props.data;
   if ((props.definition as NodeDefinition | undefined)?.type === 'shot-analysis' && (props.definition as NodeDefinition).pluginId === 'nako.canvas-core')
     return React.createElement(CanvasShotAnalysisNode, { ...props, dependencies });
+  if ((props.definition as NodeDefinition | undefined)?.type === 'video-replica' && (props.definition as NodeDefinition).pluginId === 'nako.canvas-core')
+    return React.createElement(CanvasVideoReplicaNode, { ...props, dependencies });
   // A persisted missing flag can be stale when the node directory loads after
   // the project. A live registry definition always wins over that old marker.
   if (props.definition) return React.createElement(CanvasPluginNode, { ...props, definition: props.definition as NodeDefinition, dependencies });

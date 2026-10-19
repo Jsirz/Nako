@@ -1,7 +1,7 @@
 import { PluginError } from './errors.js';
 /** Public node execution errors, capability names and supported JSON schema subset. */
 export const NODE_CAPABILITIES = Object.freeze([
-  'models.generate', 'media.inspect', 'media.read', 'media.compose', 'media.prepareAnalysis', 'media.validateAnalysis', 'media.extractAnalysis',
+  'models.generate', 'media.inspect', 'media.read', 'media.compose', 'media.prepareAnalysis', 'media.validateAnalysis', 'media.validateReplica', 'media.extractAnalysis',
   'workflow.execute', 'project.read', 'storage.get', 'storage.set',
 ]);
 export const NODE_ERROR = Object.freeze({

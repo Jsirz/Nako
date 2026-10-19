@@ -181,6 +181,11 @@ function canvasSceneActionProps(context: SceneContext) {
     onUpdateNode: updateNode,
     onGenerate: handleGenerate,
     onInsertShotAnalysis: context.insertShotAnalysis,
+    onCreateVideoReplica: (input: import('../../../contracts/videoReplica.js').VideoReplicaInsertion) => {
+      const ids = context.insertVideoReplica(input);
+      if (input.generate) ids.forEach(id => { void handleGenerate(id); });
+      return ids;
+    },
     onSaveBeforeShotAnalysis: async () => {
       const receipt = await context.save({ reportFailure: true });
       return !!receipt && receipt.unchanged !== false;

@@ -165,3 +165,4 @@ export * from './canvasErrors.js';
 export * from './projectErrors.js';
 export * from './storageErrors.js';
 export * from './shotAnalysis.js';
+export * from './videoReplica.js';

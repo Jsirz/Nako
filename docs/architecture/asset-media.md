@@ -8,6 +8,8 @@
 
 `media.processor` 的逐帧拉片方法由 [shotAnalysis.js](../../plugins/media/ffmpeg-sharp/shotAnalysis.js) 实现，协议在 contracts/shotAnalysis；宿主能力桥注入调用，业务 Router 和画布不接触 FFmpeg 或本地文件系统。`prepareAnalysis` 探测源视频并按需生成可上传代理；`extractAnalysis` 只接受当前项目本地视频、已校验时间及可选源指纹，返回图片/片段/原声音轨，支持取消信号。
 
+视频复刻复用同一 `MediaProcessor`：宿主在准备完成后采用 contracts/videoReplica 的分析提示词，`media.validateReplica` 校验资产与分镜并拆分长镜头，再剥离资产字段调用既有 `extractAnalysis`。媒体适配器只接收已校验的时间，不接收模型生成的命令、路径或替换操作；替换图片由现有媒体上传服务保存。
+
 contracts 的 MediaStore 提供 save/read/remove；MediaProcessor 提供 crop/trimVideo/compose/thumbnail，二者分别注入。`media.operations` 的 upload/importFile/list/favorite/deleteAsset/trash/cleanupProject 等返回 `{status, body}`，library/downloads 是受限子服务。`media.agent` 读取、检视及转换项目参考；`media.generation` 保存或下载模型结果。
 
 `media.operations.projectFiles` 实现 contracts/ProjectMediaStore，并由业务模块注册 `media.projectFiles` 供项目及 ComfyUI 消费。saveMediaToFile 同步保存 data URL 并返回 id/url，sanitizeWorkflowNodes 处理四类内联媒体字段；不向调用方暴露目录创建函数。
@@ -34,6 +36,8 @@ HTTP 鉴权能力通过 identity.httpSecurity 注入：代理、公开库 Guard�
 内联媒体保存使用唯一 UUID、真实媒体扩展名及项目归属校验。同步生成保存见 [mediaWrites.js](../../plugins/media/filesystem/mediaWrites.js)：校验用户目录真实路径、媒体类型与大小，独占创建二进制，元数据写临时文件后原子改名；任一步失败都抛出 `MEDIA_STORAGE_FAILED`（500，含 moduleId/operation/项目或素材标识），已有结构化错误原样保留。元数据失败会清理本次二进制与临时文件；单独更新元数据失败保留原记录。素材库/组合导入对本次元数据失败也清理相应复制文件；清理失败由注入 Logger 记录 warn，原失败仍向上传递。这是单文件发布与失败清理，不保证进程崩溃时二进制和 JSON 的跨文件事务，也不保证整个组合批次原子提交。视频尾帧按 nodeId + prompt 查询最新已存在文件，复用结果。缩略图按原图路径、尺寸、mtime 与最大边长计算指纹，写临时文件后重命名，重复请求共享任务。
 
 ## 功能结构
+
+视频复刻固定提取关键帧、动态片段及可用原声音轨，输出仍使用当前用户项目媒体目录和源指纹缓存。资产列表中的原图为关联分镜参考，未增加角色抠图、场景分割或声音分离；生成时由画布连接替换图片与原分镜视频引用，实际上传及参考生成交给既有 Work-Fisher Provider。没有新增媒体 Router 或文件系统入口。
 
 逐帧拉片校验视频不超过 20 分钟、分辨率不超过 8192；临时输出编码完成并检查大小后改名，失败或取消清理本次临时文件，清理失败用注入 Logger 的固定 warn 事件记录。关键帧为 PNG，动态片段为 H.264/AAC MP4，音轨为 MP3；未选择的素材不提取，无音轨不提取音频。声音资产保留原混合音轨，不做说话人或音乐分离。仅重新提取不生成代理、不上传和调用模型；更换来源或源文件指纹变化时拒绝复用分析。两文件改名不构成跨文件崩溃事务，不完整缓存下次重建。独立回归 `tests/shot-analysis-media.test.js` 使用 bin 下真实 FFmpeg/FFprobe 生成奇数尺寸竖屏测试源，验证代理、截图、镜头片段、音轨及代理缓存；缺少二进制时跳过。Windows 本地真实编解码回归通过，macOS 成品与真实上游仍待验证。
 
